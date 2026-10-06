@@ -169,6 +169,12 @@ td.num,th.num{text-align:right}
     <div class="row" style="margin-top:10px"><button class="btn" id="setGuardar">Guardar ajustes</button></div>
   </div>
   <div class="card">
+    <h2>Importar pedidos de Shopify</h2>
+    <p class="muted" style="margin-top:0">En Shopify: Pedidos → Exportar → CSV. Sube ese archivo aquí. Los pedidos ya importados no se duplican; el costo y el flete de envío los completas tú en cada pedido.</p>
+    <div class="row"><label class="btn" style="margin:0">Importar CSV de Shopify<input type="file" id="impShop" accept=".csv,text/csv" hidden></label></div>
+    <div class="hint">Estados: cancelado → Cancelado, reembolsado → Devuelto, enviado y pagado → Entregado, enviado → Enviado, el resto → Pendiente.</div>
+  </div>
+  <div class="card">
     <h2>Respaldo de datos</h2>
     <p class="muted" style="margin-top:0">Tus datos viven solo en este navegador. Descarga un respaldo con frecuencia.</p>
     <div class="row">
@@ -407,6 +413,71 @@ $('#impJson').addEventListener('change',e=>{
       state={orders:s.orders,expenses:s.expenses,settings:{...state.settings,...(s.settings||{})}};
       save();init();alert('Respaldo restaurado');
     }catch(err){alert('El archivo no es un respaldo válido')}
+    e.target.value='';
+  };
+  r.readAsText(f);
+});
+
+/* ---------- Importar CSV de Shopify ---------- */
+function parseCsv(t){
+  const rows=[];let row=[],f='',q=false;
+  t=t.replace(/^\ufeff/,'');
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c==='"')q=true;
+    else if(c===','){row.push(f);f=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(f);f='';if(row.some(x=>x!==''))rows.push(row);row=[]}
+    else f+=c;
+  }
+  row.push(f);if(row.some(x=>x!==''))rows.push(row);
+  return rows;
+}
+function shopifyEstado(r){
+  const fin=(r['Financial Status']||'').toLowerCase(),ful=(r['Fulfillment Status']||'').toLowerCase();
+  if(r['Cancelled at'])return 'Cancelado';
+  if(fin==='refunded'||fin==='voided')return fin==='voided'?'Cancelado':'Devuelto';
+  if(ful==='fulfilled')return fin==='paid'?'Entregado':'Enviado';
+  return 'Pendiente';
+}
+function importShopify(text){
+  const rows=parseCsv(text);
+  if(rows.length<2)throw new Error('vacío');
+  const h=rows[0].map(x=>x.trim());
+  if(!h.includes('Name')||!h.includes('Lineitem name'))throw new Error('formato');
+  const recs=rows.slice(1).map(r=>Object.fromEntries(h.map((k,i)=>[k,r[i]??''])));
+  const have=new Set(state.orders.map(o=>o.shopifyKey).filter(Boolean));
+  let last={},n=0,skip=0,idx={};
+  for(const r of recs){
+    if(r['Email']||r['Created at']||r['Billing Name']||r['Shipping Name'])last=r;           // la primera fila del pedido trae los datos del cliente
+    const name=r['Name'];if(!name||!r['Lineitem name'])continue;
+    idx[name]=(idx[name]||0)+1;
+    const key=name+'#'+idx[name];
+    if(have.has(key)){skip++;continue}
+    const base={...last,...r};
+    const opts=(r['Lineitem name']||'').split(' - ');
+    state.orders.push({
+      id:uid(),shopifyKey:key,
+      fecha:(last['Created at']||today()).slice(0,10),
+      cliente:last['Shipping Name']||last['Billing Name']||last['Email']||name,
+      telefono:last['Shipping Phone']||last['Phone']||last['Billing Phone']||'',
+      ciudad:last['Shipping City']||last['Billing City']||'',
+      producto:opts[0],talla:opts[1]||'',color:opts[2]||'',
+      cantidad:num(r['Lineitem quantity'])||1,precio:num(r['Lineitem price']),costo:0,flete:0,
+      estado:shopifyEstado(last),
+      pago:/cash on delivery|cod|contra/i.test(last['Payment Method']||'')?'Contra entrega':(last['Financial Status']==='paid'?'Pagado':'Contra entrega'),
+      notas:'Shopify '+name
+    });n++;
+  }
+  save();renderPedidos();
+  return {n,skip};
+}
+$('#impShop').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{const {n,skip}=importShopify(r.result);alert(`Importados ${n} pedidos`+(skip?` (${skip} ya existían)`:'')+'. Revisa costo y flete en cada uno.')}
+    catch(err){alert('No pude leer el archivo. Debe ser el CSV de pedidos exportado desde Shopify.')}
     e.target.value='';
   };
   r.readAsText(f);
