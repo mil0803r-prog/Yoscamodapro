@@ -1,20 +1,901 @@
-<!DOCTYPE html><html lang="es" class="light"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Yosca Moda - Gestión de Taller &amp; Dashboard</title>
-    <meta name="description" content="Dashboard y herramienta operativa para taller textil con chatbot multiturno Gemini (roles de Director CIF, Estratega Pro y Asistente Rápido), control de caja real, stock y costos.">
-    <meta property="og:title" content="Yosca Moda - Gestión de Taller &amp; Dashboard">
-    <meta property="og:description" content="Dashboard y herramienta operativa para taller textil con chatbot multiturno Gemini (roles de Director CIF, Estratega Pro y Asistente Rápido), control de caja real, stock y costos.">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
-    <link rel="preconnect" href="https://fonts.googleapis.com/">
-    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Hanken+Grotesk:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-    <script type="module" crossorigin="" src="/assets/index-B2z8WDf_.js"></script>
-    <link rel="stylesheet" crossorigin="" href="/assets/index-C4MSGmjT.css">
-  </head>
-<body class="bg-surface text-on-surface antialiased transition-colors duration-150 selection:bg-primary selection:text-on-primary">
-  <div id="root"></div>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Yosca Moda Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Diseño: columna móvil centrada, tarjetas claras sobre fondo azulado, verde como acento y navegación inferior */
+:root{
+  --surface:#f8f9ff;--s-lowest:#ffffff;--s-low:#eff4ff;--s-cont:#e5eeff;--s-high:#dce9ff;--s-highest:#d3e4fe;
+  --on:#0b1c30;--on-var:#3d4a41;--outline:#6c7a70;--line:#c9d6ea;
+  --primary:#006c46;--primary-c:#00b074;--on-primary:#ffffff;--primary-soft:#d6f5e7;
+  --secondary:#545f73;--tertiary:#0053db;--warn:#b26a00;--warn-soft:#fff0d6;
+  --error:#ba1a1a;--error-soft:#ffdad6;--shadow:0 4px 14px rgba(0,176,116,.35);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --surface:#0e1013;--s-lowest:#181b20;--s-low:#13161a;--s-cont:#181b20;--s-high:#21252b;--s-highest:#2b3038;
+    --on:#f3f4f6;--on-var:#9ca3af;--outline:#6b7280;--line:#2b3038;
+    --primary:#10b981;--primary-c:#059669;--on-primary:#ffffff;--primary-soft:#0d2e24;
+    --secondary:#9ca3af;--tertiary:#7195ff;--warn:#f59e0b;--warn-soft:#33260a;
+    --error:#f87171;--error-soft:#3a1616;--shadow:0 4px 14px rgba(5,150,105,.35);color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --surface:#0e1013;--s-lowest:#181b20;--s-low:#13161a;--s-cont:#181b20;--s-high:#21252b;--s-highest:#2b3038;
+  --on:#f3f4f6;--on-var:#9ca3af;--outline:#6b7280;--line:#2b3038;
+  --primary:#10b981;--primary-c:#059669;--on-primary:#ffffff;--primary-soft:#0d2e24;
+  --secondary:#9ca3af;--tertiary:#7195ff;--warn:#f59e0b;--warn-soft:#33260a;
+  --error:#f87171;--error-soft:#3a1616;--shadow:0 4px 14px rgba(5,150,105,.35);color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--surface);color:var(--on);font:14px/1.45 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+.app{max-width:680px;margin:0 auto;padding:0 16px 96px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--surface);padding:12px 0 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column;line-height:1.1}
+.brand b{font-size:19px;font-weight:800;letter-spacing:.02em}
+.brand b span{color:var(--primary)}
+.brand small{color:var(--on-var);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.tools{display:flex;gap:6px;align-items:center}
+.seg{display:inline-flex;background:var(--s-cont);border-radius:999px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:var(--on-var);font:inherit;font-weight:600;font-size:12px;padding:6px 11px;border-radius:999px;cursor:pointer}
+.seg button.on{background:var(--s-lowest);color:var(--primary);font-weight:800;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.iconbtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--s-lowest);color:var(--on);display:grid;place-items:center;cursor:pointer}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+main{padding-top:14px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--s-lowest);border:1px solid var(--line);border-radius:16px;padding:14px}
+.card h2,.card h3{margin:0;font-size:15px;font-weight:800}
+.sub{color:var(--on-var);font-size:12px;margin:2px 0 0}
+.caps{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--on-var)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row.sb{justify-content:space-between}
+.grow{flex:1 1 140px;min-width:0}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.grid2{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+.kpi{background:var(--s-low);border-radius:14px;padding:12px;min-width:0}
+.kpi .caps{display:block;margin-bottom:4px}
+.kpi b{font-size:19px;font-weight:800;display:block;overflow-wrap:anywhere}
+.kpi small{color:var(--on-var);font-size:11px}
+.kpi.big{background:var(--primary-soft)}
+.kpi.big b{font-size:26px;color:var(--primary)}
+.pos{color:var(--primary)}.neg{color:var(--error)}.warn{color:var(--warn)}
+label{display:block;font-size:11px;font-weight:700;color:var(--on-var);margin-bottom:4px;letter-spacing:.03em}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--on);font:inherit;min-width:0}
+textarea{min-height:64px;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+.form{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.full{grid-column:1/-1}
+.btn{border:0;border-radius:999px;padding:11px 18px;font:inherit;font-weight:800;cursor:pointer;background:var(--s-high);color:var(--on)}
+.btn.pri{background:var(--primary-c);color:var(--on-primary);box-shadow:var(--shadow)}
+.btn.sm{padding:6px 12px;font-size:12px}
+.btn.del{background:transparent;color:var(--error);border:1px solid var(--error)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--s-lowest);color:var(--on);border-radius:999px;padding:7px 13px;font:inherit;font-weight:700;font-size:12px;cursor:pointer}
+.chip.on{background:var(--primary-c);border-color:var(--primary-c);color:var(--on-primary)}
+.photo{width:100%;aspect-ratio:16/9;max-height:210px;border-radius:14px;background:var(--s-cont);border:1.5px dashed var(--outline);display:grid;place-items:center;color:var(--on-var);overflow:hidden;cursor:pointer;position:relative}
+.photo img{width:100%;height:100%;object-fit:cover}
+.photo span{display:flex;flex-direction:column;align-items:center;gap:4px;font-weight:700;font-size:12px}
+.bar{height:8px;background:var(--s-cont);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--primary-c);border-radius:99px}
+.stack{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--s-cont)}
+.stack i{display:block;height:100%}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-top:8px;font-size:12px}
+.legend span{display:flex;align-items:center;gap:6px;min-width:0}
+.legend em{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.scen{display:grid;gap:8px;grid-template-columns:repeat(3,1fr)}
+.scen button{border:1.5px solid var(--line);background:var(--s-lowest);color:var(--on);border-radius:14px;padding:10px 6px;font:inherit;cursor:pointer;display:flex;flex-direction:column;gap:2px;align-items:center;min-width:0}
+.scen button.on{border-color:var(--primary-c);background:var(--primary-soft)}
+.scen b{font-size:16px;font-weight:800}
+.scen small{font-size:11px;color:var(--on-var)}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{color:var(--on-var);font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+td.num,th.num{text-align:right}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:800;background:var(--s-high)}
+.b-Entregado,.b-Pagado{background:var(--primary-soft);color:var(--primary)}
+.b-Devuelto,.b-Cancelado{background:var(--error-soft);color:var(--error)}
+.b-Enviado,.b-Confirmado,.b-Programado,.b-Pendiente{background:var(--warn-soft);color:var(--warn)}
+.empty{padding:22px 10px;text-align:center;color:var(--on-var)}
+.empty b{display:block;color:var(--on);margin-bottom:2px}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:var(--warn-soft);color:var(--on);font-size:13px}
+.alert.err{background:var(--error-soft)}
+.hint{font-size:12px;color:var(--on-var);margin-top:6px}
+nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--s-lowest);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+nav.bottom div{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
+nav.bottom button{border:0;background:transparent;color:var(--on-var);font:inherit;font-size:10.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:12px;cursor:pointer;min-width:0}
+nav.bottom button.on{color:var(--primary);background:var(--primary-soft)}
+.toast,.ask{position:fixed;left:16px;right:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));max-width:560px;margin:0 auto;background:var(--on);color:var(--surface);padding:12px 14px;border-radius:14px;z-index:40;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+.ask{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ask span{flex:1 1 200px}
+input[type=range]{padding:0;accent-color:var(--primary-c)}
+a{color:var(--primary)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><b id="brandName">YOSCA <span>MODA</span></b><small>Taller &amp; Finanzas</small></div>
+    <div class="tools">
+      <div class="seg" id="curSeg"><button data-cur="PEN">S/ PEN</button><button data-cur="USD">USD</button></div>
+      <button class="iconbtn" id="themeBtn" title="Cambiar tema" aria-label="Cambiar tema"></button>
+      <button class="iconbtn" id="setBtn" title="Ajustes y respaldo" aria-label="Ajustes y respaldo"></button>
+    </div>
+  </header>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section id="v-dash" hidden>
+      <div class="card row sb" style="margin-bottom:14px">
+        <div><span class="caps">Pulso del día</span><h2 id="hola">Hola</h2></div>
+        <select id="periodo" style="width:auto"><option value="mes">Este mes</option><option value="mesant">Mes anterior</option><option value="7d">Últimos 7 días</option><option value="todo">Todo</option></select>
+      </div>
+      <div class="grid" id="kpis"></div>
+      <div class="card" id="alertas" style="margin-top:14px"></div>
+      <div class="card" style="margin-top:14px"><h3>Pedidos por estado</h3><div id="porEstado"></div></div>
+      <div class="card" style="margin-top:14px"><h3>Más vendidas (entregadas)</h3><div id="topProd"></div></div>
+      <div class="card" style="margin-top:14px"><h3>Gastos por categoría</h3><div id="gastoCat"></div></div>
+    </section>
+
+    <!-- CALCULADORA -->
+    <section id="v-calc" hidden>
+      <div class="card">
+        <div class="row sb"><span class="caps">Prendas en catálogo</span>
+          <span class="row"><button class="btn sm ghost" id="gReset">Poner en cero</button><button class="btn sm pri" id="gNew">+ Nueva prenda</button></span></div>
+        <div class="chips" id="gChips" style="margin-top:8px"></div>
+      </div>
+      <div id="calcBody"></div>
+    </section>
+
+    <!-- PEDIDOS -->
+    <section id="v-ped" hidden>
+      <div class="card">
+        <h2 id="pedTitle">Registrar pedido</h2>
+        <form id="pedForm" class="form" autocomplete="off" style="margin-top:10px">
+          <div><label for="p-fecha">Fecha</label><input id="p-fecha" type="date" name="fecha" required></div>
+          <div><label for="p-gar">Prenda del catálogo</label><select id="p-gar" name="garmentId"></select></div>
+          <div><label for="p-cliente">Cliente</label><input id="p-cliente" name="cliente" required></div>
+          <div><label for="p-tel">Teléfono / WhatsApp</label><input id="p-tel" name="telefono" inputmode="tel"></div>
+          <div><label for="p-ciudad">Ciudad</label><input id="p-ciudad" name="ciudad"></div>
+          <div><label for="p-prod">Producto</label><input id="p-prod" name="producto" required></div>
+          <div><label for="p-talla">Talla</label><input id="p-talla" name="talla"></div>
+          <div><label for="p-color">Color</label><input id="p-color" name="color"></div>
+          <div><label for="p-cant">Cantidad</label><input id="p-cant" type="number" name="cantidad" min="1" value="1" required></div>
+          <div><label for="p-precio">Precio de venta (unidad, S/)</label><input id="p-precio" type="number" name="precio" min="0" step="any" required></div>
+          <div><label for="p-costo">Costo directo (unidad, S/)</label><input id="p-costo" type="number" name="costo" min="0" step="any" value="0"></div>
+          <div><label for="p-flete">Flete / envío (S/)</label><input id="p-flete" type="number" name="flete" min="0" step="any" value="0"></div>
+          <div><label for="p-estado">Estado</label><select id="p-estado" name="estado"></select></div>
+          <div><label for="p-pago">Pago</label><select id="p-pago" name="pago"></select></div>
+          <div class="full"><label for="p-notas">Notas</label><textarea id="p-notas" name="notas"></textarea></div>
+          <div class="row full"><button class="btn pri" type="submit">Guardar pedido</button><button class="btn" type="button" id="pedCancel" hidden>Cancelar edición</button></div>
+        </form>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="row" style="margin-bottom:10px">
+          <input class="grow" id="pedBuscar" placeholder="Buscar cliente, producto, ciudad…" aria-label="Buscar pedidos">
+          <select id="pedFiltro" style="width:auto" aria-label="Filtrar por estado"></select>
+        </div>
+        <div class="tablewrap" id="pedTabla"></div>
+      </div>
+    </section>
+
+    <!-- GASTOS -->
+    <section id="v-gas" hidden>
+      <div class="card row sb">
+        <div class="seg" id="gasSeg"><button data-g="cif" class="on">Fijos (CIF)</button><button data-g="var">Variables</button></div>
+        <span class="sub" id="gasHint"></span>
+      </div>
+
+      <div id="gas-cif" style="display:flex;flex-direction:column;gap:14px;margin-top:14px">
+        <div class="grid" id="cifKpis"></div>
+        <div class="card">
+          <h2 id="cifTitle">Nuevo gasto fijo</h2>
+          <p class="sub">Alquiler, luz, internet, sueldos fijos. Se reparten entre las prendas del mes.</p>
+          <form id="cifForm" class="form" autocomplete="off" style="margin-top:10px">
+            <div><label for="c-nombre">Nombre</label><input id="c-nombre" name="nombre" required></div>
+            <div><label for="c-cat">Categoría</label><select id="c-cat" name="categoria"></select></div>
+            <div><label for="c-monto">Monto mensual (S/)</label><input id="c-monto" type="number" name="monto" min="0" step="any" required></div>
+            <div><label for="c-vence">Vence</label><input id="c-vence" name="vence" placeholder="Ej. día 5"></div>
+            <div><label for="c-estado">Estado</label><select id="c-estado" name="estado"><option>Pendiente</option><option>Pagado</option><option>Programado</option></select></div>
+            <div class="row full"><button class="btn pri" type="submit">Guardar gasto fijo</button><button class="btn" type="button" id="cifCancel" hidden>Cancelar edición</button></div>
+          </form>
+        </div>
+        <div class="card"><div id="cifList"></div></div>
+        <div class="card">
+          <h3>Simulador de escala</h3>
+          <p class="sub">Así baja el gasto fijo por prenda cuando produces más al mes.</p>
+          <div class="row" style="margin:10px 0"><div class="grow"><label for="c-base">Prendas base al mes</label><input id="c-base" type="number" min="1" step="1"></div></div>
+          <div class="scen" id="escala" style="grid-template-columns:repeat(5,1fr)"></div>
+        </div>
+      </div>
+
+      <div id="gas-var" style="display:flex;flex-direction:column;gap:14px;margin-top:14px" hidden>
+        <div class="card">
+          <h2 id="gasTitle">Nuevo gasto</h2>
+          <p class="sub">Compras en Gamarra, publicidad, envíos y otros gastos que cambian cada mes.</p>
+          <form id="gasForm" class="form" autocomplete="off" style="margin-top:10px">
+            <div><label for="g-fecha">Fecha</label><input id="g-fecha" type="date" name="fecha" required></div>
+            <div><label for="g-cat">Categoría</label><select id="g-cat" name="categoria"></select></div>
+            <div><label for="g-desc">Descripción</label><input id="g-desc" name="descripcion" required></div>
+            <div><label for="g-monto">Monto (S/)</label><input id="g-monto" type="number" name="monto" min="0" step="any" required></div>
+            <div class="row full"><button class="btn pri" type="submit">Guardar gasto</button><button class="btn" type="button" id="gasCancel" hidden>Cancelar edición</button></div>
+          </form>
+        </div>
+        <div class="card"><div class="tablewrap" id="gasTabla"></div></div>
+      </div>
+    </section>
+
+    <!-- PROYECCIÓN -->
+    <section id="v-proy" hidden></section>
+
+    <!-- AJUSTES -->
+    <section id="v-set" hidden>
+      <div class="card">
+        <h2>Marca y reglas</h2>
+        <div class="form" style="margin-top:10px">
+          <div><label for="s-marca">Nombre de la marca</label><input id="s-marca"></div>
+          <div><label for="s-tc">Tipo de cambio (S/ por USD)</label><input id="s-tc" type="number" min="0" step="any"></div>
+          <div><label for="s-factor">Una devolución cuesta (× flete)</label><input id="s-factor" type="number" min="0" step="any"></div>
+        </div>
+        <div class="row" style="margin-top:12px"><button class="btn pri" id="s-guardar">Guardar ajustes</button></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h2>Importar pedidos de Shopify</h2>
+        <p class="sub">En Shopify: Pedidos → Exportar → CSV. Sube ese archivo. No duplica pedidos ya importados; el costo lo completas tú.</p>
+        <div class="row" style="margin-top:10px"><label class="btn pri" style="margin:0;cursor:pointer">Importar CSV de Shopify<input type="file" id="impShop" accept=".csv,text/csv" hidden></label></div>
+        <p class="hint">Estados: cancelado → Cancelado, reembolsado → Devuelto, enviado y pagado → Entregado, enviado → Enviado, el resto → Pendiente.</p>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h2>Respaldo de datos</h2>
+        <p class="sub">Descarga un respaldo con frecuencia.</p>
+        <div class="row" style="margin-top:10px">
+          <button class="btn pri" id="expJson">Respaldo (.json)</button>
+          <button class="btn" id="expPed">Pedidos (.csv)</button>
+          <button class="btn" id="expGas">Gastos (.csv)</button>
+          <label class="btn" style="margin:0;cursor:pointer">Restaurar<input type="file" id="impJson" accept="application/json" hidden></label>
+        </div>
+        <p class="hint" id="storeInfo"></p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="bottom"><div id="nav"></div></nav>
+<div id="toast" class="toast" role="status" hidden></div>
+<div id="ask" class="ask" role="alertdialog" hidden><span id="askMsg"></span><button class="btn sm pri" id="askYes" type="button">Sí</button><button class="btn sm" id="askNo" type="button">No</button></div>
+<input type="file" id="photoIn" accept="image/*" hidden>
+
+<script>
+'use strict';
+/* ================= utilidades ================= */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const num=v=>{const n=parseFloat(v);return Number.isFinite(n)?n:0};
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const r2=n=>Math.round(n*100)/100;
+
+const ICONS={
+  dash:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+  calc:'<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8.01" y2="11"/><line x1="12" y1="11" x2="12.01" y2="11"/><line x1="16" y1="11" x2="16.01" y2="11"/><line x1="8" y1="15" x2="8.01" y2="15"/><line x1="12" y1="15" x2="12.01" y2="15"/><line x1="16" y1="15" x2="16.01" y2="15"/><line x1="8" y1="18.5" x2="12" y2="18.5"/>',
+  bag:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+  money:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  trend:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+  sun:'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/>',
+  moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'
+};
+const icon=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+
+/* ================= estado y reglas ================= */
+const KEY='yosca_pro_v2';
+const COLS=['garments','quotes','orders','expenses','cif'];
+const ESTADOS=['Pendiente','Confirmado','Enviado','Entregado','Devuelto','Cancelado'];
+const PAGOS=['Contra entrega','Yape / Plin','Efectivo','Transferencia','Tarjeta'];
+const CATS_VAR=['Tela / Gamarra','Hilos y avíos','Confección / maquila','Publicidad','Envíos','Empaque','Servicios','Otros'];
+const CATS_CIF=['Alquiler del taller','Luz, agua e internet','Sueldos fijos','Marketing fijo','Mantenimiento de máquinas','Movilidad','Otros'];
+
+let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto'}};
+const ui={tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null};
+
+/* ---- costos de una prenda (todo en soles) ---- */
+const telaCost=g=>g.modo==='kilos'?num(g.kilos)*num(g.precioKg)*(1+num(g.merma)/100):num(g.metros)*num(g.precioMetro);
+const cifTotal=()=>S.cif.reduce((a,x)=>a+num(x.monto),0);
+const cuotaCif=()=>{const b=num(S.settings.base);return b>0?cifTotal()/b:0};
+function gCalc(g){
+  const tela=telaCost(g),direct=tela+num(g.hilos)+num(g.maquina)+num(g.otros);
+  const cif=(g.cifManual==null||g.cifManual==='')?cuotaCif():num(g.cifManual);
+  const total=direct+cif,pvp=num(g.pvp),ganancia=pvp-total;
+  return {tela,direct,cif,total,pvp,ganancia,margen:pvp>0?ganancia/pvp*100:0,markup:total>0?pvp/total:0};
+}
+function orderProfit(o){
+  const q=num(o.cantidad)||1;
+  if(o.estado==='Entregado')return (num(o.precio)-num(o.costo))*q-num(o.flete);
+  if(o.estado==='Devuelto')return -num(o.flete)*num(S.settings.factor);
+  return 0;
+}
+const orderRevenue=o=>o.estado==='Entregado'?num(o.precio)*(num(o.cantidad)||1):0;
+
+/* ---- formato de dinero ---- */
+function fmt(n){
+  n=num(n);
+  if(S.settings.moneda==='USD'){const d=n/(num(S.settings.tc)||3.75);return (d<0?'-':'')+'$ '+Math.abs(d).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+  return (n<0?'-':'')+'S/ '+Math.abs(n).toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+const pct=n=>(Number.isFinite(n)?n.toFixed(1):'0.0')+'%';
+
+/* ================= avisos ================= */
+function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>{t.hidden=true},4000)}
+function ask(m,yes){$('#askMsg').textContent=m;$('#ask').hidden=false;$('#askYes').onclick=()=>{$('#ask').hidden=true;yes()};$('#askNo').onclick=()=>{$('#ask').hidden=true}}
+
+/* ================= guardado (nube si existe, si no este navegador) ================= */
+let DB=null;const remote={settings:''};COLS.forEach(c=>remote[c]=new Map());
+let saveTimer=null;
+const saveSoon=()=>{clearTimeout(saveTimer);saveTimer=setTimeout(save,350)};
+function save(){
+  clearTimeout(saveTimer);
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){if(!DB)toast('No se pudo guardar en este navegador. Descarga un respaldo.')}
+  if(!DB)return;
+  const ops=[];
+  for(const name of COLS){
+    const seen=new Set();
+    for(const x of S[name]){seen.add(x.id);const j=JSON.stringify(x);
+      if(remote[name].get(x.id)!==j){remote[name].set(x.id,j);ops.push(DB.collection(name).doc(x.id).set(x))}}
+    for(const id of [...remote[name].keys()])if(!seen.has(id)){remote[name].delete(id);ops.push(DB.collection(name).doc(id).delete())}
+  }
+  const sj=JSON.stringify(S.settings);
+  if(sj!==remote.settings){remote.settings=sj;ops.push(DB.doc('config/settings').set(S.settings))}
+  Promise.all(ops).catch(()=>toast('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.'));
+}
+function load(){
+  try{const s=JSON.parse(localStorage.getItem(KEY));
+    if(s&&typeof s==='object'){COLS.forEach(c=>{if(Array.isArray(s[c]))S[c]=s[c]});S.settings={...S.settings,...(s.settings||{})}}}catch(e){}
+}
+async function connectDb(){
+  let db=null;
+  try{db=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(e){}
+  if(!db)return;
+  DB=db;
+  for(const name of COLS){
+    db.collection(name).onSnapshot(snap=>{
+      const list=snap.docs.map(d=>({...d.data()}));
+      const m=new Map(list.map(x=>[x.id,JSON.stringify(x)]));
+      const same=m.size===remote[name].size&&[...m].every(([k,v])=>remote[name].get(k)===v);
+      if(same)return;
+      S[name]=list;remote[name]=m;refreshAll();
+    },()=>{});
+  }
+  db.doc('config/settings').onSnapshot(snap=>{
+    if(!snap.exists)return;
+    const j=JSON.stringify({...S.settings,...snap.data()});
+    if(j===remote.settings)return;
+    S.settings={...S.settings,...snap.data()};remote.settings=JSON.stringify(S.settings);applyTheme();refreshAll();
+  },()=>{});
+  $('#storeInfo').textContent='Tus datos se guardan en la nube de esta página y los ves igual en cualquier dispositivo.';
+}
+
+/* ================= tema, moneda, navegación ================= */
+function applyTheme(){
+  const t=S.settings.tema,root=document.documentElement;
+  if(t==='dark'||t==='light')root.setAttribute('data-theme',t);else root.removeAttribute('data-theme');
+  const dark=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);
+  $('#themeBtn').innerHTML=icon(dark?'moon':'sun');
+  document.querySelectorAll('#curSeg button').forEach(b=>b.classList.toggle('on',b.dataset.cur===S.settings.moneda));
+  const nm=(S.settings.marca||'Yosca Moda').trim().split(/\s+/);
+  $('#brandName').innerHTML=esc(nm[0].toUpperCase())+(nm.length>1?' <span>'+esc(nm.slice(1).join(' ').toUpperCase())+'</span>':'');
+  document.title=(S.settings.marca||'Yosca Moda')+' Pro';
+}
+$('#themeBtn').addEventListener('click',()=>{
+  const dark=document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);
+  S.settings.tema=dark?'light':'dark';applyTheme();save();
+});
+$('#curSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.settings.moneda=b.dataset.cur;applyTheme();save();refreshAll();toast(b.dataset.cur==='USD'?`Mostrando en dólares (S/ ${S.settings.tc} = $1)`:'Mostrando en soles')});
+$('#setBtn').innerHTML=icon('gear');$('#setBtn').addEventListener('click',()=>showTab('set'));
+
+const TABS=[['dash','Dashboard','dash'],['calc','Calculadora','calc'],['ped','Pedidos','bag'],['gas','Gastos','money'],['proy','Proyección','trend']];
+$('#nav').innerHTML=TABS.map(([k,n,i])=>`<button data-tab="${k}">${icon(i)}<span>${n}</span></button>`).join('');
+$('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)showTab(b.dataset.tab)});
+function showTab(t){
+  ui.tab=t;
+  ['dash','calc','ped','gas','proy','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  scrollTo(0,0);renderTab();
+}
+function renderTab(){
+  ({dash:renderDash,calc:renderCalc,ped:renderPed,gas:renderGas,proy:renderProy,set:renderSet})[ui.tab]();
+}
+function refreshAll(){
+  if(!ui.gid||!S.garments.find(g=>g.id===ui.gid))ui.gid=S.garments[0]?.id||null;
+  const a=document.activeElement;
+  if(ui.tab==='calc'&&a&&a.closest&&a.closest('#calcBody')){renderCalcOut();return}
+  renderTab();
+}
+
+/* ================= DASHBOARD ================= */
+function inPeriod(f,p){
+  if(p==='todo')return true;
+  const d=new Date((f||today())+'T00:00:00'),n=new Date();
+  if(p==='mes')return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();
+  if(p==='mesant'){const a=new Date(n.getFullYear(),n.getMonth()-1,1);return d.getFullYear()===a.getFullYear()&&d.getMonth()===a.getMonth()}
+  if(p==='7d')return (n-d)/864e5<=7&&d<=n;
+  return true;
+}
+function cifFor(p){
+  const t=cifTotal();
+  if(p==='mes'||p==='mesant')return t;
+  if(p==='7d')return t*7/30;
+  const dates=[...S.orders,...S.expenses].map(x=>x.fecha).filter(Boolean).sort();
+  if(!dates.length)return 0;
+  const a=new Date(dates[0]+'T00:00:00'),n=new Date();
+  return t*Math.max(1,(n.getFullYear()-a.getFullYear())*12+n.getMonth()-a.getMonth()+1);
+}
+function bars(rows,f){
+  if(!rows.length)return '<div class="empty">Sin datos en este periodo</div>';
+  const max=Math.max(...rows.map(r=>r[1]),1);
+  return rows.map(([l,v])=>`<div style="margin:10px 0"><div class="row sb"><span>${esc(l)}</span><b>${f(v)}</b></div><div class="bar"><i style="width:${Math.max(3,v/max*100)}%"></i></div></div>`).join('');
+}
+function renderDash(){
+  $('#periodo').value=ui.periodo;
+  const p=ui.periodo;
+  const os=S.orders.filter(o=>inPeriod(o.fecha,p)),gs=S.expenses.filter(g=>inPeriod(g.fecha,p));
+  const ventas=os.reduce((a,o)=>a+orderRevenue(o),0),bruta=os.reduce((a,o)=>a+orderProfit(o),0);
+  const vars=gs.reduce((a,g)=>a+num(g.monto),0),fijos=cifFor(p),neta=bruta-vars-fijos;
+  const ent=os.filter(o=>o.estado==='Entregado').length,dev=os.filter(o=>o.estado==='Devuelto').length;
+  const tasa=ent+dev?ent/(ent+dev)*100:NaN;
+  const porCobrar=os.filter(o=>['Pendiente','Confirmado','Enviado'].includes(o.estado)).reduce((a,o)=>a+num(o.precio)*(num(o.cantidad)||1),0);
+  const k=(l,v,c='',s='',cls='')=>`<div class="kpi ${cls}"><span class="caps">${l}</span><b class="${c}">${v}</b>${s?`<small>${s}</small>`:''}</div>`;
+  $('#hola').textContent='Hola, '+((S.settings.marca||'Yosca').split(' ')[0]);
+  $('#kpis').innerHTML=
+    k('Utilidad neta real',fmt(neta),neta>=0?'pos':'neg','después de gastos fijos y variables','big')+
+    k('Ventas entregadas',fmt(ventas))+
+    k('Utilidad de pedidos',fmt(bruta),bruta>=0?'pos':'neg')+
+    k('Gastos variables',fmt(vars))+
+    k('Gastos fijos (CIF)',fmt(fijos),'',p==='7d'?'prorrateado a 7 días':'')+
+    k('Pedidos',os.length)+
+    k('Tasa de entrega',Number.isFinite(tasa)?pct(tasa):'—')+
+    k('Por cobrar',fmt(porCobrar),'','en proceso');
+  const al=[];
+  const pend=S.orders.filter(o=>o.estado==='Pendiente').length;
+  if(pend)al.push(['', `${pend} ${pend===1?'pedido pendiente':'pedidos pendientes'} por confirmar.`]);
+  S.garments.forEach(g=>{const c=gCalc(g);
+    if(!c.pvp)al.push(['',`"${esc(g.name)}" no tiene precio de venta (PVP).`]);
+    else if(c.ganancia<=0)al.push(['err',`"${esc(g.name)}" se vende por debajo de su costo (${fmt(c.total)}).`]);
+    else if(c.margen<30)al.push(['',`"${esc(g.name)}" deja solo ${pct(c.margen)} de margen.`])});
+  if(!S.cif.length)al.push(['','Aún no registraste gastos fijos (CIF). Sin ellos el costo por prenda sale incompleto.']);
+  $('#alertas').innerHTML=`<div class="row sb"><h3>Atención inmediata</h3><span class="badge">${al.length} ${al.length===1?'pendiente':'pendientes'}</span></div>`+
+    (al.length?`<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">${al.map(([c,m])=>`<div class="alert ${c}">${m}</div>`).join('')}</div>`:'<div class="empty"><b>Todo al día</b>No hay alertas pendientes.</div>');
+  $('#porEstado').innerHTML=bars(ESTADOS.map(e=>[e,os.filter(o=>o.estado===e).length]).filter(r=>r[1]>0),v=>v);
+  const prod={};os.filter(o=>o.estado==='Entregado').forEach(o=>{prod[o.producto]=(prod[o.producto]||0)+(num(o.cantidad)||1)});
+  $('#topProd').innerHTML=bars(Object.entries(prod).sort((a,b)=>b[1]-a[1]).slice(0,6),v=>v+' uds');
+  const cat={};gs.forEach(g=>{cat[g.categoria]=(cat[g.categoria]||0)+num(g.monto)});
+  $('#gastoCat').innerHTML=bars(Object.entries(cat).sort((a,b)=>b[1]-a[1]),fmt);
+}
+$('#periodo').addEventListener('change',e=>{ui.periodo=e.target.value;renderDash()});
+
+/* ================= CALCULADORA ================= */
+const curG=()=>S.garments.find(g=>g.id===ui.gid)||null;
+function renderCalc(){
+  if(!ui.gid||!curG())ui.gid=S.garments[0]?.id||null;
+  $('#gChips').innerHTML=S.garments.map(g=>`<button class="chip ${g.id===ui.gid?'on':''}" data-gid="${esc(g.id)}">${esc(g.name||'Sin nombre')}</button>`).join('')||'<span class="sub">Todavía no hay prendas.</span>';
+  const g=curG();
+  if(!g){
+    $('#calcBody').innerHTML='<div class="card empty"><b>Crea tu primera prenda</b>Pon el costo de la tela, hilos y confección y calcula a cuánto venderla.<div style="margin-top:12px"><button class="btn pri" id="gNew2">+ Nueva prenda</button></div></div>';
+    return;
+  }
+  const kil=g.modo==='kilos';
+  $('#calcBody').innerHTML=`
+  <div class="card" style="margin-top:14px">
+    <div class="photo" id="photoBox" role="button" tabindex="0" aria-label="Subir foto de la prenda">${g.image?`<img src="${esc(g.image)}" alt="Foto de ${esc(g.name)}">`:`<span>${icon('camera')}Agregar foto<small style="font-weight:500">Toca para subir</small></span>`}</div>
+    ${g.image?'<div class="row" style="margin-top:8px"><button class="btn sm ghost" id="photoDel">Quitar foto</button></div>':''}
+    <div class="form" style="margin-top:12px">
+      <div><label for="f-name">Nombre de la prenda</label><input id="f-name" data-g="name" data-t="s" value="${esc(g.name)}"></div>
+      <div><label for="f-sku">Referencia</label><input id="f-sku" data-g="sku" data-t="s" value="${esc(g.sku)}"></div>
+      <div><label for="f-tipo">Tipo</label><input id="f-tipo" data-g="tipo" data-t="s" value="${esc(g.tipo)}" placeholder="Hoodie, polera, pantalón…"></div>
+      <div><label for="f-col">Colección</label><input id="f-col" data-g="coleccion" data-t="s" value="${esc(g.coleccion)}"></div>
+      <div><label for="f-fit">Corte</label><input id="f-fit" data-g="fit" data-t="s" value="${esc(g.fit)}" placeholder="Regular fit"></div>
+      <div><label for="f-tela">Tela</label><input id="f-tela" data-g="tela" data-t="s" value="${esc(g.tela)}" placeholder="Algodón pima…"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="row sb"><div><h3>Tela principal</h3><p class="sub">Compra por kilo o por metro</p></div>
+      <div class="seg" id="modoSeg"><button data-m="kilos" class="${kil?'on':''}">Por kilo</button><button data-m="metros" class="${kil?'':'on'}">Por metro</button></div></div>
+    <div class="form" style="margin-top:12px">
+      ${kil?`
+      <div><label for="f-kilos">Kilos por prenda (kg)</label><input id="f-kilos" type="number" step="any" min="0" data-g="kilos" value="${esc(g.kilos||'')}"></div>
+      <div><label for="f-pkg">Precio por kilo (S/)</label><input id="f-pkg" type="number" step="any" min="0" data-g="precioKg" value="${esc(g.precioKg||'')}"></div>
+      <div><label for="f-rend">Rendimiento (prendas por kg)</label><input id="f-rend" type="number" step="any" min="0" data-g="rend" value="${g.kilos>0?r2(1/g.kilos):''}"></div>
+      <div><label for="f-merma">Merma de tizado (%)</label><input id="f-merma" type="number" step="any" min="0" data-g="merma" value="${esc(g.merma||'')}"></div>`:`
+      <div><label for="f-met">Metros por prenda (m)</label><input id="f-met" type="number" step="any" min="0" data-g="metros" value="${esc(g.metros||'')}"></div>
+      <div><label for="f-pm">Precio por metro (S/)</label><input id="f-pm" type="number" step="any" min="0" data-g="precioMetro" value="${esc(g.precioMetro||'')}"></div>`}
+    </div>
+    <p class="hint" id="telaFormula"></p>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h3>Estructura de gastos por prenda</h3><p class="sub">¿Cuánto cuesta hacer una prenda? Cuenta todo.</p>
+    <div class="form" style="margin-top:12px">
+      <div><label for="f-hilos">Hilo, hilaza y costuras (S/)</label><input id="f-hilos" type="number" step="any" min="0" data-g="hilos" value="${esc(g.hilos||'')}"></div>
+      <div><label for="f-maq">Confección y máquinas (S/)</label><input id="f-maq" type="number" step="any" min="0" data-g="maquina" value="${esc(g.maquina||'')}"></div>
+      <div><label for="f-otros">Avíos, etiquetas y empaque (S/)</label><input id="f-otros" type="number" step="any" min="0" data-g="otros" value="${esc(g.otros||'')}"></div>
+      <div><label for="f-cif">Cuota CIF del taller (S/)</label><input id="f-cif" type="number" step="any" min="0" data-g="cifManual" value="${g.cifManual==null||g.cifManual===''?'':esc(g.cifManual)}" placeholder="Auto: ${r2(cuotaCif())}"></div>
+    </div>
+    <p class="hint">La cuota CIF se calcula sola con tus gastos fijos (${fmt(cifTotal())} ÷ ${num(S.settings.base)} prendas). Escribe un valor para cambiarla solo en esta prenda; déjalo vacío para usar la automática.</p>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h3>Precio de venta</h3>
+    <div style="margin-top:10px"><label for="f-pvp">PVP al público (S/)</label><input id="f-pvp" type="number" step="any" min="0" data-g="pvp" value="${esc(g.pvp||'')}"></div>
+    <div class="scen" id="scen" style="margin-top:12px"></div>
+    <p class="hint">Toca un escenario para usar ese precio.</p>
+  </div>
+
+  <div id="calcOut"></div>
+
+  <div class="card" style="margin-top:14px">
+    <h3>¿En cuántas prendas será el cálculo?</h3>
+    <div class="row sb" style="margin:10px 0 4px"><b id="loteLbl"></b><span class="sub" id="loteSub"></span></div>
+    <input type="range" id="lote" min="1" max="30" value="${ui.lote}" aria-label="Cantidad de prendas">
+    <div class="grid2" id="loteOut" style="margin-top:12px"></div>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <button class="btn pri" id="qSave">Guardar cotización</button>
+    <button class="btn del" id="gDel">Eliminar prenda</button>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>Historial de cotizaciones</h3><div id="qList"></div></div>`;
+  renderCalcOut();
+}
+function renderCalcOut(){
+  const g=curG();if(!g||!$('#calcOut'))return;
+  const c=gCalc(g),n=ui.lote;
+  const kil=g.modo==='kilos';
+  $('#telaFormula').innerHTML=kil
+    ? `Fórmula: ${num(g.kilos)} kg × ${fmt(g.precioKg)} × (1 + ${num(g.merma)}% merma) = <b>${fmt(c.tela)}</b> por prenda`
+    : `Fórmula: ${num(g.metros)} m × ${fmt(g.precioMetro)} = <b>${fmt(c.tela)}</b> por prenda`;
+  const sc=[['Mayorista','2.0x',2],['Óptimo','2.5x',2.5],['Boutique','3.0x',3]];
+  $('#scen').innerHTML=sc.map(([nm,lb,m])=>{const p=Math.round(c.total*m*10)/10,neto=p-c.total,mg=p>0?neto/p*100:0;
+    return `<button data-price="${p}" class="${p>0&&Math.abs(p-c.pvp)<.05?'on':''}" ${c.total<=0?'disabled':''}><small>${lb} ${nm}</small><b>${fmt(p)}</b><small>Neto ${fmt(neto)}</small><small>${mg.toFixed(0)}% margen</small></button>`}).join('');
+  const parts=[['Tela',c.tela,'#00b074'],['Hilos',num(g.hilos),'#0053db'],['Confección',num(g.maquina),'#b26a00'],['Avíos y empaque',num(g.otros),'#8a5cf6'],['CIF taller',c.cif,'#6c7a70']];
+  const pctOf=v=>c.total>0?v/c.total*100:0;
+  const consumo=kil?`${r2(num(g.kilos)*(1+num(g.merma)/100)*n)} kg`:`${r2(num(g.metros)*n)} m`;
+  $('#calcOut').innerHTML=`
+  <div class="card" style="margin-top:14px">
+    <div class="grid2">
+      <div class="kpi"><span class="caps">PVP al público</span><b>${fmt(c.pvp)}</b><small>${c.markup?c.markup.toFixed(2)+'x sobre el costo':'sin precio'}</small></div>
+      <div class="kpi big"><span class="caps">Ganancia limpia</span><b class="${c.ganancia>=0?'pos':'neg'}">${fmt(c.ganancia)}</b><small class="${c.margen>=0?'pos':'neg'}">${pct(c.margen)} de margen</small></div>
+      <div class="kpi"><span class="caps">Costo directo</span><b>${fmt(c.direct)}</b><small>Tela + hilo + confección + avíos</small></div>
+      <div class="kpi"><span class="caps">Cuota gasto CIF</span><b>${fmt(c.cif)}</b><small>Alquiler + luz taller</small></div>
+    </div>
+    <div style="margin-top:14px"><div class="row sb"><span class="caps">Costo total por prenda</span><b>${fmt(c.total)}</b></div>
+      <div class="stack" style="margin-top:6px">${parts.map(([,v,col])=>`<i style="width:${pctOf(v)}%;background:${col}"></i>`).join('')}</div>
+      <div class="legend">${parts.map(([l,v,col])=>`<span><em style="background:${col}"></em>${l} ${pctOf(v).toFixed(1)}%</span>`).join('')}</div></div>
+  </div>
+  </div>`;
+  $('#loteLbl').textContent=`${n} ${n===1?'prenda':'prendas'}`;
+  $('#loteSub').textContent=n===1?'Cálculo unitario':'Pedido completo';
+  $('#loteOut').innerHTML=`
+      <div class="kpi"><span class="caps">Inversión total</span><b>${fmt(c.total*n)}</b></div>
+      <div class="kpi"><span class="caps">Venta total</span><b>${fmt(c.pvp*n)}</b></div>
+      <div class="kpi"><span class="caps">Ganancia del pedido</span><b class="${c.ganancia>=0?'pos':'neg'}">${fmt(c.ganancia*n)}</b></div>
+      <div class="kpi"><span class="caps">Tela necesaria</span><b>${consumo}</b></div>`;
+  renderQuotes();
+}
+function renderQuotes(){
+  const el=$('#qList');if(!el)return;
+  const q=[...S.quotes].sort((a,b)=>b.ts-a.ts).slice(0,15);
+  el.innerHTML=q.length?q.map(x=>`<div class="row sb" style="padding:9px 0;border-bottom:1px solid var(--line)">
+    <div style="min-width:0"><b>${esc(x.nombre)}</b><div class="sub">${esc(x.fecha)} · PVP ${fmt(x.pvp)} · costo ${fmt(x.total)} · ganancia <span class="${x.ganancia>=0?'pos':'neg'}">${fmt(x.ganancia)}</span></div></div>
+    <span class="row"><button class="btn sm" data-qload="${esc(x.id)}">Cargar</button><button class="btn sm del" data-qdel="${esc(x.id)}" aria-label="Eliminar cotización">✕</button></span></div>`).join(''):'<div class="empty">Aún no guardas cotizaciones.</div>';
+}
+
+/* eventos de la calculadora */
+$('#v-calc').addEventListener('click',e=>{
+  const t=e.target;
+  const chip=t.closest('[data-gid]');if(chip){ui.gid=chip.dataset.gid;renderCalc();return}
+  if(t.closest('#gNew')||t.closest('#gNew2')){const n=S.garments.length+1;const g=newGarment({sku:'PRENDA-'+String(n).padStart(2,'0'),name:'Nueva prenda'});S.garments.push(g);ui.gid=g.id;save();renderCalc();return}
+  if(t.closest('#gReset')){const g=curG();if(!g)return;ask(`¿Dejar en cero los costos de "${g.name}"?`,()=>{Object.assign(g,{kilos:0,precioKg:0,merma:0,metros:0,precioMetro:0,hilos:0,maquina:0,otros:0,cifManual:null,pvp:0});save();renderCalc();toast('Costos puestos en cero')});return}
+  const m=t.closest('#modoSeg button');if(m){const g=curG();g.modo=m.dataset.m;save();renderCalc();return}
+  const sc=t.closest('#scen button');if(sc&&!sc.disabled){curG().pvp=num(sc.dataset.price);save();renderCalc();return}
+  if(t.closest('#photoBox')){$('#photoIn').click();return}
+  if(t.closest('#photoDel')){curG().image='';save();renderCalc();return}
+  if(t.closest('#qSave')){const g=curG(),c=gCalc(g);
+    S.quotes.unshift({id:uid(),ts:Date.now(),fecha:new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'short'}),gid:g.id,nombre:g.name,pvp:c.pvp,total:c.total,ganancia:c.ganancia,snap:{...g,image:''}});
+    S.quotes=S.quotes.slice(0,60);save();renderQuotes();toast(`Cotización de "${g.name}" guardada`);return}
+  if(t.closest('#gDel')){const g=curG();ask(`¿Eliminar la prenda "${g.name}"?`,()=>{S.garments=S.garments.filter(x=>x.id!==g.id);ui.gid=S.garments[0]?.id||null;save();renderCalc()});return}
+  const ql=t.closest('[data-qload]');if(ql){const q=S.quotes.find(x=>x.id===ql.dataset.qload);if(!q)return;
+    const g=S.garments.find(x=>x.id===q.gid);if(g){const keep=g.image;Object.assign(g,q.snap,{id:g.id,image:keep});ui.gid=g.id;save();renderCalc();toast('Cotización cargada')}else toast('Esa prenda ya no existe');return}
+  const qd=t.closest('[data-qdel]');if(qd){S.quotes=S.quotes.filter(x=>x.id!==qd.dataset.qdel);save();renderQuotes();return}
+});
+$('#v-calc').addEventListener('input',e=>{
+  const t=e.target,g=curG();
+  if(t.id==='lote'){ui.lote=num(t.value)||1;renderCalcOut();return}
+  const f=t.dataset.g;if(!f||!g)return;
+  if(t.dataset.t==='s'){g[f]=t.value}
+  else if(f==='cifManual'){g.cifManual=t.value===''?null:num(t.value)}
+  else if(f==='rend'){const r=num(t.value);g.kilos=r>0?Math.round(1/r*1000)/1000:0;const k=$('#f-kilos');if(k)k.value=g.kilos||''}
+  else{g[f]=num(t.value);if(f==='kilos'){const rr=$('#f-rend');if(rr)rr.value=g.kilos>0?r2(1/g.kilos):''}}
+  if(f==='name'||f==='sku'){document.querySelectorAll('#gChips .chip.on').forEach(c=>{c.textContent=g.name||'Sin nombre'})}
+  renderCalcOut();saveSoon();
+});
+$('#v-calc').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.id==='photoBox'){e.preventDefault();$('#photoIn').click()}});
+$('#photoIn').addEventListener('change',e=>{
+  const f=e.target.files[0];e.target.value='';if(!f||!curG())return;
+  const r=new FileReader();
+  r.onload=()=>{const img=new Image();
+    img.onload=()=>{const m=480,sc=Math.min(1,m/Math.max(img.width,img.height)),c=document.createElement('canvas');
+      c.width=Math.max(1,Math.round(img.width*sc));c.height=Math.max(1,Math.round(img.height*sc));
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);curG().image=c.toDataURL('image/jpeg',.72);save();renderCalc();toast('Foto agregada')};
+    img.onerror=()=>toast('No pude leer esa imagen');img.src=r.result};
+  r.readAsDataURL(f);
+});
+function newGarment(o={}){return {id:uid(),sku:'',name:'Nueva prenda',coleccion:'',tipo:'',fit:'',tela:'',modo:'kilos',kilos:0,precioKg:0,merma:0,metros:0,precioMetro:0,hilos:0,maquina:0,otros:0,cifManual:null,pvp:0,image:'',...o}}
+
+/* ================= PEDIDOS ================= */
+const pf=$('#pedForm');
+pf.estado.innerHTML=ESTADOS.map(e=>`<option>${e}</option>`).join('');
+pf.pago.innerHTML=PAGOS.map(e=>`<option>${e}</option>`).join('');
+$('#pedFiltro').innerHTML='<option value="">Todos los estados</option>'+ESTADOS.map(e=>`<option>${e}</option>`).join('');
+function fillGarmentSelect(){
+  pf.garmentId.innerHTML='<option value="">— Otra prenda —</option>'+S.garments.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('');
+}
+pf.garmentId.addEventListener('change',()=>{
+  const g=S.garments.find(x=>x.id===pf.garmentId.value);if(!g)return;
+  const c=gCalc(g);pf.producto.value=g.name;pf.precio.value=c.pvp||'';pf.costo.value=r2(c.direct);
+});
+function resetPed(){pf.reset();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
+pf.addEventListener('submit',e=>{
+  e.preventDefault();
+  const fd=Object.fromEntries(new FormData(pf));
+  ['cantidad','precio','costo','flete'].forEach(k=>fd[k]=num(fd[k]));
+  if(ui.editOrder){Object.assign(S.orders.find(o=>o.id===ui.editOrder),fd)}else{S.orders.unshift({id:uid(),...fd})}
+  save();resetPed();renderPed();toast('Pedido guardado');
+});
+$('#pedCancel').addEventListener('click',resetPed);
+function renderPed(){
+  if(!ui.editOrder)fillGarmentSelect();
+  const q=$('#pedBuscar').value.toLowerCase(),f=$('#pedFiltro').value;
+  const rows=S.orders.filter(o=>(!f||o.estado===f)&&(!q||[o.cliente,o.producto,o.ciudad,o.telefono].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  if(!rows.length){$('#pedTabla').innerHTML='<div class="empty"><b>Aún no hay pedidos</b>Registra uno arriba o impórtalos de Shopify desde Ajustes.</div>';return}
+  $('#pedTabla').innerHTML=`<table><thead><tr><th>Fecha</th><th>Cliente</th><th>Producto</th><th class="num">Total</th><th>Estado</th><th class="num">Utilidad</th><th></th></tr></thead><tbody>${
+    rows.map(o=>{const q=num(o.cantidad)||1,u=orderProfit(o),tel=String(o.telefono||'').replace(/\D/g,'');
+      return `<tr><td>${esc(o.fecha)}</td><td>${esc(o.cliente)}<div class="sub">${esc(o.ciudad)} ${tel?`· <a href="https://wa.me/${tel}" target="_blank" rel="noopener">WhatsApp</a>`:''}</div></td>
+      <td>${esc(o.producto)}<div class="sub">${esc([o.talla,o.color].filter(Boolean).join(' · '))} ×${q}</div></td>
+      <td class="num">${fmt(num(o.precio)*q)}<div class="sub">${esc(o.pago)}</div></td>
+      <td><select data-st="${esc(o.id)}" style="width:auto;padding:6px 8px" aria-label="Estado del pedido">${ESTADOS.map(e=>`<option${e===o.estado?' selected':''}>${e}</option>`).join('')}</select></td>
+      <td class="num ${u>=0?'pos':'neg'}">${u?fmt(u):'—'}</td>
+      <td><button class="btn sm" data-ed="${esc(o.id)}">Editar</button> <button class="btn sm del" data-del="${esc(o.id)}" aria-label="Eliminar pedido">✕</button></td></tr>`}).join('')}</tbody></table>`;
+}
+$('#pedBuscar').addEventListener('input',renderPed);
+$('#pedFiltro').addEventListener('change',renderPed);
+$('#pedTabla').addEventListener('change',e=>{const id=e.target.dataset.st;if(!id)return;S.orders.find(o=>o.id===id).estado=e.target.value;save();renderPed()});
+$('#pedTabla').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.ed){const o=S.orders.find(x=>x.id===b.dataset.ed);ui.editOrder=o.id;fillGarmentSelect();
+    Object.keys(o).forEach(k=>{if(pf[k]&&k!=='id')pf[k].value=o[k]});
+    $('#pedTitle').textContent='Editar pedido';$('#pedCancel').hidden=false;pf.scrollIntoView({behavior:'smooth'})}
+  if(b.dataset.del)ask('¿Eliminar este pedido?',()=>{S.orders=S.orders.filter(o=>o.id!==b.dataset.del);save();renderPed()});
+});
+
+/* ================= GASTOS ================= */
+const cf=$('#cifForm'),gf=$('#gasForm');
+cf.categoria.innerHTML=CATS_CIF.map(c=>`<option>${c}</option>`).join('');
+gf.categoria.innerHTML=CATS_VAR.map(c=>`<option>${c}</option>`).join('');
+$('#gasSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ui.gasTab=b.dataset.g;renderGas()});
+function resetCif(){cf.reset();ui.editCif=null;$('#cifTitle').textContent='Nuevo gasto fijo';$('#cifCancel').hidden=true}
+function resetGas(){gf.reset();gf.fecha.value=today();ui.editGas=null;$('#gasTitle').textContent='Nuevo gasto';$('#gasCancel').hidden=true}
+cf.addEventListener('submit',e=>{
+  e.preventDefault();const fd=Object.fromEntries(new FormData(cf));fd.monto=num(fd.monto);
+  if(ui.editCif){Object.assign(S.cif.find(x=>x.id===ui.editCif),fd)}else{S.cif.push({id:uid(),...fd})}
+  save();resetCif();renderGas();toast('Gasto fijo guardado');
+});
+gf.addEventListener('submit',e=>{
+  e.preventDefault();const fd=Object.fromEntries(new FormData(gf));fd.monto=num(fd.monto);
+  if(ui.editGas){Object.assign(S.expenses.find(x=>x.id===ui.editGas),fd)}else{S.expenses.unshift({id:uid(),...fd})}
+  save();resetGas();renderGas();toast('Gasto guardado');
+});
+$('#cifCancel').addEventListener('click',resetCif);
+$('#gasCancel').addEventListener('click',resetGas);
+$('#c-base').addEventListener('input',e=>{S.settings.base=Math.max(1,num(e.target.value)||1);saveSoon();renderCifKpis();renderEscala()});
+function breakEven(){
+  const g=S.garments.find(x=>gCalc(x).pvp-gCalc(x).direct>0);
+  if(!g)return null;
+  const c=gCalc(g),cont=c.pvp-c.direct;
+  return {g,units:Math.ceil(cifTotal()/cont)};
+}
+function renderCifKpis(){
+  const t=cifTotal(),be=breakEven(),base=num(S.settings.base);
+  const k=(l,v,s='')=>`<div class="kpi"><span class="caps">${l}</span><b>${v}</b>${s?`<small>${s}</small>`:''}</div>`;
+  $('#cifKpis').innerHTML=k('Total gastos fijos',fmt(t),'por mes cerrado')+k('Cuota CIF por prenda',fmt(cuotaCif()),`base ${base} prendas/mes`)+
+    k('Punto de equilibrio',be?be.units+' prendas':'—',be?`con "${esc(be.g.name)}"`:'crea una prenda con precio');
+}
+function renderEscala(){
+  const t=cifTotal(),base=num(S.settings.base);
+  $('#escala').innerHTML=[200,300,400,500,600].map(n=>`<button data-esc="${n}" class="${n===base?'on':''}"><b style="font-size:13px">${n}</b><small>${t>0?fmt(t/n):'—'}</small></button>`).join('');
+}
+$('#escala').addEventListener('click',e=>{const b=e.target.closest('[data-esc]');if(!b)return;S.settings.base=num(b.dataset.esc);$('#c-base').value=S.settings.base;save();renderCifKpis();renderEscala()});
+function renderGas(){
+  $('#gasSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.g===ui.gasTab));
+  $('#gas-cif').hidden=ui.gasTab!=='cif';$('#gas-var').hidden=ui.gasTab!=='var';
+  $('#gasHint').textContent=ui.gasTab==='cif'?'Se reparten entre tus prendas':'Cambian mes a mes';
+  if(ui.gasTab==='cif'){
+    $('#c-base').value=num(S.settings.base);renderCifKpis();renderEscala();
+    $('#cifList').innerHTML=S.cif.length?S.cif.map(x=>`<div class="row sb" style="padding:10px 0;border-bottom:1px solid var(--line)">
+      <div style="min-width:0"><b>${esc(x.nombre)}</b><div class="sub">${esc(x.categoria)}${x.vence?' · '+esc(x.vence):''}</div></div>
+      <div class="row"><b>${fmt(x.monto)}</b><button class="badge b-${esc(x.estado)}" style="border:0;cursor:pointer" data-cest="${esc(x.id)}" title="Cambiar estado">${esc(x.estado)}</button>
+      <button class="btn sm" data-ced="${esc(x.id)}">Editar</button><button class="btn sm del" data-cdel="${esc(x.id)}" aria-label="Eliminar gasto fijo">✕</button></div></div>`).join(''):'<div class="empty"><b>Sin gastos fijos</b>Agrega alquiler, luz, internet y sueldos para que el costo por prenda sea real.</div>';
+  }else{
+    if(!gf.fecha.value)gf.fecha.value=today();
+    const rows=[...S.expenses].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+    $('#gasTabla').innerHTML=rows.length?`<table><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th class="num">Monto</th><th></th></tr></thead><tbody>${
+      rows.map(g=>`<tr><td>${esc(g.fecha)}</td><td>${esc(g.categoria)}</td><td>${esc(g.descripcion)}</td><td class="num">${fmt(g.monto)}</td>
+      <td><button class="btn sm" data-ed="${esc(g.id)}">Editar</button> <button class="btn sm del" data-del="${esc(g.id)}" aria-label="Eliminar gasto">✕</button></td></tr>`).join('')
+    }</tbody><tfoot><tr><th colspan="3">Total</th><th class="num">${fmt(rows.reduce((a,g)=>a+num(g.monto),0))}</th><th></th></tr></tfoot></table>`:'<div class="empty"><b>Sin gastos todavía</b>Registra compras de tela, publicidad o envíos.</div>';
+  }
+}
+$('#cifList').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.cest){const x=S.cif.find(y=>y.id===b.dataset.cest);const o=['Pendiente','Pagado','Programado'];x.estado=o[(o.indexOf(x.estado)+1)%3];save();renderGas()}
+  if(b.dataset.ced){const x=S.cif.find(y=>y.id===b.dataset.ced);ui.editCif=x.id;Object.keys(x).forEach(k=>{if(cf[k]&&k!=='id')cf[k].value=x[k]});$('#cifTitle').textContent='Editar gasto fijo';$('#cifCancel').hidden=false;cf.scrollIntoView({behavior:'smooth'})}
+  if(b.dataset.cdel)ask('¿Eliminar este gasto fijo?',()=>{S.cif=S.cif.filter(y=>y.id!==b.dataset.cdel);save();renderGas()});
+});
+$('#gasTabla').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.ed){const x=S.expenses.find(y=>y.id===b.dataset.ed);ui.editGas=x.id;Object.keys(x).forEach(k=>{if(gf[k]&&k!=='id')gf[k].value=x[k]});$('#gasTitle').textContent='Editar gasto';$('#gasCancel').hidden=false;gf.scrollIntoView({behavior:'smooth'})}
+  if(b.dataset.del)ask('¿Eliminar este gasto?',()=>{S.expenses=S.expenses.filter(y=>y.id!==b.dataset.del);save();renderGas()});
+});
+
+/* ================= PROYECCIÓN ================= */
+function renderProy(){
+  const el=$('#v-proy');
+  if(!S.garments.length){el.innerHTML='<div class="card empty"><b>Primero crea una prenda</b>La proyección usa los costos y el precio de la calculadora.<div style="margin-top:12px"><button class="btn pri" data-go="calc">Ir a la calculadora</button></div></div>';return}
+  if(!ui.projGid||!S.garments.find(g=>g.id===ui.projGid))ui.projGid=S.garments[0].id;
+  const g=S.garments.find(x=>x.id===ui.projGid),c=gCalc(g),fijo=cifTotal(),cont=c.pvp-c.direct;
+  const be=cont>0?Math.ceil(fijo/cont):null;
+  const sc=ui.projVol.map((n,i)=>({n,nombre:['Conservador','Moderado','Expansión'][i],neto:n*cont-fijo}));
+  const maxN=Math.max(...sc.map(s=>Math.abs(s.neto)),1);
+  const N=ui.batch,inv=N*c.total,rev=N*c.pvp,prof=rev-inv,beB=c.pvp>0?Math.ceil(inv/c.pvp):null;
+  el.innerHTML=`
+  <div class="card"><span class="caps">Proyección con</span>
+    <div class="chips" style="margin-top:8px">${S.garments.map(x=>`<button class="chip ${x.id===ui.projGid?'on':''}" data-pg="${esc(x.id)}">${esc(x.name)}</button>`).join('')}</div>
+    <div class="grid" style="margin-top:12px">
+      <div class="kpi"><span class="caps">Aporte por prenda</span><b class="${cont>=0?'pos':'neg'}">${fmt(cont)}</b><small>PVP menos costo directo</small></div>
+      <div class="kpi"><span class="caps">Gastos fijos del mes</span><b>${fmt(fijo)}</b></div>
+      <div class="kpi big"><span class="caps">Punto de equilibrio</span><b>${be==null?'—':be+' prendas'}</b><small>${be==null?'Sube el precio: hoy no cubre su costo directo':'prendas al mes para cubrir el taller'}</small></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h3>Comparativa de escenarios</h3><p class="sub">Utilidad neta del mes según cuántas prendas confecciones y vendes.</p>
+    <div class="grid" style="margin:12px 0">${ui.projVol.map((n,i)=>`<div><label for="pv${i}">${['Conservador','Moderado','Expansión'][i]} (prendas)</label><input id="pv${i}" type="number" min="0" step="1" data-pv="${i}" value="${n}"></div>`).join('')}</div>
+    ${sc.map(s=>`<div style="margin:12px 0"><div class="row sb"><span>${s.nombre} <span class="sub">(${s.n} prendas)</span></span><b class="${s.neto>=0?'pos':'neg'}">${fmt(s.neto)} neto</b></div><div class="bar"><i style="width:${Math.max(3,Math.abs(s.neto)/maxN*100)}%;${s.neto<0?'background:var(--error)':''}"></i></div></div>`).join('')}
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h3>Proyección por tirada de lote</h3><p class="sub">Qué pasa si confeccionas una tirada de ${N} prendas.</p>
+    <div class="seg" style="margin:10px 0">${[25,50,100].map(n=>`<button data-batch="${n}" class="${n===N?'on':''}">${n} prendas</button>`).join('')}</div>
+    <div class="grid">
+      <div class="kpi"><span class="caps">Inversión</span><b>${fmt(inv)}</b></div>
+      <div class="kpi"><span class="caps">Venta estimada</span><b>${fmt(rev)}</b></div>
+      <div class="kpi big"><span class="caps">Utilidad</span><b class="${prof>=0?'pos':'neg'}">${fmt(prof)}</b></div>
+    </div>
+    <div style="margin-top:14px"><b>Punto de retorno seguro</b>
+      <p class="sub">${beB==null?'Pon un precio de venta para calcularlo.':`Con ${beB} de las ${N} prendas vendidas ya recuperas la inversión del lote. Las otras ${Math.max(0,N-beB)} son ganancia pura.`}</p>
+      ${beB!=null?`<div class="stack" style="margin-top:6px"><i style="width:${Math.min(100,beB/N*100)}%;background:var(--primary-c)"></i></div>`:''}</div>
+  </div>`;
+}
+$('#v-proy').addEventListener('click',e=>{
+  const t=e.target;
+  if(t.closest('[data-go]')){showTab(t.closest('[data-go]').dataset.go);return}
+  const pg=t.closest('[data-pg]');if(pg){ui.projGid=pg.dataset.pg;renderProy();return}
+  const bt=t.closest('[data-batch]');if(bt){ui.batch=num(bt.dataset.batch);renderProy()}
+});
+$('#v-proy').addEventListener('change',e=>{const i=e.target.dataset.pv;if(i==null)return;ui.projVol[i]=Math.max(0,Math.round(num(e.target.value)));renderProy()});
+
+/* ================= AJUSTES, IMPORTAR, RESPALDO ================= */
+function renderSet(){
+  $('#s-marca').value=S.settings.marca;$('#s-tc').value=S.settings.tc;$('#s-factor').value=S.settings.factor;
+  if(!DB)$('#storeInfo').textContent='Tus datos se guardan solo en este navegador. Si cambias de teléfono o borras los datos del navegador se pierden: descarga el respaldo.';
+}
+$('#s-guardar').addEventListener('click',()=>{
+  S.settings.marca=$('#s-marca').value.trim()||'Yosca Moda';
+  S.settings.tc=Math.max(0.01,num($('#s-tc').value)||3.75);
+  S.settings.factor=Math.max(0,num($('#s-factor').value));
+  save();applyTheme();refreshAll();toast('Ajustes guardados');
+});
+async function download(name,text,type){
+  try{const d=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
+    if(d){await d.save({filename:name,data:text});return}}catch(e){if(e&&e.code==='declined')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+const csvCell=v=>{let s=String(v??'');if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'};
+const toCsv=(rows,cols)=>'﻿'+[cols.join(','),...rows.map(r=>cols.map(c=>csvCell(r[c])).join(','))].join('\n');
+$('#expJson').addEventListener('click',()=>download(`respaldo-${today()}.json`,JSON.stringify(S,null,2),'application/json'));
+$('#expPed').addEventListener('click',()=>download(`pedidos-${today()}.csv`,toCsv(S.orders,['fecha','cliente','telefono','ciudad','producto','talla','color','cantidad','precio','costo','flete','estado','pago','notas']),'text/csv'));
+$('#expGas').addEventListener('click',()=>download(`gastos-${today()}.csv`,toCsv(S.expenses,['fecha','categoria','descripcion','monto']),'text/csv'));
+$('#impJson').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{const s=JSON.parse(r.result);
+      if(!s||typeof s!=='object'||!COLS.some(c=>Array.isArray(s[c])))throw 0;
+      const n=COLS.map(c=>Array.isArray(s[c])?s[c].length:0);
+      ask(`El respaldo trae ${n[0]} prendas, ${n[2]} pedidos y ${n[3]+n[4]} gastos. ¿Reemplazar todos los datos actuales?`,()=>{
+        COLS.forEach(c=>{S[c]=Array.isArray(s[c])?s[c]:[]});S.settings={...S.settings,...(s.settings||{})};
+        save();applyTheme();refreshAll();toast('Respaldo restaurado');
+      });
+    }catch(err){toast('El archivo no es un respaldo válido')}
+    e.target.value='';
+  };
+  r.readAsText(f);
+});
+
+/* ---- importar CSV de Shopify ---- */
+function parseCsv(t){
+  const rows=[];let row=[],f='',q=false;t=t.replace(/^﻿/,'');
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c==='"')q=true;
+    else if(c===','){row.push(f);f=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(f);f='';if(row.some(x=>x!==''))rows.push(row);row=[]}
+    else f+=c}
+  row.push(f);if(row.some(x=>x!==''))rows.push(row);return rows;
+}
+function shopifyEstado(r){
+  const fin=(r['Financial Status']||'').toLowerCase(),ful=(r['Fulfillment Status']||'').toLowerCase();
+  if(r['Cancelled at']||fin==='voided')return 'Cancelado';
+  if(fin==='refunded')return 'Devuelto';
+  if(ful==='fulfilled')return fin==='paid'?'Entregado':'Enviado';
+  return 'Pendiente';
+}
+function importShopify(text){
+  const rows=parseCsv(text);if(rows.length<2)throw new Error('vacío');
+  const h=rows[0].map(x=>x.trim());if(!h.includes('Name')||!h.includes('Lineitem name'))throw new Error('formato');
+  const recs=rows.slice(1).map(r=>Object.fromEntries(h.map((k,i)=>[k,r[i]??''])));
+  const have=new Set(S.orders.map(o=>o.shopifyKey).filter(Boolean));
+  let last={},n=0,skip=0;const idx={};
+  for(const r of recs){
+    if(r['Email']||r['Created at']||r['Billing Name']||r['Shipping Name'])last=r;
+    const name=r['Name'];if(!name||!r['Lineitem name'])continue;
+    idx[name]=(idx[name]||0)+1;const key=name+'#'+idx[name];
+    if(have.has(key)){skip++;continue}
+    const opts=(r['Lineitem name']||'').split(' - ');
+    const prod=opts[0],g=S.garments.find(x=>x.name.trim().toLowerCase()===prod.trim().toLowerCase());
+    S.orders.push({id:uid(),shopifyKey:key,garmentId:g?g.id:'',
+      fecha:(last['Created at']||today()).slice(0,10),
+      cliente:last['Shipping Name']||last['Billing Name']||last['Email']||name,
+      telefono:last['Shipping Phone']||last['Phone']||last['Billing Phone']||'',
+      ciudad:last['Shipping City']||last['Billing City']||'',
+      producto:prod,talla:opts[1]||'',color:opts[2]||'',
+      cantidad:num(r['Lineitem quantity'])||1,precio:num(r['Lineitem price']),costo:g?r2(gCalc(g).direct):0,flete:0,
+      estado:shopifyEstado(last),
+      pago:/cash on delivery|cod|contra/i.test(last['Payment Method']||'')?'Contra entrega':(last['Financial Status']==='paid'?'Transferencia':'Contra entrega'),
+      notas:'Shopify '+name});n++;
+  }
+  save();renderPed();return {n,skip};
+}
+$('#impShop').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{const {n,skip}=importShopify(r.result);toast(`Importados ${n} pedidos`+(skip?` (${skip} ya existían)`:'')+'. Revisa costo y flete en cada uno.')}
+    catch(err){toast('No pude leer el archivo. Debe ser el CSV de pedidos exportado desde Shopify.')}
+    e.target.value='';
+  };
+  r.readAsText(f);
+});
+
+/* ================= arranque ================= */
+load();applyTheme();resetPed();resetGas();resetCif();
+ui.gid=S.garments[0]?.id||null;
+showTab('dash');
+connectDb();
+</script>
 </body>
 </html>
