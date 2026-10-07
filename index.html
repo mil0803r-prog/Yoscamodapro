@@ -342,7 +342,7 @@ const CATS_VAR=['Tela / Gamarra','Hilos y avíos','Confección / maquila','Publi
 const CATS_CIF=['Alquiler del taller','Luz, agua e internet','Sueldos fijos','Marketing fijo','Mantenimiento de máquinas','Movilidad','Otros'];
 
 let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto'}};
-const ui={tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
+const ui={tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
 
 /* ---- costos de una prenda (todo en soles) ---- */
 const telaCost=g=>g.modo==='kilos'?num(g.kilos)*num(g.precioKg)*(1+num(g.merma)/100):num(g.metros)*num(g.precioMetro);
@@ -559,6 +559,12 @@ function renderCharts(){
   // por mes
   const meses=[];for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);meses.push({k:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),x:MESES[d.getMonth()],tip:MESES[d.getMonth()]+' '+d.getFullYear(),v:0})}
   S.orders.forEach(o=>{const it=meses.find(x=>x.k===String(o.fecha||'').slice(0,7));if(it)it.v+=m.f(o)});
+  // por semana (últimas 12, de lunes a domingo)
+  const lun=new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7));
+  const dm=d=>d.getDate()+' '+MESES[d.getMonth()];
+  const sems=[];for(let i=11;i>=0;i--){const a=new Date(lun.getFullYear(),lun.getMonth(),lun.getDate()-7*i),z=new Date(a.getFullYear(),a.getMonth(),a.getDate()+6);
+    sems.push({x:a.getDate()+'/'+(a.getMonth()+1),tip:'Semana del '+dm(a)+' al '+dm(z),v:0,a})}
+  S.orders.forEach(o=>{if(!o.fecha)return;const od=new Date(o.fecha+'T00:00:00'),idx=Math.floor(Math.round((od-sems[0].a)/864e5)/7);if(idx>=0&&idx<sems.length)sems[idx].v+=m.f(o)});
   // por día (últimos 30)
   const dias=[];for(let i=29;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);dias.push({k:isoDate(d),x:String(d.getDate()),tip:d.toLocaleDateString('es-PE',{weekday:'short',day:'numeric',month:'short'}),v:0})}
   S.orders.forEach(o=>{const it=dias.find(x=>x.k===o.fecha);if(it)it.v+=m.f(o)});
@@ -573,12 +579,14 @@ function renderCharts(){
   const nonZero=a=>a.some(x=>x.v!==0);
   const emptyMsg='<div class="empty">Aún no hay datos para este gráfico.</div>';
   const mesBody=ui.tbl.mes?tableView({hd:'Mes',list:meses.map(i=>[i.tip,i.v])},m):(nonZero(meses)?colChart(meses,m,1,`${m.label} por mes`):emptyMsg);
+  const semBody=ui.tbl.sem?tableView({hd:'Semana',list:sems.map(i=>[i.tip,i.v]).reverse()},m):(nonZero(sems)?colChart(sems,m,2,`${m.label} por semana`):emptyMsg);
   const diaBody=ui.tbl.dia?tableView({hd:'Día',list:dias.filter(i=>i.v!==0).map(i=>[i.tip,i.v]).reverse()},m):(nonZero(dias)?colChart(dias,m,5,`${m.label} por día`):emptyMsg);
   const ciuBody=ui.tbl.ciudad?tableView({hd:'Ciudad',list:ciu},m):(ciu.length?ciu.map(([c,v])=>`<div class="crow" data-tip="${esc(c)}" data-tipv="${esc(fval(v,m))}"><span class="nm">${esc(c)}</span><div class="bar"><i style="width:${Math.max(3,Math.abs(v)/mx*100)}%;${v<0?'background:var(--error)':''}"></i></div><b class="${v<0?'neg':''}">${fval(v,m)}</b></div>`).join(''):emptyMsg);
   const perTxt={mes:'mes',dia:'día',hoy:''};
   const perNames={mes:'este mes',mesant:'el mes anterior','7d':'los últimos 7 días',todo:'todo el tiempo'};
   $('#charts').innerHTML=
     chartCard('mes','Por mes',`${esc(m.label)} · últimos 6 meses (${unit})`,mesBody)+
+    chartCard('sem','Por semana',`${esc(m.label)} · últimas 12 semanas, de lunes a domingo (${unit})`,semBody)+
     chartCard('dia','Por día',`${esc(m.label)} · últimos 30 días (${unit})`,diaBody)+
     chartCard('ciudad','Por ciudad',`${esc(m.label)} · ${perNames[ui.periodo]} (cambia el periodo arriba)`,ciuBody);
 }
