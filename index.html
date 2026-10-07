@@ -131,6 +131,18 @@ nav.bottom button.on{color:var(--primary);background:var(--primary-soft)}
 .ask{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ask span{flex:1 1 200px}
 input[type=range]{padding:0;accent-color:var(--primary-c)}
 a{color:var(--primary)}
+.chartcard svg{width:100%;height:auto;display:block;overflow:visible}
+.chartcard text{fill:var(--on-var);font:600 11px "Plus Jakarta Sans",system-ui,sans-serif}
+.chartcard .gl{stroke:var(--line);stroke-width:1}
+.chartcard .zl{stroke:var(--outline);stroke-width:1}
+.chartcard .bar-pos{fill:var(--primary)}.chartcard .bar-neg{fill:var(--error)}
+.chartcard .hit{fill:transparent;cursor:pointer}
+.chartcard .hit:hover{fill:var(--primary);fill-opacity:.1}
+.chartcard .tbtn{border:1px solid var(--line);background:transparent;color:var(--on-var);font:inherit;font-size:11px;font-weight:700;border-radius:999px;padding:4px 10px;cursor:pointer}
+.crow{display:grid;grid-template-columns:minmax(70px,.9fr) 2.2fr auto;gap:8px;align-items:center;margin:9px 0;font-size:13px}
+.crow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tip{position:fixed;z-index:50;pointer-events:none;background:var(--on);color:var(--surface);padding:7px 10px;border-radius:10px;font-size:12px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.3);max-width:220px}
+.tip small{display:block;font-weight:500;opacity:.8}
 </style>
 </head>
 <body>
@@ -153,6 +165,9 @@ a{color:var(--primary)}
         <select id="periodo" style="width:auto"><option value="mes">Este mes</option><option value="mesant">Mes anterior</option><option value="7d">Últimos 7 días</option><option value="todo">Todo</option></select>
       </div>
       <div class="grid" id="kpis"></div>
+      <div class="card row sb" style="margin-top:14px"><span class="caps">Gráficos por</span>
+        <div class="seg" id="metricSeg"><button data-metric="ventas">Ventas</button><button data-metric="utilidad">Utilidad</button><button data-metric="pedidos">Pedidos</button></div></div>
+      <div id="charts" style="display:flex;flex-direction:column;gap:14px;margin-top:14px"></div>
       <div class="card" id="alertas" style="margin-top:14px"></div>
       <div class="card" style="margin-top:14px"><h3>Pedidos por estado</h3><div id="porEstado"></div></div>
       <div class="card" style="margin-top:14px"><h3>Más vendidas (entregadas)</h3><div id="topProd"></div></div>
@@ -289,6 +304,7 @@ a{color:var(--primary)}
 <div id="toast" class="toast" role="status" hidden></div>
 <div id="ask" class="ask" role="alertdialog" hidden><span id="askMsg"></span><button class="btn sm pri" id="askYes" type="button">Sí</button><button class="btn sm" id="askNo" type="button">No</button></div>
 <input type="file" id="photoIn" accept="image/*" hidden>
+<div id="tip" class="tip" hidden></div>
 
 <script>
 'use strict';
@@ -326,7 +342,7 @@ const CATS_VAR=['Tela / Gamarra','Hilos y avíos','Confección / maquila','Publi
 const CATS_CIF=['Alquiler del taller','Luz, agua e internet','Sueldos fijos','Marketing fijo','Mantenimiento de máquinas','Movilidad','Otros'];
 
 let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto'}};
-const ui={tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
+const ui={tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
 
 /* ---- costos de una prenda (todo en soles) ---- */
 const telaCost=g=>g.modo==='kilos'?num(g.kilos)*num(g.precioKg)*(1+num(g.merma)/100):num(g.metros)*num(g.precioMetro);
@@ -501,8 +517,83 @@ function renderDash(){
   $('#topProd').innerHTML=bars(Object.entries(prod).sort((a,b)=>b[1]-a[1]).slice(0,6),v=>v+' uds');
   const cat={};gs.forEach(g=>{cat[g.categoria]=(cat[g.categoria]||0)+num(g.monto)});
   $('#gastoCat').innerHTML=bars(Object.entries(cat).sort((a,b)=>b[1]-a[1]),fmt);
+  renderCharts();
 }
 $('#periodo').addEventListener('change',e=>{ui.periodo=e.target.value;renderDash()});
+
+/* ---- gráficos: por mes, por día y por ciudad ---- */
+const METRICS={ventas:{label:'Ventas entregadas',money:true,f:orderRevenue},utilidad:{label:'Utilidad de pedidos (antes de gastos)',money:true,f:orderProfit},pedidos:{label:'Pedidos (sin cancelados)',money:false,f:o=>o.estado==='Cancelado'?0:1}};
+const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const isoDate=d=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const dispVal=(v,m)=>m.money&&S.settings.moneda==='USD'?v/(num(S.settings.tc)||3.75):v;
+function short(v){const a=Math.abs(v);if(a>=1e6)return (v/1e6).toFixed(1)+'M';if(a>=1e3)return (v/1e3).toFixed(a>=1e4?0:1)+'k';return String(Math.round(v*10)/10)}
+function niceCeil(x){if(x<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(x))),f=x/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p}
+const fval=(v,m)=>m.money?fmt(v):String(Math.round(v));
+function colChart(items,m,every,label){
+  const W=420,H=200,L=38,R=6,T=12,B=26,pw=W-L-R,ph=H-T-B;
+  const vals=items.map(i=>dispVal(i.v,m)),mx=Math.max(0,...vals),mn=Math.min(0,...vals);
+  const top=mx>0?niceCeil(mx):(mn<0?0:1),bot=mn<0?-niceCeil(-mn):0;
+  const y=v=>T+ph*(1-(v-bot)/(top-bot));
+  const ticks=[...new Set([bot,0,top/2,top])].filter(t=>t>=bot&&t<=top).sort((a,b)=>a-b);
+  const step=pw/items.length,bw=Math.max(3,Math.min(26,step*.62));
+  let g='';
+  ticks.forEach(t=>{g+=`<line class="${t===0?'zl':'gl'}" x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L-6}" y="${y(t)+3.5}" text-anchor="end">${short(t)}</text>`});
+  items.forEach((it,i)=>{
+    const v=vals[i],x=L+step*i+(step-bw)/2,y0=y(0),y1=y(v),h=Math.abs(y1-y0);
+    if(v!==0)g+=`<rect class="${v<0?'bar-neg':'bar-pos'}" x="${x.toFixed(1)}" y="${Math.min(y0,y1).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1.5,h).toFixed(1)}" rx="3"/>`;
+    if((items.length-1-i)%every===0)g+=`<text x="${(L+step*i+step/2).toFixed(1)}" y="${H-8}" text-anchor="middle">${esc(it.x)}</text>`;
+    g+=`<rect class="hit" x="${(L+step*i).toFixed(1)}" y="${T}" width="${step.toFixed(1)}" height="${ph}" data-tip="${esc(it.tip)}" data-tipv="${esc(fval(it.v,m))}"/>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${g}</svg>`;
+}
+function tableView(rows,m){
+  return `<div class="tablewrap"><table><thead><tr><th>${rows.hd}</th><th class="num">${esc(m.money?'Monto':'Pedidos')}</th></tr></thead><tbody>${rows.list.map(r=>`<tr><td>${esc(r[0])}</td><td class="num">${fval(r[1],m)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function chartCard(key,title,sub,body){
+  return `<div class="card chartcard"><div class="row sb"><div><h3>${title}</h3><p class="sub">${sub}</p></div><button class="tbtn" data-tbl="${key}">${ui.tbl[key]?'Ver gráfico':'Ver tabla'}</button></div><div style="margin-top:10px">${body}</div></div>`;
+}
+function renderCharts(){
+  const m=METRICS[ui.metric],now=new Date();
+  document.querySelectorAll('#metricSeg button').forEach(b=>b.classList.toggle('on',b.dataset.metric===ui.metric));
+  const unit=m.money?(S.settings.moneda==='USD'?'$':'S/'):'pedidos';
+  // por mes
+  const meses=[];for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);meses.push({k:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),x:MESES[d.getMonth()],tip:MESES[d.getMonth()]+' '+d.getFullYear(),v:0})}
+  S.orders.forEach(o=>{const it=meses.find(x=>x.k===String(o.fecha||'').slice(0,7));if(it)it.v+=m.f(o)});
+  // por día (últimos 30)
+  const dias=[];for(let i=29;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);dias.push({k:isoDate(d),x:String(d.getDate()),tip:d.toLocaleDateString('es-PE',{weekday:'short',day:'numeric',month:'short'}),v:0})}
+  S.orders.forEach(o=>{const it=dias.find(x=>x.k===o.fecha);if(it)it.v+=m.f(o)});
+  // por ciudad (periodo elegido arriba)
+  const map={};
+  S.orders.filter(o=>inPeriod(o.fecha,ui.periodo)).forEach(o=>{
+    let c=String(o.ciudad||'').trim();c=c?c.charAt(0).toUpperCase()+c.slice(1).toLowerCase():'Sin ciudad';
+    map[c]=(map[c]||0)+m.f(o)});
+  let ciu=Object.entries(map).filter(r=>r[1]!==0).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
+  if(ciu.length>8){const rest=ciu.slice(7).reduce((a,r)=>a+r[1],0);ciu=[...ciu.slice(0,7),['Otras ciudades',rest]]}
+  const mx=Math.max(1,...ciu.map(r=>Math.abs(r[1])));
+  const nonZero=a=>a.some(x=>x.v!==0);
+  const emptyMsg='<div class="empty">Aún no hay datos para este gráfico.</div>';
+  const mesBody=ui.tbl.mes?tableView({hd:'Mes',list:meses.map(i=>[i.tip,i.v])},m):(nonZero(meses)?colChart(meses,m,1,`${m.label} por mes`):emptyMsg);
+  const diaBody=ui.tbl.dia?tableView({hd:'Día',list:dias.filter(i=>i.v!==0).map(i=>[i.tip,i.v]).reverse()},m):(nonZero(dias)?colChart(dias,m,5,`${m.label} por día`):emptyMsg);
+  const ciuBody=ui.tbl.ciudad?tableView({hd:'Ciudad',list:ciu},m):(ciu.length?ciu.map(([c,v])=>`<div class="crow" data-tip="${esc(c)}" data-tipv="${esc(fval(v,m))}"><span class="nm">${esc(c)}</span><div class="bar"><i style="width:${Math.max(3,Math.abs(v)/mx*100)}%;${v<0?'background:var(--error)':''}"></i></div><b class="${v<0?'neg':''}">${fval(v,m)}</b></div>`).join(''):emptyMsg);
+  const perTxt={mes:'mes',dia:'día',hoy:''};
+  const perNames={mes:'este mes',mesant:'el mes anterior','7d':'los últimos 7 días',todo:'todo el tiempo'};
+  $('#charts').innerHTML=
+    chartCard('mes','Por mes',`${esc(m.label)} · últimos 6 meses (${unit})`,mesBody)+
+    chartCard('dia','Por día',`${esc(m.label)} · últimos 30 días (${unit})`,diaBody)+
+    chartCard('ciudad','Por ciudad',`${esc(m.label)} · ${perNames[ui.periodo]} (cambia el periodo arriba)`,ciuBody);
+}
+$('#metricSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ui.metric=b.dataset.metric;renderCharts()});
+$('#charts').addEventListener('click',e=>{const b=e.target.closest('[data-tbl]');if(!b)return;ui.tbl[b.dataset.tbl]=!ui.tbl[b.dataset.tbl];renderCharts()});
+/* globo de información al pasar el dedo o el mouse */
+(function(){
+  const tip=$('#tip');
+  const show=e=>{const t=e.target.closest&&e.target.closest('#charts [data-tip]');if(!t){tip.hidden=true;return}
+    tip.innerHTML=`${esc(t.dataset.tip)}<small>${esc(t.dataset.tipv)}</small>`;tip.hidden=false;
+    const w=tip.offsetWidth,x=Math.min(innerWidth-w-8,Math.max(8,e.clientX-w/2));tip.style.left=x+'px';tip.style.top=Math.max(8,e.clientY-tip.offsetHeight-14)+'px'};
+  document.addEventListener('pointermove',show);document.addEventListener('pointerdown',show);
+  document.addEventListener('pointerleave',()=>{tip.hidden=true});
+  document.addEventListener('scroll',()=>{tip.hidden=true},{passive:true});
+})();
 
 /* ================= CALCULADORA ================= */
 const curG=()=>S.garments.find(g=>g.id===ui.gid)||null;
