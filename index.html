@@ -309,10 +309,10 @@ const telaCost=g=>g.modo==='kilos'?num(g.kilos)*num(g.precioKg)*(1+num(g.merma)/
 const cifTotal=()=>S.cif.reduce((a,x)=>a+num(x.monto),0);
 const cuotaCif=()=>{const b=num(S.settings.base);return b>0?cifTotal()/b:0};
 function gCalc(g){
-  const tela=telaCost(g),direct=tela+num(g.hilos)+num(g.maquina)+num(g.otros);
+  const tela=telaCost(g),extras=(g.extras||[]).reduce((a,x)=>a+num(x.monto),0),direct=tela+num(g.hilos)+num(g.maquina)+num(g.otros)+num(g.etiqueta)+num(g.empaque)+extras;
   const cif=(g.cifManual==null||g.cifManual==='')?cuotaCif():num(g.cifManual);
   const total=direct+cif,pvp=num(g.pvp),ganancia=pvp-total;
-  return {tela,direct,cif,total,pvp,ganancia,margen:pvp>0?ganancia/pvp*100:0,markup:total>0?pvp/total:0};
+  return {tela,extras,direct,cif,total,pvp,ganancia,margen:pvp>0?ganancia/pvp*100:0,markup:total>0?pvp/total:0};
 }
 function orderProfit(o){
   const q=num(o.cantidad)||1;
@@ -526,9 +526,13 @@ function renderCalc(){
     <div class="form" style="margin-top:12px">
       <div><label for="f-hilos">Hilo, hilaza y costuras (S/)</label><input id="f-hilos" type="number" step="any" min="0" data-g="hilos" value="${esc(g.hilos||'')}"></div>
       <div><label for="f-maq">Confección y máquinas (S/)</label><input id="f-maq" type="number" step="any" min="0" data-g="maquina" value="${esc(g.maquina||'')}"></div>
-      <div><label for="f-otros">Avíos, etiquetas y empaque (S/)</label><input id="f-otros" type="number" step="any" min="0" data-g="otros" value="${esc(g.otros||'')}"></div>
+      <div><label for="f-otros">Avíos: botones, cierres, cordón (S/)</label><input id="f-otros" type="number" step="any" min="0" data-g="otros" value="${esc(g.otros||'')}"></div>
+      <div><label for="f-etiq">Etiqueta y marquilla (S/)</label><input id="f-etiq" type="number" step="any" min="0" data-g="etiqueta" value="${esc(g.etiqueta||'')}"></div>
+      <div><label for="f-emp">Empaque: bolsa, caja, hangtag (S/)</label><input id="f-emp" type="number" step="any" min="0" data-g="empaque" value="${esc(g.empaque||'')}"></div>
       <div><label for="f-cif">Cuota CIF del taller (S/)</label><input id="f-cif" type="number" step="any" min="0" data-g="cifManual" value="${g.cifManual==null||g.cifManual===''?'':esc(g.cifManual)}" placeholder="Auto: ${r2(cuotaCif())}"></div>
     </div>
+    <div style="margin-top:14px"><div class="row sb"><span class="caps">Otras categorías de costo</span><button class="btn sm pri" id="xAdd" type="button">+ Agregar categoría</button></div>
+      <div id="xList">${(g.extras||[]).map(x=>`<div class="row" style="margin-top:8px;flex-wrap:nowrap"><input class="grow" aria-label="Nombre de la categoría" placeholder="Ej. Bordado, lavado, estampado" data-x="nombre" data-xid="${esc(x.id)}" value="${esc(x.nombre)}"><input style="width:104px;flex:0 0 104px" type="number" step="any" min="0" aria-label="Monto" placeholder="S/" data-x="monto" data-xid="${esc(x.id)}" value="${esc(x.monto||'')}"><button class="btn sm del" type="button" data-xdel="${esc(x.id)}" aria-label="Quitar categoría">✕</button></div>`).join('')||'<p class="sub" style="margin-top:6px">Agrega lo que falte: bordado, estampado, lavado, flete de tela…</p>'}</div></div>
     <p class="hint">La cuota CIF se calcula sola con tus gastos fijos (${fmt(cifTotal())} ÷ ${num(S.settings.base)} prendas). Escribe un valor para cambiarla solo en esta prenda; déjalo vacío para usar la automática.</p>
   </div>
 
@@ -560,7 +564,10 @@ function renderCalcOut(){
   const sc=[['Mayorista','2.0x',2],['Óptimo','2.5x',2.5],['Boutique','3.0x',3]];
   $('#scen').innerHTML=sc.map(([nm,lb,m])=>{const p=Math.round(c.total*m*10)/10,neto=p-c.total,mg=p>0?neto/p*100:0;
     return `<button data-price="${p}" class="${p>0&&Math.abs(p-c.pvp)<.05?'on':''}" ${c.total<=0?'disabled':''}><small>${lb} ${nm}</small><b>${fmt(p)}</b><small>Neto ${fmt(neto)}</small><small>${mg.toFixed(0)}% margen</small></button>`}).join('');
-  const parts=[['Tela',c.tela,'#00b074'],['Hilos',num(g.hilos),'#0053db'],['Confección',num(g.maquina),'#b26a00'],['Avíos y empaque',num(g.otros),'#8a5cf6'],['CIF taller',c.cif,'#6c7a70']];
+  const pal=['#00b074','#0053db','#b26a00','#8a5cf6','#e11d74','#0891b2','#ca8a04','#16a34a','#dc2626'];
+  const parts=[['Tela',c.tela],['Hilos',num(g.hilos)],['Confección',num(g.maquina)],['Avíos',num(g.otros)],['Etiqueta',num(g.etiqueta)],['Empaque',num(g.empaque)],...(g.extras||[]).map(x=>[x.nombre||'Otro',num(x.monto)])]
+    .filter(x=>x[1]>0).map((x,i)=>[x[0],x[1],pal[i%pal.length]]);
+  parts.push(['CIF taller',c.cif,'#6c7a70']);
   const pctOf=v=>c.total>0?v/c.total*100:0;
   const consumo=kil?`${r2(num(g.kilos)*(1+num(g.merma)/100)*n)} kg`:`${r2(num(g.metros)*n)} m`;
   $('#calcOut').innerHTML=`
@@ -568,12 +575,12 @@ function renderCalcOut(){
     <div class="grid2">
       <div class="kpi"><span class="caps">PVP al público</span><b>${fmt(c.pvp)}</b><small>${c.markup?c.markup.toFixed(2)+'x sobre el costo':'sin precio'}</small></div>
       <div class="kpi big"><span class="caps">Ganancia limpia</span><b class="${c.ganancia>=0?'pos':'neg'}">${fmt(c.ganancia)}</b><small class="${c.margen>=0?'pos':'neg'}">${pct(c.margen)} de margen</small></div>
-      <div class="kpi"><span class="caps">Costo directo</span><b>${fmt(c.direct)}</b><small>Tela + hilo + confección + avíos</small></div>
+      <div class="kpi"><span class="caps">Costo directo</span><b>${fmt(c.direct)}</b><small>Todo, menos el CIF del taller</small></div>
       <div class="kpi"><span class="caps">Cuota gasto CIF</span><b>${fmt(c.cif)}</b><small>Alquiler + luz taller</small></div>
     </div>
     <div style="margin-top:14px"><div class="row sb"><span class="caps">Costo total por prenda</span><b>${fmt(c.total)}</b></div>
       <div class="stack" style="margin-top:6px">${parts.map(([,v,col])=>`<i style="width:${pctOf(v)}%;background:${col}"></i>`).join('')}</div>
-      <div class="legend">${parts.map(([l,v,col])=>`<span><em style="background:${col}"></em>${l} ${pctOf(v).toFixed(1)}%</span>`).join('')}</div></div>
+      <div class="legend">${parts.map(([l,v,col])=>`<span><em style="background:${col}"></em>${esc(l)} ${pctOf(v).toFixed(1)}%</span>`).join('')}</div></div>
   </div>
   </div>`;
   updateModeOut();
@@ -634,20 +641,22 @@ $('#v-calc').addEventListener('click',e=>{
   const t=e.target;
   const chip=t.closest('[data-gid]');if(chip){ui.gid=chip.dataset.gid;renderCalc();return}
   if(t.closest('#gNew')||t.closest('#gNew2')){const n=S.garments.length+1;const g=newGarment({sku:'PRENDA-'+String(n).padStart(2,'0'),name:'Nueva prenda'});S.garments.push(g);ui.gid=g.id;save();renderCalc();return}
-  if(t.closest('#gReset')){const g=curG();if(!g)return;ask(`¿Dejar en cero los costos de "${g.name}"?`,()=>{Object.assign(g,{kilos:0,precioKg:0,merma:0,metros:0,precioMetro:0,hilos:0,maquina:0,otros:0,cifManual:null,pvp:0});save();renderCalc();toast('Costos puestos en cero')});return}
+  if(t.closest('#gReset')){const g=curG();if(!g)return;ask(`¿Dejar en cero los costos de "${g.name}"?`,()=>{Object.assign(g,{kilos:0,precioKg:0,merma:0,metros:0,precioMetro:0,hilos:0,maquina:0,otros:0,etiqueta:0,empaque:0,extras:[],cifManual:null,pvp:0});save();renderCalc();toast('Costos puestos en cero')});return}
   const md=t.closest('#modeSeg button');if(md){ui.mode=md.dataset.mode;renderCalc();return}
   const fr=t.closest('#fromSeg button');if(fr){ui.metaFrom=fr.dataset.from;renderModeCard();updateModeOut();return}
+  if(t.closest('#xAdd')){const g=curG();(g.extras=g.extras||[]).push({id:uid(),nombre:'',monto:0});save();renderCalc();const ins=document.querySelectorAll('#xList [data-x=nombre]');ins[ins.length-1]?.focus();return}
+  const xd=t.closest('[data-xdel]');if(xd){const g=curG();g.extras=(g.extras||[]).filter(x=>x.id!==xd.dataset.xdel);save();renderCalc();return}
   const up=t.closest('#usePrice');if(up){curG().pvp=num(up.dataset.price);save();renderCalc();toast('PVP actualizado');return}
   const m=t.closest('#modoSeg button');if(m){const g=curG();g.modo=m.dataset.m;save();renderCalc();return}
   const sc=t.closest('#scen button');if(sc&&!sc.disabled){curG().pvp=num(sc.dataset.price);save();renderCalc();return}
   if(t.closest('#photoBox')){$('#photoIn').click();return}
   if(t.closest('#photoDel')){curG().image='';save();renderCalc();return}
   if(t.closest('#qSave')){const g=curG(),c=gCalc(g);
-    S.quotes.unshift({id:uid(),ts:Date.now(),fecha:new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'short'}),gid:g.id,nombre:g.name,pvp:c.pvp,total:c.total,ganancia:c.ganancia,snap:{...g,image:''}});
+    S.quotes.unshift({id:uid(),ts:Date.now(),fecha:new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'short'}),gid:g.id,nombre:g.name,pvp:c.pvp,total:c.total,ganancia:c.ganancia,snap:JSON.parse(JSON.stringify({...g,image:''}))});
     S.quotes=S.quotes.slice(0,60);save();renderQuotes();toast(`Cotización de "${g.name}" guardada`);return}
   if(t.closest('#gDel')){const g=curG();ask(`¿Eliminar la prenda "${g.name}"?`,()=>{S.garments=S.garments.filter(x=>x.id!==g.id);ui.gid=S.garments[0]?.id||null;save();renderCalc()});return}
   const ql=t.closest('[data-qload]');if(ql){const q=S.quotes.find(x=>x.id===ql.dataset.qload);if(!q)return;
-    const g=S.garments.find(x=>x.id===q.gid);if(g){const keep=g.image;Object.assign(g,q.snap,{id:g.id,image:keep});ui.gid=g.id;save();renderCalc();toast('Cotización cargada')}else toast('Esa prenda ya no existe');return}
+    const g=S.garments.find(x=>x.id===q.gid);if(g){const keep=g.image;Object.assign(g,JSON.parse(JSON.stringify(q.snap)),{id:g.id,image:keep});ui.gid=g.id;save();renderCalc();toast('Cotización cargada')}else toast('Esa prenda ya no existe');return}
   const qd=t.closest('[data-qdel]');if(qd){S.quotes=S.quotes.filter(x=>x.id!==qd.dataset.qdel);save();renderQuotes();return}
 });
 $('#v-calc').addEventListener('input',e=>{
@@ -655,6 +664,7 @@ $('#v-calc').addEventListener('input',e=>{
   if(t.id==='lote'){ui.lote=num(t.value)||1;updateModeOut();return}
   if(t.id==='m-meta'){ui.meta=num(t.value);updateModeOut();return}
   if(t.id==='m-n'){ui.metaN=num(t.value);updateModeOut();return}
+  if(t.dataset.x&&g){const x=(g.extras||[]).find(y=>y.id===t.dataset.xid);if(x){x[t.dataset.x]=t.dataset.x==='monto'?num(t.value):t.value;renderCalcOut();saveSoon()}return}
   const f=t.dataset.g;if(!f||!g)return;
   if(t.dataset.t==='s'){g[f]=t.value}
   else if(f==='cifManual'){g.cifManual=t.value===''?null:num(t.value)}
@@ -674,7 +684,7 @@ $('#photoIn').addEventListener('change',e=>{
     img.onerror=()=>toast('No pude leer esa imagen');img.src=r.result};
   r.readAsDataURL(f);
 });
-function newGarment(o={}){return {id:uid(),sku:'',name:'Nueva prenda',coleccion:'',tipo:'',fit:'',tela:'',modo:'kilos',kilos:0,precioKg:0,merma:0,metros:0,precioMetro:0,hilos:0,maquina:0,otros:0,cifManual:null,pvp:0,image:'',...o}}
+function newGarment(o={}){return {id:uid(),sku:'',name:'Nueva prenda',coleccion:'',tipo:'',fit:'',tela:'',modo:'kilos',kilos:0,precioKg:0,merma:0,metros:0,precioMetro:0,hilos:0,maquina:0,otros:0,etiqueta:0,empaque:0,extras:[],cifManual:null,pvp:0,image:'',...o}}
 
 /* ================= PEDIDOS ================= */
 const pf=$('#pedForm');
