@@ -585,9 +585,9 @@ function renderCharts(){
   const perTxt={mes:'mes',dia:'día',hoy:''};
   const perNames={mes:'este mes',mesant:'el mes anterior','7d':'los últimos 7 días',todo:'todo el tiempo'};
   $('#charts').innerHTML=
-    chartCard('mes','Por mes',`${esc(m.label)} · últimos 6 meses (${unit})`,mesBody)+
-    chartCard('sem','Por semana',`${esc(m.label)} · últimas 12 semanas, de lunes a domingo (${unit})`,semBody)+
     chartCard('dia','Por día',`${esc(m.label)} · últimos 30 días (${unit})`,diaBody)+
+    chartCard('sem','Por semana',`${esc(m.label)} · últimas 12 semanas, de lunes a domingo (${unit})`,semBody)+
+    chartCard('mes','Por mes',`${esc(m.label)} · últimos 6 meses (${unit})`,mesBody)+
     chartCard('ciudad','Por ciudad',`${esc(m.label)} · ${perNames[ui.periodo]} (cambia el periodo arriba)`,ciuBody);
 }
 $('#metricSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ui.metric=b.dataset.metric;renderCharts()});
