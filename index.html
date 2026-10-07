@@ -131,6 +131,20 @@ nav.bottom button.on{color:var(--primary);background:var(--primary-soft)}
 .ask{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ask span{flex:1 1 200px}
 input[type=range]{padding:0;accent-color:var(--primary-c)}
 a{color:var(--primary)}
+.aifab{position:fixed;right:16px;bottom:calc(86px + env(safe-area-inset-bottom,0px));z-index:30;border:0;border-radius:999px;padding:12px 18px 12px 14px;display:flex;align-items:center;gap:8px;font:inherit;font-weight:800;color:var(--on-primary);background:linear-gradient(135deg,var(--primary-c),var(--primary));box-shadow:0 8px 22px rgba(0,108,70,.35);cursor:pointer}
+.aifab svg{width:20px;height:20px}
+.aipanel{position:fixed;z-index:60;left:0;right:0;top:env(safe-area-inset-top,0px);bottom:0;margin:0 auto;max-width:680px;background:var(--surface);display:flex;flex-direction:column;border-radius:20px 20px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);border:1px solid var(--line)}
+.aihead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.aihead .row{flex-wrap:nowrap;flex:0 0 auto}
+.aimsgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;padding:10px 13px;border-radius:16px;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.msg.u{align-self:flex-end;background:var(--primary-c);color:var(--on-primary);border-bottom-right-radius:5px}
+.msg.a{align-self:flex-start;background:var(--s-lowest);border:1px solid var(--line);border-bottom-left-radius:5px}
+.msg.a b{font-weight:800}
+.aichips{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px}
+.aichips button{border:1px solid var(--line);background:var(--s-lowest);color:var(--on);border-radius:999px;padding:7px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;text-align:left}
+.aiform{display:flex;gap:8px;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+.aiform input{flex:1}
 .chartcard svg{width:100%;height:auto;display:block;overflow:visible}
 .chartcard text{fill:var(--on-var);font:600 11px "Plus Jakarta Sans",system-ui,sans-serif}
 .chartcard .gl{stroke:var(--line);stroke-width:1}
@@ -305,6 +319,14 @@ a{color:var(--primary)}
 <div id="ask" class="ask" role="alertdialog" hidden><span id="askMsg"></span><button class="btn sm pri" id="askYes" type="button">Sí</button><button class="btn sm" id="askNo" type="button">No</button></div>
 <input type="file" id="photoIn" accept="image/*" hidden>
 <div id="tip" class="tip" hidden></div>
+<button id="aiFab" class="aifab" type="button" hidden aria-label="Abrir el asistente"></button>
+<section id="aiPanel" class="aipanel" role="dialog" aria-modal="true" aria-label="Asistente de Yosca" hidden>
+  <div class="aihead"><div><h2 style="margin:0;font-size:16px">Asistente</h2><p class="sub" style="margin:0">Responde con tus datos reales. No modifica nada.</p></div>
+    <div class="row"><button class="btn sm ghost" id="aiClear" type="button">Limpiar</button><button class="btn sm" id="aiClose" type="button">Cerrar</button></div></div>
+  <div class="aimsgs" id="aiMsgs" aria-live="polite"></div>
+  <div class="aichips" id="aiChips"></div>
+  <form class="aiform" id="aiForm" autocomplete="off"><input id="aiInput" placeholder="Pregúntame sobre tus costos, precios o ventas…" aria-label="Escribe tu pregunta"><button class="btn pri" id="aiSend" type="submit">Enviar</button><button class="btn del" id="aiStop" type="button" hidden>Parar</button></form>
+</section>
 
 <script>
 'use strict';
@@ -329,6 +351,7 @@ const ICONS={
   tag:'<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>',
   pkg:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
   target:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  spark:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'
 };
 const icon=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -1090,11 +1113,104 @@ $('#impShop').addEventListener('change',e=>{
   r.readAsText(f);
 });
 
+/* ================= ASISTENTE IA ================= */
+let AI=null,aiCtl=null,aiBusy=false;const aiTurns=[];
+const AI_CHIPS=['¿Cómo voy este mes?','¿Qué prenda me deja más margen?','¿A qué precio vendo para ganar S/ 1,000?','¿Cuántas prendas necesito vender para cubrir mis gastos fijos?','¿Qué ciudad me compra más?','Revisa mis costos y dime qué mejorar'];
+function periodStats(p){
+  const os=S.orders.filter(o=>inPeriod(o.fecha,p)),gs=S.expenses.filter(g=>inPeriod(g.fecha,p));
+  const ventas=os.reduce((a,o)=>a+orderRevenue(o),0),bruta=os.reduce((a,o)=>a+orderProfit(o),0),vars=gs.reduce((a,g)=>a+num(g.monto),0),fijos=cifFor(p);
+  const ent=os.filter(o=>o.estado==='Entregado').length,dev=os.filter(o=>o.estado==='Devuelto').length;
+  const por={};ESTADOS.forEach(e=>{const n=os.filter(o=>o.estado===e).length;if(n)por[e]=n});
+  return {periodo:p,pedidos:os.length,por_estado:por,ventas_entregadas:r2(ventas),utilidad_pedidos:r2(bruta),gastos_variables:r2(vars),gastos_fijos_cif:r2(fijos),utilidad_neta:r2(bruta-vars-fijos),tasa_entrega_pct:ent+dev?r2(ent/(ent+dev)*100):null};
+}
+function orderLite(o){return {fecha:o.fecha,ciudad:o.ciudad||'',producto:o.producto,talla:o.talla||'',color:o.color||'',unidades:num(o.cantidad)||1,pack:o.pack>1?o.pack:undefined,precio_unidad:num(o.precio),costo_unidad:num(o.costo),flete:num(o.flete),estado:o.estado,pago:o.pago,utilidad:r2(orderProfit(o))}}
+function aiContext(){
+  const gar=S.garments.map(g=>{const c=gCalc(g);return {nombre:g.name,tipo:g.tipo||'',tela:g.tela||'',modo_tela:g.modo,kilos_por_prenda:g.modo==='kilos'?num(g.kilos):undefined,precio_kg:g.modo==='kilos'?num(g.precioKg):undefined,merma_pct:g.modo==='kilos'?num(g.merma):undefined,metros_por_prenda:g.modo!=='kilos'?num(g.metros):undefined,precio_metro:g.modo!=='kilos'?num(g.precioMetro):undefined,
+    costos:{tela:r2(c.tela),hilos:num(g.hilos),confeccion:num(g.maquina),avios:num(g.otros),etiqueta:num(g.etiqueta),empaque:num(g.empaque),otras:(g.extras||[]).map(x=>({nombre:x.nombre,monto:num(x.monto)})),cif_por_prenda:r2(c.cif)},
+    costo_directo:r2(c.direct),costo_total:r2(c.total),pvp:c.pvp,ganancia_por_prenda:r2(c.ganancia),margen_pct:r2(c.margen),veces_sobre_costo:r2(c.markup)}});
+  return {hoy:today(),marca:S.settings.marca,moneda:'soles (S/); todos los montos están en soles',tipo_cambio_usd:S.settings.tc,
+    una_devolucion_cuesta_veces_el_flete:S.settings.factor,prendas_base_al_mes:S.settings.base,
+    prendas:gar,gastos_fijos_cif:{total_mensual:r2(cifTotal()),cuota_por_prenda:r2(cuotaCif()),detalle:S.cif.map(x=>({nombre:x.nombre,categoria:x.categoria,monto:num(x.monto),estado:x.estado}))},
+    este_mes:periodStats('mes'),mes_anterior:periodStats('mesant'),total_pedidos_registrados:S.orders.length,
+    ultimos_pedidos:[...S.orders].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,40).map(orderLite),
+    ultimos_gastos_variables:[...S.expenses].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,30).map(g=>({fecha:g.fecha,categoria:g.categoria,descripcion:g.descripcion,monto:num(g.monto)}))};
+}
+const AI_RULES=`Eres el asistente financiero de un taller de ropa en Perú. Hablas en español sencillo, directo y corto. Todos los montos son en soles (S/).
+Reglas: usa SOLO los datos de abajo y las herramientas; nunca inventes cifras. Si falta un dato, dilo y di qué hace falta. Cuando recomiendes un precio, muestra la cuenta (costo total, ganancia por prenda, margen). Referencia: margen menor a 30% es bajo, de 50% a 65% es sano. En venta contra entrega, recuerda que las devoluciones cuestan el flete.
+No puedes crear ni cambiar datos: si hace falta, di en qué pantalla de la app hacerlo (Calculadora, Pedidos, Gastos). Responde con frases cortas y viñetas con guion; sin tablas largas. Para listas largas de pedidos o tendencias, usa las herramientas.`;
+function aiTools(){
+  const find=n=>{n=String(n||'').toLowerCase().trim();return S.garments.find(g=>g.name.toLowerCase()===n)||S.garments.find(g=>g.name.toLowerCase().includes(n))||(S.garments.length===1?S.garments[0]:null)};
+  return [
+    {name:'consultar_pedidos',description:'Busca pedidos por estado, ciudad, producto o rango de fechas (AAAA-MM-DD). Devuelve total, ventas entregadas, utilidad y hasta 40 pedidos (sin datos personales).',
+     inputSchema:{type:'object',properties:{estado:{type:'string'},ciudad:{type:'string'},producto:{type:'string'},desde:{type:'string'},hasta:{type:'string'}}},
+     execute(i){const t=(v)=>String(v||'').toLowerCase().trim();
+       const r=S.orders.filter(o=>(!i.estado||o.estado.toLowerCase()===t(i.estado))&&(!i.ciudad||String(o.ciudad||'').toLowerCase().includes(t(i.ciudad)))&&(!i.producto||String(o.producto||'').toLowerCase().includes(t(i.producto)))&&(!i.desde||o.fecha>=i.desde)&&(!i.hasta||o.fecha<=i.hasta));
+       return {coincidencias:r.length,ventas_entregadas:r2(r.reduce((a,o)=>a+orderRevenue(o),0)),utilidad:r2(r.reduce((a,o)=>a+orderProfit(o),0)),pedidos:r.sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,40).map(orderLite)}}},
+    {name:'resumen_periodo',description:'Resumen del negocio de un periodo: pedidos, ventas, utilidad, gastos variables, gastos fijos (CIF), utilidad neta y tasa de entrega. periodo: mes, mesant, 7d o todo.',
+     inputSchema:{type:'object',properties:{periodo:{type:'string',enum:['mes','mesant','7d','todo']}},required:['periodo']},
+     execute(i){return periodStats(['mes','mesant','7d','todo'].includes(i.periodo)?i.periodo:'mes')}},
+    {name:'tendencia',description:'Serie de ventas, utilidad o pedidos agrupada por dia, semana (lunes a domingo) o mes. Devuelve los ultimos N periodos.',
+     inputSchema:{type:'object',properties:{agrupar:{type:'string',enum:['dia','semana','mes']},metrica:{type:'string',enum:['ventas','utilidad','pedidos']},ultimos:{type:'number'}},required:['agrupar']},
+     execute(i){const m=METRICS[i.metrica]||METRICS.ventas,map=new Map();
+       S.orders.forEach(o=>{if(!o.fecha)return;const d=new Date(o.fecha+'T00:00:00');let k=o.fecha;
+         if(i.agrupar==='mes')k=o.fecha.slice(0,7);else if(i.agrupar==='semana')k=isoDate(new Date(d.getFullYear(),d.getMonth(),d.getDate()-((d.getDay()+6)%7)));
+         map.set(k,(map.get(k)||0)+m.f(o))});
+       return [...map.entries()].sort().slice(-Math.min(60,Math.max(1,num(i.ultimos)||12))).map(([k,v])=>({periodo:k,valor:r2(v)}))}},
+    {name:'calcular_precio',description:'Calcula precio o cantidad para una meta de ganancia con una prenda del catalogo. Con "prendas" devuelve el precio de venta necesario por prenda; con "precio" devuelve cuantas prendas hay que vender. Incluye costos y margen.',
+     inputSchema:{type:'object',properties:{prenda:{type:'string'},meta_ganancia:{type:'number'},prendas:{type:'number'},precio:{type:'number'}},required:['prenda','meta_ganancia']},
+     execute(i){const g=find(i.prenda);if(!g)throw new Error('No encuentro esa prenda en el catalogo');const c=gCalc(g),meta=num(i.meta_ganancia);
+       if(c.total<=0)throw new Error('La prenda no tiene costos cargados');
+       if(num(i.prendas)>0){const n=Math.round(num(i.prendas)),pv=Math.ceil((c.total+meta/n)*10)/10;return {prenda:g.name,costo_total:r2(c.total),prendas:n,precio_necesario:pv,ganancia_por_prenda:r2(pv-c.total),margen_pct:r2((pv-c.total)/pv*100),venta_total:r2(pv*n),inversion_total:r2(c.total*n)}}
+       const pv=num(i.precio)>0?num(i.precio):c.pvp,gu=pv-c.total;if(gu<=0)throw new Error('Con ese precio no hay ganancia por prenda');const n=Math.ceil(meta/gu);
+       return {prenda:g.name,costo_total:r2(c.total),precio:pv,ganancia_por_prenda:r2(gu),margen_pct:r2(gu/pv*100),prendas_necesarias:n,venta_total:r2(pv*n),inversion_total:r2(c.total*n)}}}
+  ];
+}
+const mdLite=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^[ \t]*[-*•][ \t]+/gm,'• ').replace(/\n/g,'<br>');
+function renderAi(){
+  const box=$('#aiMsgs');
+  const hello=aiTurns.length===0?`<div class="msg a">Hola, soy tu asistente. Veo tus prendas, costos, pedidos y gastos. Pregúntame lo que quieras, por ejemplo cuánto cobrar o cómo vas este mes.</div>`:'';
+  box.innerHTML=hello+aiTurns.map(m=>`<div class="msg ${m.role==='user'?'u':'a'}">${m.role==='user'?esc(m.content):mdLite(m.content)}</div>`).join('');
+  box.scrollTop=box.scrollHeight;
+  $('#aiChips').hidden=aiTurns.length>0;
+}
+function aiErr(c){return ({not_granted:'No diste permiso para usar el asistente. Vuelve a preguntar y acepta el aviso.',rate_limited:'Hiciste muchas preguntas seguidas. Espera un momento e inténtalo de nuevo.',prompt_too_large:'Hay demasiados datos para analizar de una vez. Prueba con una pregunta más específica.',sampling_disabled:'El asistente no está disponible en esta cuenta.',refused:'No puedo responder eso.'})[c]||'No pude responder ahora. Inténtalo de nuevo en un momento.'}
+async function aiSend(q){
+  q=String(q||'').trim();if(!AI||!q||aiBusy)return;
+  aiBusy=true;aiTurns.push({role:'user',content:q});
+  const cur={role:'assistant',content:'Pensando…'};aiTurns.push(cur);renderAi();
+  $('#aiSend').hidden=true;$('#aiStop').hidden=false;$('#aiInput').value='';
+  aiCtl=new AbortController();
+  const hist=aiTurns.slice(0,-1).slice(-11);
+  const turns=[{role:'user',content:AI_RULES+'\n\nDATOS DEL NEGOCIO (JSON):\n'+JSON.stringify(aiContext())},{role:'assistant',content:'Entendido. Tengo tus datos y las reglas. ¿Qué necesitas?'},...hist];
+  try{
+    const r=await AI(turns,{cache:false,signal:aiCtl.signal,tools:aiTools(),onText:({text})=>{cur.content=text;renderAi()}});
+    cur.content=r.text+(r.truncated?'\n\n(La respuesta se cortó. Pregunta por partes.)':'');
+  }catch(e){
+    if(e&&e.code==='cancelled')cur.content=(e.text||'')+(e.text?'\n\n(Detenido.)':'Detenido.');
+    else cur.content=(e&&e.text?e.text+'\n\n':'')+aiErr(e&&e.code);
+  }finally{aiBusy=false;aiCtl=null;$('#aiSend').hidden=false;$('#aiStop').hidden=true;renderAi()}
+}
+function openAi(){$('#aiPanel').hidden=false;renderAi();setTimeout(()=>$('#aiInput').focus(),50)}
+function closeAi(){if(aiCtl)aiCtl.abort();$('#aiPanel').hidden=true;$('#aiFab').focus()}
+$('#aiFab').innerHTML=icon('spark')+'<span>Asistente</span>';
+$('#aiChips').innerHTML=AI_CHIPS.map(c=>`<button type="button">${esc(c)}</button>`).join('');
+$('#aiChips').addEventListener('click',e=>{const b=e.target.closest('button');if(b)aiSend(b.textContent)});
+$('#aiFab').addEventListener('click',openAi);$('#aiClose').addEventListener('click',closeAi);
+$('#aiClear').addEventListener('click',()=>{if(aiCtl)aiCtl.abort();aiTurns.length=0;renderAi()});
+$('#aiStop').addEventListener('click',()=>{if(aiCtl)aiCtl.abort()});
+$('#aiForm').addEventListener('submit',e=>{e.preventDefault();aiSend($('#aiInput').value)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#aiPanel').hidden)closeAi()});
+async function connectAi(){
+  try{AI=window.claude&&window.claude.use?await window.claude.use('sample'):null}catch(e){AI=null}
+  $('#aiFab').hidden=!AI;
+}
+
 /* ================= arranque ================= */
 load();applyTheme();resetPed();resetGas();resetCif();
 ui.gid=S.garments[0]?.id||null;
 showTab('dash');
 connectDb();
+connectAi();
 </script>
 </body>
 </html>
