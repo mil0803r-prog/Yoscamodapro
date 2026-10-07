@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Yosca Moda Pro</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%2300c383%22/%3E%3Cstop offset=%221%22 stop-color=%22%23005c3b%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%2240%22 height=%2240%22 rx=%2211%22 fill=%22url(%23g)%22/%3E%3Cpath d=%22M11.5 10.5 20 22l8.5-11.5M20 22v8%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%223.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -37,19 +38,34 @@ html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--surface);color:var(--on);font:14px/1.45 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
 .app{max-width:680px;margin:0 auto;padding:0 16px 96px}
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--surface);padding:12px 0 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line)}
-.brand{display:flex;flex-direction:column;line-height:1.1}
-.brand b{font-size:19px;font-weight:800;letter-spacing:.02em}
-.brand b span{color:var(--primary)}
-.brand small{color:var(--on-var);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
-.tools{display:flex;gap:6px;align-items:center}
+.brandrow{display:flex;align-items:center;gap:11px;min-width:0}
+.logo{flex:0 0 auto;filter:drop-shadow(0 3px 6px rgba(0,108,70,.28))}
+.brand{display:flex;flex-direction:column;line-height:1.05;min-width:0}
+.brand b{font-size:17px;font-weight:800;letter-spacing:.08em;white-space:nowrap}
+.brand b span{color:var(--primary);font-weight:500;letter-spacing:.18em;margin-left:1px}
+.brand small{color:var(--on-var);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-top:4px;white-space:nowrap}
+@media (max-width:390px){.brand b{font-size:15px;letter-spacing:.05em}.brand b span{letter-spacing:.1em}.brand small{font-size:8px;letter-spacing:.08em}.logo{width:34px;height:34px}.brandrow{gap:8px}.iconbtn{width:34px;height:34px}.tools{gap:4px}.seg button{padding:6px 9px}}
+.pagehead{display:flex;align-items:center;gap:12px;padding:2px 0 4px}
+.pagehead .pico{width:44px;height:44px;border-radius:14px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;flex:0 0 auto}
+.pagehead .pico svg{width:22px;height:22px}
+.pagehead h1{margin:0;font-size:21px;font-weight:800;letter-spacing:-.015em;line-height:1.15}
+.pagehead p{margin:2px 0 0;color:var(--on-var);font-size:12.5px}
+.hd{display:flex;align-items:center;gap:8px}
+.hd svg{width:18px;height:18px;color:var(--primary);flex:0 0 auto}
+.kpi.hero{grid-column:1/-1;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-c) 100%);color:#fff;padding:18px;box-shadow:0 8px 22px rgba(0,108,70,.28)}
+.kpi.hero.neg{background:linear-gradient(135deg,#a3201a 0%,#e5484d 100%);box-shadow:0 8px 22px rgba(186,26,26,.28)}
+.kpi.hero .caps,.kpi.hero small,.kpi.hero b{color:#fff}
+.kpi.hero .caps{opacity:.85}.kpi.hero small{opacity:.85}
+.kpi.hero b{font-size:32px;letter-spacing:-.02em}
+.tools{display:flex;gap:6px;align-items:center;flex:0 0 auto}
 .seg{display:inline-flex;background:var(--s-cont);border-radius:999px;padding:3px;gap:2px}
-.seg button{border:0;background:transparent;color:var(--on-var);font:inherit;font-weight:600;font-size:12px;padding:6px 11px;border-radius:999px;cursor:pointer}
+.seg button{white-space:nowrap;border:0;background:transparent;color:var(--on-var);font:inherit;font-weight:600;font-size:12px;padding:6px 11px;border-radius:999px;cursor:pointer}
 .seg button.on{background:var(--s-lowest);color:var(--primary);font-weight:800;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .iconbtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--s-lowest);color:var(--on);display:grid;place-items:center;cursor:pointer}
 svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 main{padding-top:14px;display:flex;flex-direction:column;gap:14px}
-.card{background:var(--s-lowest);border:1px solid var(--line);border-radius:16px;padding:14px}
-.card h2,.card h3{margin:0;font-size:15px;font-weight:800}
+.card{background:var(--s-lowest);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 1px 2px rgba(11,28,48,.05)}
+.card h2,.card h3{margin:0;font-size:15px;font-weight:800;letter-spacing:-.005em}
 .sub{color:var(--on-var);font-size:12px;margin:2px 0 0}
 .caps{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--on-var)}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -65,13 +81,13 @@ main{padding-top:14px;display:flex;flex-direction:column;gap:14px}
 .kpi.big b{font-size:26px;color:var(--primary)}
 .pos{color:var(--primary)}.neg{color:var(--error)}.warn{color:var(--warn)}
 label{display:block;font-size:11px;font-weight:700;color:var(--on-var);margin-bottom:4px;letter-spacing:.03em}
-input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--on);font:inherit;min-width:0}
+input,select,textarea{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--on);font:inherit;min-width:0}
 textarea{min-height:64px;resize:vertical}
 input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
 .form{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 .full{grid-column:1/-1}
 .btn{border:0;border-radius:999px;padding:11px 18px;font:inherit;font-weight:800;cursor:pointer;background:var(--s-high);color:var(--on)}
-.btn.pri{background:var(--primary-c);color:var(--on-primary);box-shadow:var(--shadow)}
+.btn.pri{background:linear-gradient(135deg,var(--primary-c),var(--primary));color:var(--on-primary);box-shadow:var(--shadow)}
 .btn.sm{padding:6px 12px;font-size:12px}
 .btn.del{background:transparent;color:var(--error);border:1px solid var(--error)}
 .btn.ghost{background:transparent;border:1px solid var(--line)}
@@ -107,7 +123,7 @@ td.num,th.num{text-align:right}
 .alert{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:var(--warn-soft);color:var(--on);font-size:13px}
 .alert.err{background:var(--error-soft)}
 .hint{font-size:12px;color:var(--on-var);margin-top:6px}
-nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--s-lowest);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--s-lowest);border-top:1px solid var(--line);border-radius:20px 20px 0 0;box-shadow:0 -8px 24px rgba(11,28,48,.08);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px))}
 nav.bottom div{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
 nav.bottom button{border:0;background:transparent;color:var(--on-var);font:inherit;font-size:10.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:12px;cursor:pointer;min-width:0}
 nav.bottom button.on{color:var(--primary);background:var(--primary-soft)}
@@ -120,19 +136,20 @@ a{color:var(--primary)}
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><b id="brandName">YOSCA <span>MODA</span></b><small>Taller &amp; Finanzas</small></div>
+    <div class="brandrow"><svg class="logo" viewBox="0 0 40 40" width="40" height="40" role="img" aria-label="Yosca Moda"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00c383"/><stop offset="1" stop-color="#005c3b"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#lg)"/><path d="M11.5 10.5 20 22l8.5-11.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 22v8" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/><circle cx="28.5" cy="10.5" r="1.7" fill="#73fbb8"/></svg><div class="brand"><b id="brandName">YOSCA <span>MODA</span></b><small>Taller &amp; Finanzas</small></div></div>
     <div class="tools">
-      <div class="seg" id="curSeg"><button data-cur="PEN">S/ PEN</button><button data-cur="USD">USD</button></div>
+      <div class="seg" id="curSeg" aria-label="Moneda"><button data-cur="PEN" title="Soles">S/</button><button data-cur="USD" title="Dólares">$</button></div>
       <button class="iconbtn" id="themeBtn" title="Cambiar tema" aria-label="Cambiar tema"></button>
       <button class="iconbtn" id="setBtn" title="Ajustes y respaldo" aria-label="Ajustes y respaldo"></button>
     </div>
   </header>
 
   <main>
+    <div class="pagehead" id="pageHead"></div>
     <!-- DASHBOARD -->
     <section id="v-dash" hidden>
       <div class="card row sb" style="margin-bottom:14px">
-        <div><span class="caps">Pulso del día</span><h2 id="hola">Hola</h2></div>
+        <div><span class="caps">Periodo</span><h2 id="hola">Hola</h2></div>
         <select id="periodo" style="width:auto"><option value="mes">Este mes</option><option value="mesant">Mes anterior</option><option value="7d">Últimos 7 días</option><option value="todo">Todo</option></select>
       </div>
       <div class="grid" id="kpis"></div>
@@ -289,6 +306,10 @@ const ICONS={
   sun:'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/>',
   moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  layers:'<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+  tag:'<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>',
+  pkg:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+  target:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
   camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'
 };
 const icon=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -395,14 +416,16 @@ $('#themeBtn').addEventListener('click',()=>{
   const dark=document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);
   S.settings.tema=dark?'light':'dark';applyTheme();save();
 });
-$('#curSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.settings.moneda=b.dataset.cur;applyTheme();save();refreshAll();toast(b.dataset.cur==='USD'?`Mostrando en dólares (S/ ${S.settings.tc} = $1)`:'Mostrando en soles')});
+$('#curSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.settings.moneda=b.dataset.cur;applyTheme();save();refreshAll();toast(b.dataset.cur==='USD'?`Mostrando en dólares (S/ ${S.settings.tc} = $1)`:'Mostrando en soles (S/)')});
 $('#setBtn').innerHTML=icon('gear');$('#setBtn').addEventListener('click',()=>showTab('set'));
 
 const TABS=[['dash','Dashboard','dash'],['calc','Calculadora','calc'],['ped','Pedidos','bag'],['gas','Gastos','money'],['proy','Proyección','trend']];
 $('#nav').innerHTML=TABS.map(([k,n,i])=>`<button data-tab="${k}">${icon(i)}<span>${n}</span></button>`).join('');
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)showTab(b.dataset.tab)});
+const HEADS={dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
 function showTab(t){
   ui.tab=t;
+  const hd=HEADS[t];$('#pageHead').innerHTML=`<div class="pico">${icon(hd[0])}</div><div><h1>${hd[1]}</h1><p>${hd[2]}</p></div>`;
   ['dash','calc','ped','gas','proy','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   scrollTo(0,0);renderTab();
@@ -452,7 +475,7 @@ function renderDash(){
   const k=(l,v,c='',s='',cls='')=>`<div class="kpi ${cls}"><span class="caps">${l}</span><b class="${c}">${v}</b>${s?`<small>${s}</small>`:''}</div>`;
   $('#hola').textContent='Hola, '+((S.settings.marca||'Yosca').split(' ')[0]);
   $('#kpis').innerHTML=
-    k('Utilidad neta real',fmt(neta),neta>=0?'pos':'neg','después de gastos fijos y variables','big')+
+    k('Utilidad neta real',fmt(neta),'','después de gastos fijos y variables','hero'+(neta<0?' neg':''))+
     k('Ventas entregadas',fmt(ventas))+
     k('Utilidad de pedidos',fmt(bruta),bruta>=0?'pos':'neg')+
     k('Gastos variables',fmt(vars))+
@@ -507,7 +530,7 @@ function renderCalc(){
   </div>
 
   <div class="card" style="margin-top:14px">
-    <div class="row sb"><div><h3>Tela principal</h3><p class="sub">Compra por kilo o por metro</p></div>
+    <div class="row sb"><div><h3 class="hd">${icon('layers')}Tela principal</h3><p class="sub">Compra por kilo o por metro</p></div>
       <div class="seg" id="modoSeg"><button data-m="kilos" class="${kil?'on':''}">Por kilo</button><button data-m="metros" class="${kil?'':'on'}">Por metro</button></div></div>
     <div class="form" style="margin-top:12px">
       ${kil?`
@@ -522,7 +545,7 @@ function renderCalc(){
   </div>
 
   <div class="card" style="margin-top:14px">
-    <h3>Estructura de gastos por prenda</h3><p class="sub">¿Cuánto cuesta hacer una prenda? Cuenta todo.</p>
+    <h3 class="hd">${icon('pkg')}Estructura de gastos por prenda</h3><p class="sub">¿Cuánto cuesta hacer una prenda? Cuenta todo.</p>
     <div class="form" style="margin-top:12px">
       <div><label for="f-hilos">Hilo, hilaza y costuras (S/)</label><input id="f-hilos" type="number" step="any" min="0" data-g="hilos" value="${esc(g.hilos||'')}"></div>
       <div><label for="f-maq">Confección y máquinas (S/)</label><input id="f-maq" type="number" step="any" min="0" data-g="maquina" value="${esc(g.maquina||'')}"></div>
@@ -537,7 +560,7 @@ function renderCalc(){
   </div>
 
   <div class="card" style="margin-top:14px">
-    <h3>Precio de venta</h3>
+    <h3 class="hd">${icon('tag')}Precio de venta</h3>
     <div style="margin-top:10px"><label for="f-pvp">PVP al público (S/)</label><input id="f-pvp" type="number" step="any" min="0" data-g="pvp" value="${esc(g.pvp||'')}"></div>
     <div class="scen" id="scen" style="margin-top:12px"></div>
     <p class="hint">Toca un escenario para usar ese precio.</p>
@@ -594,7 +617,7 @@ function renderModeCard(){
     <input type="range" id="lote" min="1" max="30" value="${ui.lote}" aria-label="Cantidad de prendas">
     <div class="grid2" id="modeOut" style="margin-top:12px"></div>`;
   }else{
-    el.innerHTML=`<h3>¿Cuánto quieres ganar?</h3><p class="sub">Dime tu meta y te digo a cuánto vender o cuántas prendas necesitas.</p>
+    el.innerHTML=`<h3 class="hd">${icon('target')}¿Cuánto quieres ganar?</h3><p class="sub">Dime tu meta y te digo a cuánto vender o cuántas prendas necesitas.</p>
     <div style="margin-top:10px"><label for="m-meta">Ganancia que quieres (S/)</label><input id="m-meta" type="number" min="0" step="any" value="${esc(ui.meta)}"></div>
     <div class="seg" id="fromSeg" style="margin:10px 0;display:flex"><button data-from="cant" style="flex:1" class="${ui.metaFrom==='cant'?'on':''}">Sé cuántas prendas</button><button data-from="precio" style="flex:1" class="${ui.metaFrom==='precio'?'on':''}">Sé el precio</button></div>
     ${ui.metaFrom==='cant'?`<div><label for="m-n">Prendas que vas a vender</label><input id="m-n" type="number" min="1" step="1" value="${esc(ui.metaN)}"></div>`:`<p class="sub">Se usa el PVP de arriba.</p>`}
