@@ -302,7 +302,7 @@ const CATS_VAR=['Tela / Gamarra','Hilos y avíos','Confección / maquila','Publi
 const CATS_CIF=['Alquiler del taller','Luz, agua e internet','Sueldos fijos','Marketing fijo','Mantenimiento de máquinas','Movilidad','Otros'];
 
 let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto'}};
-const ui={tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null};
+const ui={tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
 
 /* ---- costos de una prenda (todo en soles) ---- */
 const telaCost=g=>g.modo==='kilos'?num(g.kilos)*num(g.precioKg)*(1+num(g.merma)/100):num(g.metros)*num(g.precioMetro);
@@ -490,6 +490,9 @@ function renderCalc(){
   }
   const kil=g.modo==='kilos';
   $('#calcBody').innerHTML=`
+  <div class="card" style="margin-top:14px"><span class="caps">¿Qué quieres calcular?</span>
+    <div class="seg" id="modeSeg" style="margin-top:8px;display:flex"><button data-mode="prenda" style="flex:1" class="${ui.mode==='prenda'?'on':''}">Por prenda</button><button data-mode="meta" style="flex:1" class="${ui.mode==='meta'?'on':''}">Cuánto quieres ganar</button></div>
+  </div>
   <div class="card" style="margin-top:14px">
     <div class="photo" id="photoBox" role="button" tabindex="0" aria-label="Subir foto de la prenda">${g.image?`<img src="${esc(g.image)}" alt="Foto de ${esc(g.name)}">`:`<span>${icon('camera')}Agregar foto<small style="font-weight:500">Toca para subir</small></span>`}</div>
     ${g.image?'<div class="row" style="margin-top:8px"><button class="btn sm ghost" id="photoDel">Quitar foto</button></div>':''}
@@ -538,19 +541,14 @@ function renderCalc(){
 
   <div id="calcOut"></div>
 
-  <div class="card" style="margin-top:14px">
-    <h3>¿En cuántas prendas será el cálculo?</h3>
-    <div class="row sb" style="margin:10px 0 4px"><b id="loteLbl"></b><span class="sub" id="loteSub"></span></div>
-    <input type="range" id="lote" min="1" max="30" value="${ui.lote}" aria-label="Cantidad de prendas">
-    <div class="grid2" id="loteOut" style="margin-top:12px"></div>
-  </div>
+  <div class="card" style="margin-top:14px" id="modeCard"></div>
 
   <div class="row" style="margin-top:14px">
     <button class="btn pri" id="qSave">Guardar cotización</button>
     <button class="btn del" id="gDel">Eliminar prenda</button>
   </div>
   <div class="card" style="margin-top:14px"><h3>Historial de cotizaciones</h3><div id="qList"></div></div>`;
-  renderCalcOut();
+  renderModeCard();renderCalcOut();
 }
 function renderCalcOut(){
   const g=curG();if(!g||!$('#calcOut'))return;
@@ -578,14 +576,50 @@ function renderCalcOut(){
       <div class="legend">${parts.map(([l,v,col])=>`<span><em style="background:${col}"></em>${l} ${pctOf(v).toFixed(1)}%</span>`).join('')}</div></div>
   </div>
   </div>`;
-  $('#loteLbl').textContent=`${n} ${n===1?'prenda':'prendas'}`;
-  $('#loteSub').textContent=n===1?'Cálculo unitario':'Pedido completo';
-  $('#loteOut').innerHTML=`
-      <div class="kpi"><span class="caps">Inversión total</span><b>${fmt(c.total*n)}</b></div>
-      <div class="kpi"><span class="caps">Venta total</span><b>${fmt(c.pvp*n)}</b></div>
-      <div class="kpi"><span class="caps">Ganancia del pedido</span><b class="${c.ganancia>=0?'pos':'neg'}">${fmt(c.ganancia*n)}</b></div>
-      <div class="kpi"><span class="caps">Tela necesaria</span><b>${consumo}</b></div>`;
+  updateModeOut();
   renderQuotes();
+}
+function renderModeCard(){
+  const el=$('#modeCard');if(!el)return;
+  if(ui.mode==='prenda'){
+    el.innerHTML=`<h3>¿En cuántas prendas será el cálculo?</h3>
+    <div class="row sb" style="margin:10px 0 4px"><b id="loteLbl"></b><span class="sub" id="loteSub"></span></div>
+    <input type="range" id="lote" min="1" max="30" value="${ui.lote}" aria-label="Cantidad de prendas">
+    <div class="grid2" id="modeOut" style="margin-top:12px"></div>`;
+  }else{
+    el.innerHTML=`<h3>¿Cuánto quieres ganar?</h3><p class="sub">Dime tu meta y te digo a cuánto vender o cuántas prendas necesitas.</p>
+    <div style="margin-top:10px"><label for="m-meta">Ganancia que quieres (S/)</label><input id="m-meta" type="number" min="0" step="any" value="${esc(ui.meta)}"></div>
+    <div class="seg" id="fromSeg" style="margin:10px 0;display:flex"><button data-from="cant" style="flex:1" class="${ui.metaFrom==='cant'?'on':''}">Sé cuántas prendas</button><button data-from="precio" style="flex:1" class="${ui.metaFrom==='precio'?'on':''}">Sé el precio</button></div>
+    ${ui.metaFrom==='cant'?`<div><label for="m-n">Prendas que vas a vender</label><input id="m-n" type="number" min="1" step="1" value="${esc(ui.metaN)}"></div>`:`<p class="sub">Se usa el PVP de arriba.</p>`}
+    <div class="grid2" id="modeOut" style="margin-top:12px"></div><div id="modeNote"></div>`;
+  }
+}
+function updateModeOut(){
+  const g=curG(),el=$('#modeOut');if(!g||!el)return;
+  const c=gCalc(g),kil=g.modo==='kilos';
+  const tela=n=>kil?`${r2(num(g.kilos)*(1+num(g.merma)/100)*n)} kg`:`${r2(num(g.metros)*n)} m`;
+  const k=(l,v,cls='')=>`<div class="kpi"><span class="caps">${l}</span><b class="${cls}">${v}</b></div>`;
+  if(ui.mode==='prenda'){
+    const n=ui.lote;
+    $('#loteLbl').textContent=`${n} ${n===1?'prenda':'prendas'}`;$('#loteSub').textContent=n===1?'Cálculo unitario':'Pedido completo';
+    el.innerHTML=k('Inversión total',fmt(c.total*n))+k('Venta total',fmt(c.pvp*n))+k('Ganancia del pedido',fmt(c.ganancia*n),c.ganancia>=0?'pos':'neg')+k('Tela necesaria',tela(n));
+    return;
+  }
+  const meta=num(ui.meta),note=$('#modeNote');let n,precio;
+  if(c.total<=0||meta<=0){el.innerHTML='';note.innerHTML=`<div class="alert">${c.total<=0?'Completa los costos de la prenda para calcular.':'Escribe cuánto quieres ganar.'}</div>`;return}
+  if(ui.metaFrom==='cant'){
+    n=Math.max(1,Math.round(num(ui.metaN))||1);precio=Math.ceil((c.total+meta/n)*10)/10;
+  }else{
+    precio=c.pvp;const gu=precio-c.total;
+    if(gu<=0){el.innerHTML='';note.innerHTML=`<div class="alert err">Con un PVP de ${fmt(precio)} no ganas nada por prenda (el costo es ${fmt(c.total)}). Sube el precio de venta.</div>`;return}
+    n=Math.ceil(meta/gu);
+  }
+  const gu=precio-c.total,margen=precio>0?gu/precio*100:0;
+  el.innerHTML=(ui.metaFrom==='cant'?k('Precio de venta necesario',fmt(precio),'pos'):k('Prendas que debes vender',n+' prendas','pos'))+
+    k('Ganancia por prenda',fmt(gu))+k('Margen',pct(margen))+k('Inversión total',fmt(c.total*n))+k('Venta total',fmt(precio*n))+k('Tela necesaria',tela(n));
+  note.innerHTML=ui.metaFrom==='cant'
+    ?`<div class="row" style="margin-top:12px"><button class="btn pri" id="usePrice" data-price="${precio}">Usar ${fmt(precio)} como PVP</button></div>`
+    :`<p class="hint">Vendiendo ${n} prendas a ${fmt(precio)} ganas ${fmt(gu*n)}.</p>`;
 }
 function renderQuotes(){
   const el=$('#qList');if(!el)return;
@@ -601,6 +635,9 @@ $('#v-calc').addEventListener('click',e=>{
   const chip=t.closest('[data-gid]');if(chip){ui.gid=chip.dataset.gid;renderCalc();return}
   if(t.closest('#gNew')||t.closest('#gNew2')){const n=S.garments.length+1;const g=newGarment({sku:'PRENDA-'+String(n).padStart(2,'0'),name:'Nueva prenda'});S.garments.push(g);ui.gid=g.id;save();renderCalc();return}
   if(t.closest('#gReset')){const g=curG();if(!g)return;ask(`¿Dejar en cero los costos de "${g.name}"?`,()=>{Object.assign(g,{kilos:0,precioKg:0,merma:0,metros:0,precioMetro:0,hilos:0,maquina:0,otros:0,cifManual:null,pvp:0});save();renderCalc();toast('Costos puestos en cero')});return}
+  const md=t.closest('#modeSeg button');if(md){ui.mode=md.dataset.mode;renderCalc();return}
+  const fr=t.closest('#fromSeg button');if(fr){ui.metaFrom=fr.dataset.from;renderModeCard();updateModeOut();return}
+  const up=t.closest('#usePrice');if(up){curG().pvp=num(up.dataset.price);save();renderCalc();toast('PVP actualizado');return}
   const m=t.closest('#modoSeg button');if(m){const g=curG();g.modo=m.dataset.m;save();renderCalc();return}
   const sc=t.closest('#scen button');if(sc&&!sc.disabled){curG().pvp=num(sc.dataset.price);save();renderCalc();return}
   if(t.closest('#photoBox')){$('#photoIn').click();return}
@@ -615,7 +652,9 @@ $('#v-calc').addEventListener('click',e=>{
 });
 $('#v-calc').addEventListener('input',e=>{
   const t=e.target,g=curG();
-  if(t.id==='lote'){ui.lote=num(t.value)||1;renderCalcOut();return}
+  if(t.id==='lote'){ui.lote=num(t.value)||1;updateModeOut();return}
+  if(t.id==='m-meta'){ui.meta=num(t.value);updateModeOut();return}
+  if(t.id==='m-n'){ui.metaN=num(t.value);updateModeOut();return}
   const f=t.dataset.g;if(!f||!g)return;
   if(t.dataset.t==='s'){g[f]=t.value}
   else if(f==='cifManual'){g.cifManual=t.value===''?null:num(t.value)}
