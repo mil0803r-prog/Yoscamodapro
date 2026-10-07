@@ -325,6 +325,7 @@ a{color:var(--primary)}
     <div class="row"><button class="btn sm ghost" id="aiClear" type="button">Limpiar</button><button class="btn sm" id="aiClose" type="button">Cerrar</button></div></div>
   <div class="aimsgs" id="aiMsgs" aria-live="polite"></div>
   <div class="aichips" id="aiChips"></div>
+  <form class="aiform" id="aiCodeRow" autocomplete="off" hidden><input id="aiCode" type="password" placeholder="Clave de acceso del asistente" aria-label="Clave de acceso del asistente" autocomplete="off"><button class="btn pri" type="submit">Entrar</button></form>
   <form class="aiform" id="aiForm" autocomplete="off"><input id="aiInput" placeholder="Pregúntame sobre tus costos, precios o ventas…" aria-label="Escribe tu pregunta"><button class="btn pri" id="aiSend" type="submit">Enviar</button><button class="btn del" id="aiStop" type="button" hidden>Parar</button></form>
 </section>
 
@@ -1173,7 +1174,7 @@ function renderAi(){
   box.scrollTop=box.scrollHeight;
   $('#aiChips').hidden=aiTurns.length>0;
 }
-function aiErr(c){return ({not_granted:'No diste permiso para usar el asistente. Vuelve a preguntar y acepta el aviso.',rate_limited:'Hiciste muchas preguntas seguidas. Espera un momento e inténtalo de nuevo.',prompt_too_large:'Hay demasiados datos para analizar de una vez. Prueba con una pregunta más específica.',sampling_disabled:'El asistente no está disponible en esta cuenta.',refused:'No puedo responder eso.'})[c]||'No pude responder ahora. Inténtalo de nuevo en un momento.'}
+function aiErr(c){return ({not_granted:'No diste permiso para usar el asistente. Vuelve a preguntar y acepta el aviso.',rate_limited:'Hiciste muchas preguntas seguidas. Espera un momento e inténtalo de nuevo.',prompt_too_large:'Hay demasiados datos para analizar de una vez. Prueba con una pregunta más específica.',sampling_disabled:'El asistente no está disponible en esta cuenta.',refused:'No puedo responder eso.',clave_invalida:'La clave de acceso no es correcta. Escríbela de nuevo.',no_configurado:'El asistente aún no está configurado en el servidor (faltan la clave de Gemini o la clave de acceso).',clave_gemini:'La clave de Gemini del servidor no es válida. Revísala en la configuración de tu hosting.',cuota:'Se agotó el límite de uso de Gemini por ahora. Inténtalo en unos minutos.',tiempo:'Gemini tardó demasiado en responder. Inténtalo de nuevo.',bloqueado:'Gemini no quiso responder esa pregunta. Prueba con otras palabras.'})[c]||'No pude responder ahora. Inténtalo de nuevo en un momento.'}
 async function aiSend(q){
   q=String(q||'').trim();if(!AI||!q||aiBusy)return;
   aiBusy=true;aiTurns.push({role:'user',content:q});
@@ -1187,10 +1188,10 @@ async function aiSend(q){
     cur.content=r.text+(r.truncated?'\n\n(La respuesta se cortó. Pregunta por partes.)':'');
   }catch(e){
     if(e&&e.code==='cancelled')cur.content=(e.text||'')+(e.text?'\n\n(Detenido.)':'Detenido.');
-    else cur.content=(e&&e.text?e.text+'\n\n':'')+aiErr(e&&e.code);
+    else{cur.content=(e&&e.text?e.text+'\n\n':'')+aiErr(e&&e.code);if(AI_HTTP&&e&&e.code==='clave_invalida'){try{localStorage.removeItem('yosca_ai_clave')}catch(err){}aiShowCode(true)}}
   }finally{aiBusy=false;aiCtl=null;$('#aiSend').hidden=false;$('#aiStop').hidden=true;renderAi()}
 }
-function openAi(){$('#aiPanel').hidden=false;renderAi();setTimeout(()=>$('#aiInput').focus(),50)}
+function openAi(){$('#aiPanel').hidden=false;renderAi();if(AI_HTTP&&!aiCode())aiShowCode(true);else setTimeout(()=>$('#aiInput').focus(),50)}
 function closeAi(){if(aiCtl)aiCtl.abort();$('#aiPanel').hidden=true;$('#aiFab').focus()}
 $('#aiFab').innerHTML=icon('spark')+'<span>Asistente</span>';
 $('#aiChips').innerHTML=AI_CHIPS.map(c=>`<button type="button">${esc(c)}</button>`).join('');
@@ -1200,8 +1201,56 @@ $('#aiClear').addEventListener('click',()=>{if(aiCtl)aiCtl.abort();aiTurns.lengt
 $('#aiStop').addEventListener('click',()=>{if(aiCtl)aiCtl.abort()});
 $('#aiForm').addEventListener('submit',e=>{e.preventDefault();aiSend($('#aiInput').value)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#aiPanel').hidden)closeAi()});
+/* Fuera de Claude: el asistente usa el servicio propio /api/asistente (con Gemini). Misma firma que la función de Claude. */
+let AI_HTTP=false;
+const aiCode=()=>{try{return localStorage.getItem('yosca_ai_clave')||''}catch(e){return ''}};
+function aiShowCode(show){$('#aiCodeRow').hidden=!show;$('#aiForm').hidden=show;if(show)setTimeout(()=>$('#aiCode').focus(),50)}
+async function httpAsk(turns,opts={}){
+  const system=turns[0].content;                      // la primera pregunta lleva las reglas y los datos
+  const contents=turns.slice(2).map(t=>({role:t.role==='assistant'?'model':'user',parts:[{text:t.content}]}));
+  const tools=opts.tools||[];
+  const tools_=tools.map(t=>({name:t.name,description:t.description,parameters:t.inputSchema||{type:'object',properties:{}}}));
+  for(let ronda=0;ronda<6;ronda++){
+    let r;
+    try{r=await fetch('/api/asistente',{method:'POST',headers:{'Content-Type':'application/json','x-asistente-clave':aiCode()},body:JSON.stringify({system,contents,tools:tools_}),signal:opts.signal})}
+    catch(e){if(e&&e.name==='AbortError')throw {code:'cancelled',message:''};throw {code:'upstream_error',message:String(e)}}
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){
+      const code=({401:'clave_invalida',429:j.error==='cuota'?'cuota':'rate_limited',503:'no_configurado',413:'prompt_too_large'})[r.status]||j.error||'upstream_error';
+      throw {code,message:j.error||''};
+    }
+    if(j.functionCalls&&j.functionCalls.length){
+      contents.push(j.content);
+      const partes=[];
+      for(const c of j.functionCalls){
+        const t=tools.find(x=>x.name===c.name);let result;
+        try{result=t?await t.execute(c.args||{},{signal:opts.signal}):'Error: herramienta desconocida'}catch(e){result='Error: '+((e&&e.message)||e)}
+        const fr={name:c.name,response:{result}};if(c.id)fr.id=c.id;partes.push({functionResponse:fr});
+      }
+      contents.push({role:'user',parts:partes});
+      continue;
+    }
+    const text=String(j.text||'').trim();
+    if(!text)throw {code:'empty_completion',message:''};
+    if(opts.onText)opts.onText({text,delta:text});
+    return {text,truncated:j.truncated===true};
+  }
+  throw {code:'upstream_error',message:'demasiadas rondas'};
+}
+$('#aiCodeRow').addEventListener('submit',e=>{
+  e.preventDefault();const v=$('#aiCode').value.trim();if(!v)return;
+  try{localStorage.setItem('yosca_ai_clave',v)}catch(err){}
+  $('#aiCode').value='';aiShowCode(false);$('#aiInput').focus();
+});
 async function connectAi(){
   try{AI=window.claude&&window.claude.use?await window.claude.use('sample'):null}catch(e){AI=null}
+  if(!AI){
+    try{
+      const r=await fetch('/api/asistente',{signal:AbortSignal.timeout(4000)});
+      const j=r.ok?await r.json():null;
+      if(j&&j.disponible){AI=httpAsk;AI_HTTP=true}
+    }catch(e){}
+  }
   $('#aiFab').hidden=!AI;
 }
 

@@ -1,0 +1,6 @@
+{
+  "name": "yosca-moda-pro",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "node dev-server.mjs" }
+}
