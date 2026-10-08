@@ -162,6 +162,9 @@ a{color:var(--primary)}
 .pw{position:relative}.pw input{padding-right:48px}
 .eye{position:absolute;right:3px;top:50%;transform:translateY(-50%);width:42px;height:42px;border:0;background:transparent;color:var(--on-var);display:grid;place-items:center;cursor:pointer;border-radius:50%}
 .eye:hover{color:var(--on)}
+.wa{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#1faa52;color:#fff;vertical-align:middle;margin-left:6px;text-decoration:none;flex:0 0 auto}
+.wa:hover{background:#178a42}.wa svg{width:16px;height:16px;fill:#fff}
+.pw .wa{position:absolute;right:8px;top:50%;transform:translateY(-50%);margin:0;width:32px;height:32px}.pw .wa svg{width:18px;height:18px}
 .sep{display:flex;align-items:center;gap:10px;color:var(--on-var);font-size:12px;font-weight:700}
 .sep::before,.sep::after{content:"";flex:1;height:1px;background:var(--line)}
 .linkbtn{background:none;border:0;color:var(--primary);font:inherit;font-weight:700;cursor:pointer;padding:6px 0;text-align:left}
@@ -232,7 +235,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
           <div id="packBox" hidden><label for="p-pp">Precio del pack completo (S/)</label><input id="p-pp" type="number" name="precioPack" min="0" step="any"></div>
           <div class="full alert" id="packHint" style="background:var(--primary-soft)" hidden></div>
           <div><label for="p-cliente">Cliente</label><input id="p-cliente" name="cliente" required></div>
-          <div><label for="p-tel">Teléfono / WhatsApp</label><input id="p-tel" name="telefono" inputmode="tel"></div>
+          <div><label for="p-tel">Teléfono / WhatsApp</label><div class="pw"><input id="p-tel" name="telefono" inputmode="tel" placeholder="999 111 222"><span id="waForm"></span></div></div>
           <div><label for="p-ciudad">Ciudad</label><input id="p-ciudad" name="ciudad"></div>
           <div><label for="p-prod">Producto</label><input id="p-prod" name="producto" required></div>
           <div><label for="p-talla">Talla</label><input id="p-talla" name="talla"></div>
@@ -319,6 +322,8 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
           <div><label for="s-marca">Nombre de la marca</label><input id="s-marca"></div>
           <div><label for="s-tc">Tipo de cambio (S/ por USD)</label><input id="s-tc" type="number" min="0" step="any"></div>
           <div><label for="s-factor">Una devolución cuesta (× flete)</label><input id="s-factor" type="number" min="0" step="any"></div>
+          <div><label for="s-pais">Código de país de los teléfonos</label><input id="s-pais" inputmode="numeric" placeholder="51"></div>
+          <div><label for="s-wa">WhatsApp de la empresa (opcional)</label><input id="s-wa" inputmode="tel" placeholder="51999111222"></div>
         </div>
         <div class="row" style="margin-top:12px"><button class="btn pri" id="s-guardar">Guardar ajustes</button></div>
       </div>
@@ -403,9 +408,26 @@ const ICONS={
   spark:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
   eyeoff:'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
+  wa:'<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>',
   camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'
 };
 const icon=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+const waIcon=()=>`<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS.wa}</svg>`;
+/* Número listo para WhatsApp: solo dígitos, con código de país (9 dígitos = celular local). */
+function waNumber(raw){
+  let d=String(raw||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);
+  const pais=String(S.settings.pais||'51').replace(/\D/g,'');
+  if(d.length===9&&d.startsWith('9'))d=pais+d;
+  return d.length>=10&&d.length<=15?d:'';
+}
+function waUrl(raw,nombre,producto){
+  const n=waNumber(raw);if(!n)return '';
+  const marca=S.settings.marca||'Yosca Moda';
+  let msg=`Hola${nombre?' '+String(nombre).split(' ')[0]:''}, te escribimos de ${marca}${producto?' sobre tu pedido de '+producto:''}.`;
+  const emp=String(S.settings.waEmpresa||'').replace(/\D/g,'');if(emp)msg+=` Cualquier consulta, escríbenos al +${emp}.`;
+  return 'https://wa.me/'+n+'?text='+encodeURIComponent(msg);
+}
+const waBtn=(raw,nombre,producto)=>{const u=waUrl(raw,nombre,producto);return u?`<a class="wa" href="${esc(u)}" target="_blank" rel="noopener noreferrer" aria-label="Escribir por WhatsApp a ${esc(nombre||'este cliente')}" title="Escribir por WhatsApp">${waIcon()}</a>`:''};
 
 /* ================= estado y reglas ================= */
 const KEY='yosca_pro_v2';
@@ -415,7 +437,7 @@ const PAGOS=['Contra entrega','Yape / Plin','Efectivo','Transferencia','Tarjeta'
 const CATS_VAR=['Tela / Gamarra','Hilos y avíos','Confección / maquila','Publicidad','Envíos','Empaque','Servicios','Otros'];
 const CATS_CIF=['Alquiler del taller','Luz, agua e internet','Sueldos fijos','Marketing fijo','Mantenimiento de máquinas','Movilidad','Otros'];
 
-let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto'}};
+let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto',pais:'51',waEmpresa:'51960614797'}};
 const ui={tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
 
 /* ---- costos de una prenda (todo en soles) ---- */
@@ -1040,7 +1062,9 @@ pf.pack.addEventListener('change',()=>{
   syncPack();
 });
 pf.precioPack.addEventListener('input',syncPack);pf.cantidad.addEventListener('input',syncPack);
-function resetPed(){pf.reset();syncPack();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
+function syncWaForm(){const w=$('#waForm');if(w)w.innerHTML=waBtn(pf.telefono.value,pf.cliente.value,pf.producto.value)}
+pf.telefono.addEventListener('input',syncWaForm);pf.cliente.addEventListener('input',syncWaForm);pf.producto.addEventListener('input',syncWaForm);
+function resetPed(){pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
 pf.addEventListener('submit',e=>{
   e.preventDefault();
   const fd=Object.fromEntries(new FormData(pf));
@@ -1059,8 +1083,8 @@ function renderPed(){
   const rows=S.orders.filter(o=>(!f||o.estado===f)&&(!q||[o.cliente,o.producto,o.ciudad,o.telefono].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
   if(!rows.length){$('#pedTabla').innerHTML='<div class="empty"><b>Aún no hay pedidos</b>Registra uno arriba o impórtalos de Shopify desde Ajustes.</div>';return}
   $('#pedTabla').innerHTML=`<table><thead><tr><th>Fecha</th><th>Cliente</th><th>Producto</th><th class="num">Total</th><th>Estado</th><th class="num">Utilidad</th><th></th></tr></thead><tbody>${
-    rows.map(o=>{const q=num(o.cantidad)||1,u=orderProfit(o),tel=String(o.telefono||'').replace(/\D/g,'');
-      return `<tr><td>${esc(o.fecha)}</td><td>${esc(o.cliente)}<div class="sub">${esc(o.ciudad)} ${tel?`· <a href="https://wa.me/${tel}" target="_blank" rel="noopener">WhatsApp</a>`:''}</div></td>
+    rows.map(o=>{const q=num(o.cantidad)||1,u=orderProfit(o);
+      return `<tr><td>${esc(o.fecha)}</td><td>${esc(o.cliente)}<div class="sub">${esc(o.ciudad)}</div><div class="sub" style="display:flex;align-items:center;gap:2px">${esc(o.telefono||'')}${waBtn(o.telefono,o.cliente,o.producto)}</div></td>
       <td>${esc(o.producto)}<div class="sub">${esc([o.talla,o.color].filter(Boolean).join(' · '))} ×${q}${o.pack>1?` · pack x${o.pack}`:''}</div></td>
       <td class="num">${fmt(num(o.precio)*q)}<div class="sub">${o.pack>1?fmt(o.precio)+' c/u · ':''}${esc(o.pago)}</div></td>
       <td><select data-st="${esc(o.id)}" style="width:auto;padding:6px 8px" aria-label="Estado del pedido">${ESTADOS.map(e=>`<option${e===o.estado?' selected':''}>${e}</option>`).join('')}</select></td>
@@ -1074,7 +1098,7 @@ $('#pedTabla').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.ed){const o=S.orders.find(x=>x.id===b.dataset.ed);ui.editOrder=o.id;fillGarmentSelect();
     Object.keys(o).forEach(k=>{if(pf[k]&&k!=='id')pf[k].value=o[k]});
-    pf.pack.value=String(o.pack>1?o.pack:1);if(o.pack>1)pf.cantidad.value=o.packs||1;syncPack();
+    pf.pack.value=String(o.pack>1?o.pack:1);if(o.pack>1)pf.cantidad.value=o.packs||1;syncPack();syncWaForm();
     $('#pedTitle').textContent='Editar pedido';$('#pedCancel').hidden=false;pf.scrollIntoView({behavior:'smooth'})}
   if(b.dataset.del)ask('¿Eliminar este pedido?',()=>{S.orders=S.orders.filter(o=>o.id!==b.dataset.del);save();renderPed()});
 });
@@ -1196,13 +1220,15 @@ $('#v-proy').addEventListener('change',e=>{const i=e.target.dataset.pv;if(i==nul
 
 /* ================= AJUSTES, IMPORTAR, RESPALDO ================= */
 function renderSet(){
-  $('#s-marca').value=S.settings.marca;$('#s-tc').value=S.settings.tc;$('#s-factor').value=S.settings.factor;
+  $('#s-marca').value=S.settings.marca;$('#s-pais').value=S.settings.pais||'51';$('#s-wa').value=S.settings.waEmpresa||'';$('#s-tc').value=S.settings.tc;$('#s-factor').value=S.settings.factor;
   if(!DB)$('#storeInfo').textContent='Tus datos se guardan solo en este navegador. Si cambias de teléfono o borras los datos del navegador se pierden: descarga el respaldo.';
 }
 $('#s-guardar').addEventListener('click',()=>{
   S.settings.marca=$('#s-marca').value.trim()||'Yosca Moda';
   S.settings.tc=Math.max(0.01,num($('#s-tc').value)||3.75);
   S.settings.factor=Math.max(0,num($('#s-factor').value));
+  S.settings.pais=($('#s-pais').value.replace(/\D/g,''))||'51';
+  S.settings.waEmpresa=$('#s-wa').value.replace(/\D/g,'');
   save();applyTheme();refreshAll();toast('Ajustes guardados');
 });
 async function download(name,text,type){
