@@ -1172,11 +1172,12 @@ function renderAi(){
   const hello=aiTurns.length===0?`<div class="msg a">Hola, soy tu asistente. Veo tus prendas, costos, pedidos y gastos. Pregúntame lo que quieras, por ejemplo cuánto cobrar o cómo vas este mes.</div>`:'';
   box.innerHTML=hello+aiTurns.map(m=>`<div class="msg ${m.role==='user'?'u':'a'}">${m.role==='user'?esc(m.content):mdLite(m.content)}</div>`).join('');
   box.scrollTop=box.scrollHeight;
-  $('#aiChips').hidden=aiTurns.length>0;
+  $('#aiChips').hidden=aiTurns.length>0||(AI_HTTP&&!aiCode());
 }
-function aiErr(c){return ({not_granted:'No diste permiso para usar el asistente. Vuelve a preguntar y acepta el aviso.',rate_limited:'Hiciste muchas preguntas seguidas. Espera un momento e inténtalo de nuevo.',prompt_too_large:'Hay demasiados datos para analizar de una vez. Prueba con una pregunta más específica.',sampling_disabled:'El asistente no está disponible en esta cuenta.',refused:'No puedo responder eso.',clave_invalida:'La clave de acceso no es correcta. Escríbela de nuevo.',no_configurado:'El asistente aún no está configurado en el servidor (faltan la clave de Gemini o la clave de acceso).',clave_gemini:'La clave de Gemini del servidor no es válida. Revísala en la configuración de tu hosting.',cuota:'Se agotó el límite de uso de Gemini por ahora. Inténtalo en unos minutos.',tiempo:'Gemini tardó demasiado en responder. Inténtalo de nuevo.',bloqueado:'Gemini no quiso responder esa pregunta. Prueba con otras palabras.'})[c]||'No pude responder ahora. Inténtalo de nuevo en un momento.'}
+function aiErr(c){return ({not_granted:'No diste permiso para usar el asistente. Vuelve a preguntar y acepta el aviso.',rate_limited:'Hiciste muchas preguntas seguidas. Espera un momento e inténtalo de nuevo.',prompt_too_large:'Hay demasiados datos para analizar de una vez. Prueba con una pregunta más específica.',sampling_disabled:'El asistente no está disponible en esta cuenta.',refused:'No puedo responder eso.',clave_invalida:'La clave de acceso no es correcta. Escríbela en el cuadro "Clave de acceso" de abajo, no en el chat.',no_configurado:'El asistente aún no está configurado en el servidor (faltan la clave de Gemini o la clave de acceso).',clave_gemini:'La clave de Gemini del servidor no es válida. Revísala en la configuración de tu hosting.',cuota:'Se agotó el límite de uso de Gemini por ahora. Inténtalo en unos minutos.',tiempo:'Gemini tardó demasiado en responder. Inténtalo de nuevo.',bloqueado:'Gemini no quiso responder esa pregunta. Prueba con otras palabras.'})[c]||'No pude responder ahora. Inténtalo de nuevo en un momento.'}
 async function aiSend(q){
   q=String(q||'').trim();if(!AI||!q||aiBusy)return;
+  if(AI_HTTP&&!aiCode()){aiShowCode(true);toast('Primero escribe la clave de acceso del asistente.');return}
   aiBusy=true;aiTurns.push({role:'user',content:q});
   const cur={role:'assistant',content:'Pensando…'};aiTurns.push(cur);renderAi();
   $('#aiSend').hidden=true;$('#aiStop').hidden=false;$('#aiInput').value='';
@@ -1188,7 +1189,8 @@ async function aiSend(q){
     cur.content=r.text+(r.truncated?'\n\n(La respuesta se cortó. Pregunta por partes.)':'');
   }catch(e){
     if(e&&e.code==='cancelled')cur.content=(e.text||'')+(e.text?'\n\n(Detenido.)':'Detenido.');
-    else{cur.content=(e&&e.text?e.text+'\n\n':'')+aiErr(e&&e.code);if(AI_HTTP&&e&&e.code==='clave_invalida'){try{localStorage.removeItem('yosca_ai_clave')}catch(err){}aiShowCode(true)}}
+    else if(AI_HTTP&&e&&e.code==='clave_invalida'){try{localStorage.removeItem('yosca_ai_clave')}catch(err){}aiTurns.splice(-2);toast(aiErr('clave_invalida'));aiShowCode(true)}
+    else cur.content=(e&&e.text?e.text+'\n\n':'')+aiErr(e&&e.code)+(e&&e.detail?'\n\nDetalle técnico: '+e.detail:'')
   }finally{aiBusy=false;aiCtl=null;$('#aiSend').hidden=false;$('#aiStop').hidden=true;renderAi()}
 }
 function openAi(){$('#aiPanel').hidden=false;renderAi();if(AI_HTTP&&!aiCode())aiShowCode(true);else setTimeout(()=>$('#aiInput').focus(),50)}
@@ -1217,7 +1219,7 @@ async function httpAsk(turns,opts={}){
     const j=await r.json().catch(()=>({}));
     if(!r.ok){
       const code=({401:'clave_invalida',429:j.error==='cuota'?'cuota':'rate_limited',503:'no_configurado',413:'prompt_too_large'})[r.status]||j.error||'upstream_error';
-      throw {code,message:j.error||''};
+      throw {code,message:j.error||'',detail:[j.estado?('estado '+j.estado):'',j.detalle||''].filter(Boolean).join(' · ')};
     }
     if(j.functionCalls&&j.functionCalls.length){
       contents.push(j.content);
@@ -1240,7 +1242,7 @@ async function httpAsk(turns,opts={}){
 $('#aiCodeRow').addEventListener('submit',e=>{
   e.preventDefault();const v=$('#aiCode').value.trim();if(!v)return;
   try{localStorage.setItem('yosca_ai_clave',v)}catch(err){}
-  $('#aiCode').value='';aiShowCode(false);$('#aiInput').focus();
+  $('#aiCode').value='';aiShowCode(false);renderAi();toast('Clave guardada. Ya puedes preguntar.');$('#aiInput').focus();
 });
 async function connectAi(){
   try{AI=window.claude&&window.claude.use?await window.claude.use('sample'):null}catch(e){AI=null}

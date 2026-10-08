@@ -84,9 +84,12 @@ export async function handle({ method, rawBody, clave, ip }) {
     }
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
-      if (res.status === 429) return { status: 429, body: { error: 'cuota' } };
-      if ((res.status === 400 || res.status === 403) && /api key|API_KEY|permission/i.test(txt)) return { status: 502, body: { error: 'clave_gemini' } };
-      return { status: 502, body: { error: 'gemini', estado: res.status } };
+      let detalle = '';
+      try { detalle = String(JSON.parse(txt).error.message || ''); } catch { detalle = txt; }
+      detalle = detalle.replace(/\s+/g, ' ').slice(0, 300); // mensaje de Gemini, no contiene tu clave
+      if (res.status === 429) return { status: 429, body: { error: 'cuota', detalle } };
+      if ((res.status === 400 || res.status === 403) && /api key|API_KEY|permission/i.test(txt)) return { status: 502, body: { error: 'clave_gemini', detalle } };
+      return { status: 502, body: { error: 'gemini', estado: res.status, detalle } };
     }
     const data = await res.json();
     const cand = data.candidates && data.candidates[0];
@@ -97,7 +100,7 @@ export async function handle({ method, rawBody, clave, ip }) {
     const text = content.parts.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join('');
     return { status: 200, body: { content, functionCalls, text, truncated: cand.finishReason === 'MAX_TOKENS' } };
   } catch (e) {
-    return { status: 502, body: { error: e && e.name === 'AbortError' ? 'tiempo' : 'red' } };
+    return { status: 502, body: { error: e && e.name === 'AbortError' ? 'tiempo' : 'red', detalle: String((e && e.message) || '').slice(0, 200) } };
   } finally {
     clearTimeout(timer);
   }
