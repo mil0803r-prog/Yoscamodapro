@@ -26,6 +26,8 @@ Se hace con Firebase (plan gratuito Spark). Mientras `firebase-config.js` tenga 
    ```
 6. Sube el cambio a GitHub; Vercel o Netlify publican solos.
 
+Respaldos: la app guarda sola una copia al día (últimas 14) en tu cuenta, en `users/{uid}/backups`, y se pueden restaurar o descargar desde Ajustes.
+
 Cada persona ve únicamente sus datos. La primera vez que alguien entra, lo que ya tenía guardado en ese navegador se sube a su cuenta. Al cerrar sesión se borran los datos locales del dispositivo.
 
 ## Asistente de IA con Gemini (fuera de Claude)

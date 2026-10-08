@@ -187,6 +187,8 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .ord-money>div{background:var(--s-low);border-radius:12px;padding:12px 14px;min-width:0}
 .ord-money small{display:block;color:var(--on-var);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px}
 .ord-money b{font-size:17px;font-weight:800;white-space:nowrap}
+.bkrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+.bkrow:first-child{border-top:0}
 .ord-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--on-var);font-size:13.5px;padding-top:2px}
 .ord select.st{width:auto;min-height:40px;padding:6px 10px;font-weight:800;font-size:13px;border-radius:999px;flex:0 0 auto}
 .st-Entregado{border-color:var(--primary);color:var(--primary)}.st-Devuelto,.st-Cancelado{border-color:var(--error);color:var(--error)}.st-Enviado,.st-Confirmado,.st-Pendiente{border-color:var(--warn);color:var(--warn)}
@@ -356,7 +358,9 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
       </div>
       <div class="card" style="margin-top:14px">
         <h2>Respaldo de datos</h2>
-        <p class="sub">Descarga un respaldo con frecuencia.</p>
+        <p class="sub">La app guarda sola un respaldo cada día (se conservan los últimos 14). También puedes descargar uno.</p>
+        <div id="bkList" style="margin-top:12px"></div>
+        <div class="row" style="margin:12px 0 4px"><button class="btn" id="bkNow">Crear respaldo ahora</button></div>
         <div class="row" style="margin-top:10px">
           <button class="btn pri" id="expJson">Respaldo (.json)</button>
           <button class="btn" id="expPed">Pedidos (.csv)</button>
@@ -547,9 +551,10 @@ function attachDb(db,opts={}){
     if(j===remote.settings)return;
     S.settings={...S.settings,...snap.data()};remote.settings=JSON.stringify(S.settings);applyTheme();refreshAll();
   },()=>{}));
+  unsubs.push(db.collection('backups').onSnapshot(snap=>{bkSeen=true;BK=snap.docs.map(d=>({...d.data()}));renderBackups()},()=>{}));
   $('#storeInfo').textContent=FB_MODE?'Tus datos se guardan en tu cuenta y los ves igual en cualquier dispositivo donde entres.':'Tus datos se guardan en la nube de esta página y los ves igual en cualquier dispositivo.';
 }
-function detachDb(){unsubs.forEach(u=>{try{u&&u()}catch(e){}});unsubs.length=0;DB=null;COLS.forEach(c=>seenDb[c]=false);seenDb.settings=false}
+function detachDb(){BK=[];bkSeen=false;unsubs.forEach(u=>{try{u&&u()}catch(e){}});unsubs.length=0;DB=null;COLS.forEach(c=>seenDb[c]=false);seenDb.settings=false}
 async function connectDb(){
   let db=null;
   try{db=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(e){}
@@ -1256,8 +1261,59 @@ $('#v-proy').addEventListener('click',e=>{
 });
 $('#v-proy').addEventListener('change',e=>{const i=e.target.dataset.pv;if(i==null)return;ui.projVol[i]=Math.max(0,Math.round(num(e.target.value)));renderProy()});
 
+/* ================= RESPALDOS AUTOMÁTICOS ================= */
+const BK_KEY='yosca_backups',BK_MAX=14;
+let BK=[],bkSeen=false;
+const bkLocal=()=>{try{const a=JSON.parse(localStorage.getItem(BK_KEY));return Array.isArray(a)?a:[]}catch(e){return[]}};
+const bkAll=()=>(DB?BK:bkLocal()).filter(b=>b&&b.id&&b.datos).sort((a,b)=>String(b.id).localeCompare(String(a.id)));
+const bkCounts=d=>{try{const s=JSON.parse(d);return{prendas:(s.garments||[]).length,pedidos:(s.orders||[]).length,gastos:(s.expenses||[]).length+(s.cif||[]).length}}catch(e){return{prendas:0,pedidos:0,gastos:0}}};
+function bkWrite(id,etiqueta){
+  const datos=JSON.stringify(S);
+  const reg={id,ts:Date.now(),etiqueta:etiqueta||'',datos};
+  if(DB){
+    DB.collection('backups').doc(id).set(reg).catch(()=>{});
+    BK=BK.filter(b=>b.id!==id).concat([reg]);
+    BK.sort((a,b)=>String(b.id).localeCompare(String(a.id))).slice(BK_MAX).forEach(b=>{DB.collection('backups').doc(b.id).delete().catch(()=>{})});
+    BK=BK.slice(0,BK_MAX);
+  }else{
+    const a=bkLocal().filter(b=>b.id!==id).concat([reg]).sort((x,y)=>String(y.id).localeCompare(String(x.id))).slice(0,BK_MAX);
+    try{localStorage.setItem(BK_KEY,JSON.stringify(a))}catch(e){try{localStorage.setItem(BK_KEY,JSON.stringify(a.slice(0,3)))}catch(x){}}
+  }
+  renderBackups();
+}
+const bkHasData=()=>COLS.some(c=>S[c].length);
+function maybeAutoBackup(){
+  if(!bkHasData())return;
+  if(DB&&!(bkSeen&&COLS.every(c=>seenDb[c])&&seenDb.settings))return;
+  const id=today();
+  if(bkAll().some(b=>b.id===id))return;
+  bkWrite(id,'');
+}
+function renderBackups(){
+  const box=$('#bkList');if(!box)return;
+  const l=bkAll();
+  box.innerHTML=l.length?l.map(b=>{const c=bkCounts(b.datos);
+    return `<div class="bkrow"><div><b>${esc(b.etiqueta||fechaCorta(b.id.slice(0,10)))}</b><div class="sub">${c.prendas} prendas · ${c.pedidos} pedidos · ${c.gastos} gastos</div></div><span class="row" style="gap:8px"><button class="btn sm" data-bkr="${esc(b.id)}">Restaurar</button><button class="btn sm" data-bkd="${esc(b.id)}">Descargar</button></span></div>`}).join('')
+    :'<p class="hint">Aún no hay respaldos automáticos. Se crea el primero cuando tengas datos.</p>';
+}
+$('#bkNow').addEventListener('click',()=>{if(!bkHasData()){toast('Aún no hay datos para respaldar');return}bkWrite(today(),'');toast('Respaldo creado')});
+$('#bkList').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const id=b.dataset.bkr||b.dataset.bkd;const r=bkAll().find(x=>x.id===id);if(!r)return;
+  if(b.dataset.bkd){download(`respaldo-${String(r.id).slice(0,10)}.json`,r.datos,'application/json');return}
+  const c=bkCounts(r.datos);
+  ask(`Restaurar el respaldo del ${fechaCorta(String(r.id).slice(0,10))} (${c.prendas} prendas, ${c.pedidos} pedidos, ${c.gastos} gastos)? Reemplaza tus datos actuales; antes se guarda una copia de los de ahora.`,()=>{
+    try{const d=JSON.parse(r.datos);
+      if(bkHasData())bkWrite(today()+'-antes','Antes de restaurar');
+      COLS.forEach(k=>{S[k]=Array.isArray(d[k])?d[k]:[]});S.settings={...S.settings,...(d.settings||{})};
+      save();applyTheme();refreshAll();toast('Respaldo restaurado')}catch(x){toast('Ese respaldo no se pudo leer')}
+  });
+});
+setTimeout(maybeAutoBackup,5000);setInterval(maybeAutoBackup,60000);
+
 /* ================= AJUSTES, IMPORTAR, RESPALDO ================= */
 function renderSet(){
+  renderBackups();
   $('#s-marca').value=S.settings.marca;$('#s-pais').value=S.settings.pais||'51';$('#s-wa').value=S.settings.waEmpresa||'';$('#s-tc').value=S.settings.tc;$('#s-factor').value=S.settings.factor;
   if(!DB)$('#storeInfo').textContent='Tus datos se guardan solo en este navegador. Si cambias de teléfono o borras los datos del navegador se pierden: descarga el respaldo.';
 }
