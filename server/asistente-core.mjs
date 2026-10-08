@@ -80,7 +80,7 @@ async function llamar(modelo, payload, signal) {
 
 export async function handle({ method, rawBody, clave, ip, authorization }) {
   const hayClave = Boolean(process.env.ASISTENTE_CLAVE);
-  const hayFirebase = Boolean(process.env.FIREBASE_PROJECT_ID && correosPermitidos().length);
+  const hayFirebase = Boolean(process.env.FIREBASE_PROJECT_ID);
   const disponible = Boolean(process.env.GEMINI_API_KEY && (hayClave || hayFirebase));
   if (method === 'GET') return { status: 200, body: { disponible } };
   if (method !== 'POST') return { status: 405, body: { error: 'metodo' } };
@@ -88,11 +88,12 @@ export async function handle({ method, rawBody, clave, ip, authorization }) {
   const bearer = /^Bearer\s+(.+)$/i.exec(authorization || '');
   let quien = ip || '?';
   if (bearer) {
-    // Con sesión: solo entran los correos de la lista y con el correo verificado.
+    // Con sesión: si hay lista de correos, solo entran esos (con correo verificado); si no hay lista, entra cualquier cuenta con sesión.
     const u = await usuarioFirebase(bearer[1]);
     if (!u) return { status: 401, body: { error: 'sesion' } };
-    if (!u.verificado) return { status: 403, body: { error: 'no_autorizado', detalle: 'correo sin verificar' } };
-    if (!correosPermitidos().includes(u.email)) return { status: 403, body: { error: 'no_autorizado', detalle: 'correo no autorizado' } };
+    const lista = correosPermitidos();
+    if (lista.length && !u.verificado) return { status: 403, body: { error: 'no_autorizado', detalle: 'correo sin verificar' } };
+    if (lista.length && !lista.includes(u.email)) return { status: 403, body: { error: 'no_autorizado', detalle: 'correo no autorizado' } };
     quien = 'u:' + u.uid;
   } else if (!hayClave || !claveOk(clave || '', process.env.ASISTENTE_CLAVE)) {
     return { status: 401, body: { error: 'clave' } };

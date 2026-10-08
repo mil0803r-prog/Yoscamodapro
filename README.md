@@ -49,13 +49,13 @@ En el panel de tu hosting (Netlify: *Site configuration → Environment variable
 | `GEMINI_API_KEY` | Tu clave de Gemini (obligatoria) |
 | `ASISTENTE_CLAVE` | Una contraseña que tú inventes. La escribirás una vez en el asistente (obligatoria) |
 | `FIREBASE_PROJECT_ID` | Opcional. El `projectId` de tu Firebase, para que el asistente use tu sesión en vez de la contraseña |
-| `ASISTENTE_EMAILS` | Opcional. Correos autorizados para usar el asistente, separados por comas. Con sesión iniciada solo entran estos correos y con el correo verificado |
+| `ASISTENTE_EMAILS` | Opcional. Si lo dejas vacío, cualquier cuenta con sesión iniciada puede usar el asistente. Si pones correos separados por comas, solo entran esos (con correo verificado) |
 | `GEMINI_MODEL` | Opcional. Por defecto `gemini-3.8-flash`; si no existe, usa `gemini-2.5-flash` |
 
 Vuelve a publicar después de guardarlas.
 
 ### 4. Úsalo
-Abre tu enlace, toca **Asistente**. Si iniciaste sesión y tu correo está en `ASISTENTE_EMAILS`, funciona directo; si no, escribe la contraseña (`ASISTENTE_CLAVE`) una vez y la app la recuerda en ese dispositivo.
+Abre tu enlace, toca **Asistente**. Si iniciaste sesión (y tu correo está en `ASISTENTE_EMAILS`, si lo usas), funciona directo; si no, escribe la contraseña (`ASISTENTE_CLAVE`) una vez y la app la recuerda en ese dispositivo.
 
 ### Seguridad y costos
 - Sin la contraseña nadie puede usar el asistente ni gastar tu saldo.
