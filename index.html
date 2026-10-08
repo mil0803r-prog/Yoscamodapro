@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Yosca Moda Pro</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%2300c383%22/%3E%3Cstop offset=%221%22 stop-color=%22%23005c3b%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%2240%22 height=%2240%22 rx=%2211%22 fill=%22url(%23g)%22/%3E%3Cpath d=%22M11.5 10.5 20 22l8.5-11.5M20 22v8%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%223.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<script src="firebase-config.js"></script>
+<script>if(window.YOSCA_FIREBASE&&window.YOSCA_FIREBASE.apiKey)document.documentElement.classList.add('fb')</script>
+<script type="module" src="firebase-boot.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -145,6 +148,17 @@ a{color:var(--primary)}
 .aichips button{border:1px solid var(--line);background:var(--s-lowest);color:var(--on);border-radius:999px;padding:7px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;text-align:left}
 .aiform{display:flex;gap:8px;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
 .aiform input{flex:1}
+.login{position:fixed;inset:0;z-index:100;background:var(--surface);display:grid;place-items:center;padding:16px;overflow-y:auto}
+.logincard{width:100%;max-width:400px;display:flex;flex-direction:column;gap:14px}
+.logincard h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.015em}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:999px;border:1px solid var(--line);background:var(--s-lowest);color:var(--on);font:inherit;font-weight:800;cursor:pointer}
+.gbtn svg{width:20px;height:20px}
+.sep{display:flex;align-items:center;gap:10px;color:var(--on-var);font-size:12px;font-weight:700}
+.sep::before,.sep::after{content:"";flex:1;height:1px;background:var(--line)}
+.linkbtn{background:none;border:0;color:var(--primary);font:inherit;font-weight:700;cursor:pointer;padding:6px 0;text-align:left}
+.lmsg{font-size:13px;border-radius:12px;padding:10px 12px}
+.lmsg.err{background:var(--error-soft);color:var(--on)}.lmsg.ok{background:var(--primary-soft);color:var(--on)}
+html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aifab{visibility:hidden}
 .chartcard svg{width:100%;height:auto;display:block;overflow:visible}
 .chartcard text{fill:var(--on-var);font:600 11px "Plus Jakarta Sans",system-ui,sans-serif}
 .chartcard .gl{stroke:var(--line);stroke-width:1}
@@ -284,6 +298,12 @@ a{color:var(--primary)}
 
     <!-- AJUSTES -->
     <section id="v-set" hidden>
+      <div class="card" id="accCard" hidden style="margin-bottom:14px">
+        <h2>Mi cuenta</h2>
+        <p class="sub" id="accInfo"></p>
+        <div id="accWarn" class="lmsg ok" hidden style="margin-top:10px"></div>
+        <div class="row" style="margin-top:12px"><button class="btn" id="accVerify" type="button" hidden>Reenviar correo de verificación</button><button class="btn del" id="accOut" type="button">Cerrar sesión</button></div>
+      </div>
       <div class="card">
         <h2>Marca y reglas</h2>
         <div class="form" style="margin-top:10px">
@@ -319,6 +339,25 @@ a{color:var(--primary)}
 <div id="ask" class="ask" role="alertdialog" hidden><span id="askMsg"></span><button class="btn sm pri" id="askYes" type="button">Sí</button><button class="btn sm" id="askNo" type="button">No</button></div>
 <input type="file" id="photoIn" accept="image/*" hidden>
 <div id="tip" class="tip" hidden></div>
+<section id="login" class="login" hidden aria-label="Iniciar sesión">
+  <div class="logincard">
+    <div class="brandrow"><svg class="logo" viewBox="0 0 40 40" width="44" height="44" aria-hidden="true"><defs><linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00c383"/><stop offset="1" stop-color="#005c3b"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#lg2)"/><path d="M11.5 10.5 20 22l8.5-11.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 22v8" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/><circle cx="28.5" cy="10.5" r="1.7" fill="#73fbb8"/></svg><div class="brand"><b>YOSCA</b><small>Taller &amp; Finanzas</small></div></div>
+    <div id="loginLoading" class="card empty">Cargando…</div>
+    <div id="loginBox" class="card" hidden style="display:flex;flex-direction:column;gap:12px">
+      <div><h1 id="loginTitle">Entra a tu taller</h1><p class="sub">Tus datos se guardan en tu cuenta y los ves igual en cualquier dispositivo.</p></div>
+      <button class="gbtn" id="gBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/></svg>Continuar con Google</button>
+      <div class="sep">o con tu correo</div>
+      <form id="loginForm" style="display:flex;flex-direction:column;gap:10px" novalidate>
+        <div><label for="lEmail">Correo</label><input id="lEmail" type="email" autocomplete="email" inputmode="email" required></div>
+        <div><label for="lPass">Contraseña</label><input id="lPass" type="password" autocomplete="current-password" minlength="6" required></div>
+        <button class="btn pri" id="lSubmit" type="submit">Entrar</button>
+      </form>
+      <div id="lMsg" class="lmsg" role="alert" hidden></div>
+      <button class="linkbtn" id="lToggle" type="button">¿No tienes cuenta? Crear una</button>
+      <button class="linkbtn" id="lReset" type="button">Olvidé mi contraseña</button>
+    </div>
+  </div>
+</section>
 <button id="aiFab" class="aifab" type="button" hidden aria-label="Abrir el asistente"></button>
 <section id="aiPanel" class="aipanel" role="dialog" aria-modal="true" aria-label="Asistente de Yosca" hidden>
   <div class="aihead"><div><h2 style="margin:0;font-size:16px">Asistente</h2><p class="sub" style="margin:0">Responde con tus datos reales. No modifica nada.</p></div>
@@ -400,6 +439,8 @@ function ask(m,yes){$('#askMsg').textContent=m;$('#ask').hidden=false;$('#askYes
 
 /* ================= guardado (nube si existe, si no este navegador) ================= */
 let DB=null;const remote={settings:''};COLS.forEach(c=>remote[c]=new Map());
+const seenDb={settings:false};COLS.forEach(c=>seenDb[c]=false);
+const unsubs=[];let MIGRATE=false,FB_USER=null,FB_MODE=false;
 let saveTimer=null;
 const saveSoon=()=>{clearTimeout(saveTimer);saveTimer=setTimeout(save,350)};
 function save(){
@@ -408,40 +449,149 @@ function save(){
   if(!DB)return;
   const ops=[];
   for(const name of COLS){
+    if(!seenDb[name])continue; // aún no llegó lo que hay en la nube: no se escribe encima
     const seen=new Set();
     for(const x of S[name]){seen.add(x.id);const j=JSON.stringify(x);
       if(remote[name].get(x.id)!==j){remote[name].set(x.id,j);ops.push(DB.collection(name).doc(x.id).set(x))}}
     for(const id of [...remote[name].keys()])if(!seen.has(id)){remote[name].delete(id);ops.push(DB.collection(name).doc(id).delete())}
   }
   const sj=JSON.stringify(S.settings);
-  if(sj!==remote.settings){remote.settings=sj;ops.push(DB.doc('config/settings').set(S.settings))}
+  if(seenDb.settings&&sj!==remote.settings){remote.settings=sj;ops.push(DB.doc('config/settings').set(S.settings))}
   Promise.all(ops).catch(()=>toast('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.'));
 }
 function load(){
   try{const s=JSON.parse(localStorage.getItem(KEY));
     if(s&&typeof s==='object'){COLS.forEach(c=>{if(Array.isArray(s[c]))S[c]=s[c]});S.settings={...S.settings,...(s.settings||{})}}}catch(e){}
 }
-async function connectDb(){
-  let db=null;
-  try{db=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(e){}
-  if(!db)return;
-  DB=db;
+function resetLocal(){
+  COLS.forEach(c=>{S[c]=[];remote[c]=new Map()});remote.settings='';
+  S.settings={marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:S.settings.tema||'auto'};
+  try{localStorage.removeItem(KEY)}catch(e){}
+}
+function pushCol(name){
+  const ops=[];remote[name]=new Map();
+  for(const x of S[name]){remote[name].set(x.id,JSON.stringify(x));ops.push(DB.collection(name).doc(x.id).set(x))}
+  Promise.all(ops).catch(()=>toast('No se pudieron subir tus datos. Revisa tu conexión.'));
+}
+function attachDb(db,opts={}){
+  DB=db;MIGRATE=!!opts.migrate;COLS.forEach(c=>seenDb[c]=false);seenDb.settings=false;
   for(const name of COLS){
-    db.collection(name).onSnapshot(snap=>{
+    unsubs.push(db.collection(name).onSnapshot(snap=>{
+      const first=!seenDb[name];seenDb[name]=true;
       const list=snap.docs.map(d=>({...d.data()}));
+      // Primera vez en esta cuenta: lo que había en este navegador se sube a la nube.
+      if(first&&MIGRATE&&!list.length&&S[name].length){pushCol(name);return}
       const m=new Map(list.map(x=>[x.id,JSON.stringify(x)]));
       const same=m.size===remote[name].size&&[...m].every(([k,v])=>remote[name].get(k)===v);
       if(same)return;
       S[name]=list;remote[name]=m;refreshAll();
-    },()=>{});
+    },()=>{}));
   }
-  db.doc('config/settings').onSnapshot(snap=>{
-    if(!snap.exists)return;
+  unsubs.push(db.doc('config/settings').onSnapshot(snap=>{
+    const first=!seenDb.settings;seenDb.settings=true;
+    if(!snap.exists){if(first&&MIGRATE){remote.settings='';save()}return}
     const j=JSON.stringify({...S.settings,...snap.data()});
     if(j===remote.settings)return;
     S.settings={...S.settings,...snap.data()};remote.settings=JSON.stringify(S.settings);applyTheme();refreshAll();
-  },()=>{});
-  $('#storeInfo').textContent='Tus datos se guardan en la nube de esta página y los ves igual en cualquier dispositivo.';
+  },()=>{}));
+  $('#storeInfo').textContent=FB_MODE?'Tus datos se guardan en tu cuenta y los ves igual en cualquier dispositivo donde entres.':'Tus datos se guardan en la nube de esta página y los ves igual en cualquier dispositivo.';
+}
+function detachDb(){unsubs.forEach(u=>{try{u&&u()}catch(e){}});unsubs.length=0;DB=null;COLS.forEach(c=>seenDb[c]=false);seenDb.settings=false}
+async function connectDb(){
+  let db=null;
+  try{db=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(e){}
+  if(!db)return;
+  attachDb(db);
+}
+
+/* ================= Inicio de sesión (Firebase): Google y correo ================= */
+const AUTH_ERR={'auth/invalid-email':'El correo no es válido.','auth/missing-password':'Escribe tu contraseña.','auth/weak-password':'La contraseña es muy corta (mínimo 6 caracteres).','auth/email-already-in-use':'Ese correo ya tiene una cuenta. Entra con tu contraseña, con Google, o usa "Olvidé mi contraseña".','auth/invalid-credential':'Correo o contraseña incorrectos.','auth/wrong-password':'Correo o contraseña incorrectos.','auth/user-not-found':'Correo o contraseña incorrectos.','auth/invalid-login-credentials':'Correo o contraseña incorrectos.','auth/too-many-requests':'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.','auth/unauthorized-domain':'Este dominio no está autorizado en Firebase. Agrégalo en Authentication → Configuración → Dominios autorizados.','auth/network-request-failed':'Sin conexión. Revisa tu internet.','auth/operation-not-allowed':'Ese método de acceso no está activado en Firebase (Authentication → Método de acceso).','auth/user-disabled':'Esta cuenta está desactivada.'};
+const authMsg=e=>(e&&e.code&&AUTH_ERR[e.code])||((e&&(e.code==='auth/popup-closed-by-user'||e.code==='auth/cancelled-popup-request'))?'':'No se pudo entrar. Inténtalo de nuevo.');
+let loginMode='in',loginBusy=false;
+function lmsg(t,kind='err'){const el=$('#lMsg');el.hidden=!t;el.textContent=t||'';el.className='lmsg '+kind}
+function setLoginMode(m){
+  loginMode=m;lmsg('');
+  $('#loginTitle').textContent=m==='in'?'Entra a tu taller':'Crea tu cuenta';
+  $('#lSubmit').textContent=m==='in'?'Entrar':'Crear cuenta';
+  $('#lToggle').textContent=m==='in'?'¿No tienes cuenta? Crear una':'¿Ya tienes cuenta? Entrar';
+  $('#lPass').autocomplete=m==='in'?'current-password':'new-password';
+}
+function showLogin(){
+  document.documentElement.classList.remove('fb-in');
+  $('#lPass').value='';setLoginMode('in');
+  $('#login').hidden=false;$('#loginLoading').hidden=true;$('#loginBox').hidden=false;
+}
+function hideLogin(){$('#login').hidden=true;document.documentElement.classList.add('fb-in')}
+async function runAuth(fn){
+  if(loginBusy)return;loginBusy=true;lmsg('');
+  $('#gBtn').disabled=$('#lSubmit').disabled=true;
+  try{await fn()}catch(e){const m=authMsg(e);if(m)lmsg(m)}
+  finally{loginBusy=false;$('#gBtn').disabled=$('#lSubmit').disabled=false}
+}
+$('#gBtn').addEventListener('click',()=>runAuth(()=>YoscaFB.google()));
+$('#loginForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const em=$('#lEmail').value.trim(),pw=$('#lPass').value;
+  if(!em){lmsg('Escribe tu correo.');return}
+  if(!pw){lmsg('Escribe tu contraseña.');return}
+  runAuth(async()=>{
+    if(loginMode==='in')await YoscaFB.signIn(em,pw);
+    else{await YoscaFB.signUp(em,pw);try{await YoscaFB.verify()}catch(err){}toast('Cuenta creada. Te enviamos un correo para verificarla.')}
+  });
+});
+$('#lToggle').addEventListener('click',()=>setLoginMode(loginMode==='in'?'up':'in'));
+$('#lReset').addEventListener('click',()=>{
+  const em=$('#lEmail').value.trim();
+  if(!em){lmsg('Escribe tu correo arriba y vuelve a tocar "Olvidé mi contraseña".');return}
+  runAuth(async()=>{await YoscaFB.reset(em);lmsg('Te enviamos un enlace para cambiar tu contraseña. Revisa también la carpeta de spam.','ok')});
+});
+function renderAccount(){
+  const u=FB_USER,card=$('#accCard');card.hidden=!u;if(!u)return;
+  const viaPass=(u.providerData||[]).some(p=>p.providerId==='password');
+  $('#accInfo').textContent=(u.displayName?u.displayName+' · ':'')+(u.email||'')+(viaPass?' · correo y contraseña':' · Google');
+  const needV=viaPass&&!u.emailVerified;
+  $('#accWarn').hidden=!needV;$('#accVerify').hidden=!needV;
+  $('#accWarn').textContent=needV?'Verifica tu correo (te enviamos un mensaje). Sin verificarlo no podrás usar el asistente de IA.':'';
+}
+$('#accVerify').addEventListener('click',async()=>{try{await YoscaFB.verify();toast('Correo de verificación enviado.')}catch(e){toast('No se pudo enviar. Inténtalo en unos minutos.')}});
+$('#accOut').addEventListener('click',()=>ask('¿Cerrar sesión en este dispositivo?',async()=>{try{await YoscaFB.out()}catch(e){toast('No se pudo cerrar la sesión.')}}));
+async function connectFirebase(){
+  const cfg=window.YOSCA_FIREBASE;
+  if(!(cfg&&cfg.apiKey))return false;
+  FB_MODE=true;
+  $('#login').hidden=false;
+  await new Promise(res=>{if(window.YoscaFB)return res();window.addEventListener('yosca-fb',res,{once:true});setTimeout(res,10000)});
+  if(!window.YoscaFB){
+    $('#loginLoading').hidden=true;$('#loginBox').hidden=false;
+    lmsg('No se pudo cargar el inicio de sesión. Revisa tu internet y recarga la página.');
+    $('#gBtn').disabled=$('#lSubmit').disabled=true;return true;
+  }
+  YoscaFB.onUser(u=>{
+    if(!u){
+      // Solo se borran los datos del navegador si de verdad se cerró una sesión; al abrir sin sesión se conservan para pasarlos a la cuenta nueva.
+      if(FB_USER){detachDb();resetLocal();try{localStorage.removeItem('yosca_owner')}catch(e){}}
+      FB_USER=null;applyTheme();refreshAll();renderAccount();showLogin();return;
+    }
+    if(FB_USER&&FB_USER.uid===u.uid){FB_USER=u;renderAccount();return}
+    FB_USER=u;
+    let owner='';try{owner=localStorage.getItem('yosca_owner')||''}catch(e){}
+    if(owner&&owner!==u.uid)resetLocal();               // datos de otra cuenta en este navegador: no se mezclan
+    try{localStorage.setItem('yosca_owner',u.uid)}catch(e){}
+    hideLogin();renderAccount();
+    attachDb(fsAdapter(YoscaFB.store(u.uid)),{migrate:true});
+    connectAi();
+  });
+  return true;
+}
+// Adaptador: hace que Firestore se use igual que la base de datos de Claude.
+function fsAdapter(st){
+  return {
+    collection:name=>({
+      doc:id=>({set:d=>st.set(name,id,d),delete:()=>st.del(name,id)}),
+      onSnapshot:(next,err)=>st.colSnap(name,list=>next({docs:list.map(d=>({data:()=>d}))}),err)
+    }),
+    doc:path=>({set:d=>st.setDoc(path,d),onSnapshot:(next,err)=>st.docSnap(path,d=>next({exists:!!d,data:()=>d}),err)})
+  };
 }
 
 /* ================= tema, moneda, navegación ================= */
@@ -1172,12 +1322,12 @@ function renderAi(){
   const hello=aiTurns.length===0?`<div class="msg a">Hola, soy tu asistente. Veo tus prendas, costos, pedidos y gastos. Pregúntame lo que quieras, por ejemplo cuánto cobrar o cómo vas este mes.</div>`:'';
   box.innerHTML=hello+aiTurns.map(m=>`<div class="msg ${m.role==='user'?'u':'a'}">${m.role==='user'?esc(m.content):mdLite(m.content)}</div>`).join('');
   box.scrollTop=box.scrollHeight;
-  $('#aiChips').hidden=aiTurns.length>0||(AI_HTTP&&!aiCode());
+  $('#aiChips').hidden=aiTurns.length>0||aiNeedsCode();
 }
-function aiErr(c){return ({not_granted:'No diste permiso para usar el asistente. Vuelve a preguntar y acepta el aviso.',rate_limited:'Hiciste muchas preguntas seguidas. Espera un momento e inténtalo de nuevo.',prompt_too_large:'Hay demasiados datos para analizar de una vez. Prueba con una pregunta más específica.',sampling_disabled:'El asistente no está disponible en esta cuenta.',refused:'No puedo responder eso.',clave_invalida:'La clave de acceso no es correcta. Escríbela en el cuadro "Clave de acceso" de abajo, no en el chat.',no_configurado:'El asistente aún no está configurado en el servidor (faltan la clave de Gemini o la clave de acceso).',clave_gemini:'La clave de Gemini del servidor no es válida. Revísala en la configuración de tu hosting.',cuota:'Se agotó el límite de uso de Gemini por ahora. Inténtalo en unos minutos.',tiempo:'Gemini tardó demasiado en responder. Inténtalo de nuevo.',bloqueado:'Gemini no quiso responder esa pregunta. Prueba con otras palabras.'})[c]||'No pude responder ahora. Inténtalo de nuevo en un momento.'}
+function aiErr(c){return ({not_granted:'No diste permiso para usar el asistente. Vuelve a preguntar y acepta el aviso.',rate_limited:'Hiciste muchas preguntas seguidas. Espera un momento e inténtalo de nuevo.',prompt_too_large:'Hay demasiados datos para analizar de una vez. Prueba con una pregunta más específica.',sampling_disabled:'El asistente no está disponible en esta cuenta.',refused:'No puedo responder eso.',no_autorizado:'Tu cuenta no tiene permiso para usar el asistente. Pide que agreguen tu correo a la lista y verifica tu correo si te registraste con contraseña.',clave_invalida:'La clave de acceso no es correcta. Escríbela en el cuadro "Clave de acceso" de abajo, no en el chat.',no_configurado:'El asistente aún no está configurado en el servidor (faltan la clave de Gemini o la clave de acceso).',clave_gemini:'La clave de Gemini del servidor no es válida. Revísala en la configuración de tu hosting.',cuota:'Se agotó el límite de uso de Gemini por ahora. Inténtalo en unos minutos.',tiempo:'Gemini tardó demasiado en responder. Inténtalo de nuevo.',bloqueado:'Gemini no quiso responder esa pregunta. Prueba con otras palabras.'})[c]||'No pude responder ahora. Inténtalo de nuevo en un momento.'}
 async function aiSend(q){
   q=String(q||'').trim();if(!AI||!q||aiBusy)return;
-  if(AI_HTTP&&!aiCode()){aiShowCode(true);toast('Primero escribe la clave de acceso del asistente.');return}
+  if(aiNeedsCode()){aiShowCode(true);toast('Primero escribe la clave de acceso del asistente.');return}
   aiBusy=true;aiTurns.push({role:'user',content:q});
   const cur={role:'assistant',content:'Pensando…'};aiTurns.push(cur);renderAi();
   $('#aiSend').hidden=true;$('#aiStop').hidden=false;$('#aiInput').value='';
@@ -1189,11 +1339,11 @@ async function aiSend(q){
     cur.content=r.text+(r.truncated?'\n\n(La respuesta se cortó. Pregunta por partes.)':'');
   }catch(e){
     if(e&&e.code==='cancelled')cur.content=(e.text||'')+(e.text?'\n\n(Detenido.)':'Detenido.');
-    else if(AI_HTTP&&e&&e.code==='clave_invalida'){try{localStorage.removeItem('yosca_ai_clave')}catch(err){}aiTurns.splice(-2);toast(aiErr('clave_invalida'));aiShowCode(true)}
+    else if(AI_HTTP&&!FB_USER&&e&&e.code==='clave_invalida'){try{localStorage.removeItem('yosca_ai_clave')}catch(err){}aiTurns.splice(-2);toast(aiErr('clave_invalida'));aiShowCode(true)}
     else cur.content=(e&&e.text?e.text+'\n\n':'')+aiErr(e&&e.code)+(e&&e.detail?'\n\nDetalle técnico: '+e.detail:'')
   }finally{aiBusy=false;aiCtl=null;$('#aiSend').hidden=false;$('#aiStop').hidden=true;renderAi()}
 }
-function openAi(){$('#aiPanel').hidden=false;renderAi();if(AI_HTTP&&!aiCode())aiShowCode(true);else setTimeout(()=>$('#aiInput').focus(),50)}
+function openAi(){$('#aiPanel').hidden=false;renderAi();if(aiNeedsCode())aiShowCode(true);else{aiShowCode(false);setTimeout(()=>$('#aiInput').focus(),50)}}
 function closeAi(){if(aiCtl)aiCtl.abort();$('#aiPanel').hidden=true;$('#aiFab').focus()}
 $('#aiFab').innerHTML=icon('spark')+'<span>Asistente</span>';
 $('#aiChips').innerHTML=AI_CHIPS.map(c=>`<button type="button">${esc(c)}</button>`).join('');
@@ -1206,6 +1356,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#aiPanel').hidd
 /* Fuera de Claude: el asistente usa el servicio propio /api/asistente (con Gemini). Misma firma que la función de Claude. */
 let AI_HTTP=false;
 const aiCode=()=>{try{return localStorage.getItem('yosca_ai_clave')||''}catch(e){return ''}};
+const aiNeedsCode=()=>AI_HTTP&&!FB_USER&&!aiCode();
 function aiShowCode(show){$('#aiCodeRow').hidden=!show;$('#aiForm').hidden=show;if(show)setTimeout(()=>$('#aiCode').focus(),50)}
 async function httpAsk(turns,opts={}){
   const system=turns[0].content;                      // la primera pregunta lleva las reglas y los datos
@@ -1214,11 +1365,13 @@ async function httpAsk(turns,opts={}){
   const tools_=tools.map(t=>({name:t.name,description:t.description,parameters:t.inputSchema||{type:'object',properties:{}}}));
   for(let ronda=0;ronda<6;ronda++){
     let r;
-    try{r=await fetch('/api/asistente',{method:'POST',headers:{'Content-Type':'application/json','x-asistente-clave':aiCode()},body:JSON.stringify({system,contents,tools:tools_}),signal:opts.signal})}
+    const tok=FB_USER&&window.YoscaFB?await YoscaFB.idToken().catch(()=>''):'';
+    const hdr={'Content-Type':'application/json','x-asistente-clave':aiCode()};if(tok)hdr.Authorization='Bearer '+tok;
+    try{r=await fetch('/api/asistente',{method:'POST',headers:hdr,body:JSON.stringify({system,contents,tools:tools_}),signal:opts.signal})}
     catch(e){if(e&&e.name==='AbortError')throw {code:'cancelled',message:''};throw {code:'upstream_error',message:String(e)}}
     const j=await r.json().catch(()=>({}));
     if(!r.ok){
-      const code=({401:'clave_invalida',429:j.error==='cuota'?'cuota':'rate_limited',503:'no_configurado',413:'prompt_too_large'})[r.status]||j.error||'upstream_error';
+      const code=({401:'clave_invalida',403:'no_autorizado',429:j.error==='cuota'?'cuota':'rate_limited',503:'no_configurado',413:'prompt_too_large'})[r.status]||j.error||'upstream_error';
       throw {code,message:j.error||'',detail:[j.estado?('estado '+j.estado):'',j.detalle||''].filter(Boolean).join(' · ')};
     }
     if(j.functionCalls&&j.functionCalls.length){
@@ -1260,8 +1413,7 @@ async function connectAi(){
 load();applyTheme();resetPed();resetGas();resetCif();
 ui.gid=S.garments[0]?.id||null;
 showTab('dash');
-connectDb();
-connectAi();
+(async()=>{if(await connectFirebase()){/* la sesión decide cuándo conectar datos y asistente */}else{connectDb();connectAi()}})();
 </script>
 </body>
 </html>

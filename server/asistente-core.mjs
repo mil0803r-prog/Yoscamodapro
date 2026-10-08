@@ -1,6 +1,6 @@
 // Servicio del asistente: recibe la pregunta desde la app, llama a Gemini con la clave
 // guardada en el servidor y devuelve la respuesta. La clave nunca viaja al navegador.
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, createPublicKey, createVerify, timingSafeEqual } from 'node:crypto';
 
 const MODELO_PRINCIPAL = 'gemini-3.8-flash';
 const MODELO_RESPALDO = 'gemini-2.5-flash';
@@ -11,6 +11,39 @@ const golpes = new Map();
 const base = () => process.env.GEMINI_API_BASE || 'https://generativelanguage.googleapis.com/v1beta';
 const sha = (s) => createHash('sha256').update(String(s)).digest();
 const claveOk = (a, b) => timingSafeEqual(sha(a), sha(b));
+
+// --- Sesión de Firebase (Google o correo): se verifica la firma del token con los certificados públicos de Google ---
+let certs = null;
+let certsVence = 0;
+async function certificadosGoogle() {
+  if (certs && Date.now() < certsVence) return certs;
+  const url = process.env.FIREBASE_CERTS_URL || 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
+  const r = await fetch(url);
+  const m = /max-age=(\d+)/.exec(r.headers.get('cache-control') || '');
+  certs = await r.json();
+  certsVence = Date.now() + (m ? Number(m[1]) : 3600) * 1000;
+  return certs;
+}
+const b64 = (t) => Buffer.from(t.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+async function usuarioFirebase(token) {
+  const pid = process.env.FIREBASE_PROJECT_ID;
+  if (!pid || !token) return null;
+  const partes = String(token).split('.');
+  if (partes.length !== 3) return null;
+  let h, p;
+  try { h = JSON.parse(b64(partes[0])); p = JSON.parse(b64(partes[1])); } catch { return null; }
+  if (h.alg !== 'RS256') return null;
+  let pem;
+  try { pem = (await certificadosGoogle())[h.kid]; } catch { return null; }
+  if (!pem) return null;
+  let firmaOk = false;
+  try { firmaOk = createVerify('RSA-SHA256').update(partes[0] + '.' + partes[1]).verify(createPublicKey(pem), b64(partes[2])); } catch { return null; }
+  if (!firmaOk) return null;
+  const ahora = Math.floor(Date.now() / 1000);
+  if (p.aud !== pid || p.iss !== 'https://securetoken.google.com/' + pid || !p.sub || p.exp < ahora || p.iat > ahora + 300) return null;
+  return { uid: p.sub, email: String(p.email || '').toLowerCase(), verificado: p.email_verified === true };
+}
+const correosPermitidos = () => (process.env.ASISTENTE_EMAILS || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
 
 function superaLimite(ip) {
   const ahora = Date.now();
@@ -45,13 +78,26 @@ async function llamar(modelo, payload, signal) {
   });
 }
 
-export async function handle({ method, rawBody, clave, ip }) {
-  const disponible = Boolean(process.env.GEMINI_API_KEY && process.env.ASISTENTE_CLAVE);
+export async function handle({ method, rawBody, clave, ip, authorization }) {
+  const hayClave = Boolean(process.env.ASISTENTE_CLAVE);
+  const hayFirebase = Boolean(process.env.FIREBASE_PROJECT_ID && correosPermitidos().length);
+  const disponible = Boolean(process.env.GEMINI_API_KEY && (hayClave || hayFirebase));
   if (method === 'GET') return { status: 200, body: { disponible } };
   if (method !== 'POST') return { status: 405, body: { error: 'metodo' } };
   if (!disponible) return { status: 503, body: { error: 'no_configurado' } };
-  if (!claveOk(clave || '', process.env.ASISTENTE_CLAVE)) return { status: 401, body: { error: 'clave' } };
-  if (superaLimite(ip || '?')) return { status: 429, body: { error: 'limite' } };
+  const bearer = /^Bearer\s+(.+)$/i.exec(authorization || '');
+  let quien = ip || '?';
+  if (bearer) {
+    // Con sesión: solo entran los correos de la lista y con el correo verificado.
+    const u = await usuarioFirebase(bearer[1]);
+    if (!u) return { status: 401, body: { error: 'sesion' } };
+    if (!u.verificado) return { status: 403, body: { error: 'no_autorizado', detalle: 'correo sin verificar' } };
+    if (!correosPermitidos().includes(u.email)) return { status: 403, body: { error: 'no_autorizado', detalle: 'correo no autorizado' } };
+    quien = 'u:' + u.uid;
+  } else if (!hayClave || !claveOk(clave || '', process.env.ASISTENTE_CLAVE)) {
+    return { status: 401, body: { error: 'clave' } };
+  }
+  if (superaLimite(quien)) return { status: 429, body: { error: 'limite' } };
   if (!rawBody || rawBody.length > MAX_BYTES) return { status: 413, body: { error: 'grande' } };
 
   let b;

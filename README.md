@@ -5,6 +5,29 @@ Herramienta de gestión para una marca de ropa: calculadora de costos y precios,
 - `index.html` es toda la app (sin instalar nada).
 - `copia-original/` es la copia de la app anterior, solo de consulta.
 
+## Inicio de sesión (Google y correo con contraseña) con datos en cualquier dispositivo
+
+Se hace con Firebase (plan gratuito Spark). Mientras `firebase-config.js` tenga `null`, la app funciona sin cuenta y guarda los datos solo en ese navegador.
+
+1. En https://console.firebase.google.com crea un proyecto.
+2. **Authentication → Método de acceso:** activa **Correo electrónico/contraseña** y **Google**.
+3. **Authentication → Configuración → Dominios autorizados:** agrega el dominio de tu app (por ejemplo `tu-app.vercel.app`, sin `https://`).
+4. **Configuración del proyecto → Tus apps → Web (`</>`):** copia el bloque `firebaseConfig` y pégalo en `firebase-config.js` (son datos públicos, no secretos).
+5. **Firestore Database → Crear base de datos** (modo producción) y en **Reglas** pega:
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{uid}/{document=**} {
+         allow read, write: if request.auth != null && request.auth.uid == uid;
+       }
+     }
+   }
+   ```
+6. Sube el cambio a GitHub; Vercel o Netlify publican solos.
+
+Cada persona ve únicamente sus datos. La primera vez que alguien entra, lo que ya tenía guardado en ese navegador se sube a su cuenta. Al cerrar sesión se borran los datos locales del dispositivo.
+
 ## Asistente de IA con Gemini (fuera de Claude)
 
 El asistente usa un pequeño servicio propio (`/api/asistente`) que guarda tu clave de Gemini en el servidor. La clave **nunca** va dentro de la página ni del repositorio.
@@ -25,12 +48,14 @@ En el panel de tu hosting (Netlify: *Site configuration → Environment variable
 |---|---|
 | `GEMINI_API_KEY` | Tu clave de Gemini (obligatoria) |
 | `ASISTENTE_CLAVE` | Una contraseña que tú inventes. La escribirás una vez en el asistente (obligatoria) |
+| `FIREBASE_PROJECT_ID` | Opcional. El `projectId` de tu Firebase, para que el asistente use tu sesión en vez de la contraseña |
+| `ASISTENTE_EMAILS` | Opcional. Correos autorizados para usar el asistente, separados por comas. Con sesión iniciada solo entran estos correos y con el correo verificado |
 | `GEMINI_MODEL` | Opcional. Por defecto `gemini-3.8-flash`; si no existe, usa `gemini-2.5-flash` |
 
 Vuelve a publicar después de guardarlas.
 
 ### 4. Úsalo
-Abre tu enlace, toca **Asistente** y escribe la contraseña (`ASISTENTE_CLAVE`). La app la recuerda en ese dispositivo.
+Abre tu enlace, toca **Asistente**. Si iniciaste sesión y tu correo está en `ASISTENTE_EMAILS`, funciona directo; si no, escribe la contraseña (`ASISTENTE_CLAVE`) una vez y la app la recuerda en ese dispositivo.
 
 ### Seguridad y costos
 - Sin la contraseña nadie puede usar el asistente ni gastar tu saldo.

@@ -13,7 +13,7 @@ createServer(async (req, res) => {
   if (url.pathname === '/api/asistente') {
     const chunks = [];
     for await (const c of req) chunks.push(c);
-    const r = await handle({ method: req.method, rawBody: Buffer.concat(chunks).toString('utf8'), clave: req.headers['x-asistente-clave'] || '', ip: req.socket.remoteAddress });
+    const r = await handle({ method: req.method, rawBody: Buffer.concat(chunks).toString('utf8'), clave: req.headers['x-asistente-clave'] || '', authorization: req.headers.authorization || '', ip: req.socket.remoteAddress });
     res.writeHead(r.status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
     return res.end(JSON.stringify(r.body));
   }
