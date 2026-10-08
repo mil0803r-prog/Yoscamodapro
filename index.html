@@ -114,7 +114,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .scen small{font-size:11px;color:var(--on-var)}
 .tablewrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th,td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 th{color:var(--on-var);font-size:11px;letter-spacing:.05em;text-transform:uppercase}
 td.num,th.num{text-align:right}
 .badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:800;background:var(--s-high)}
@@ -271,6 +271,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
       </div>
       <div class="card" style="margin-top:14px">
         <div class="row sb" style="margin-bottom:12px"><h3>Historial de pedidos</h3><span class="badge" id="pedCount"></span></div>
+        <div class="seg" id="pedViewSeg" style="display:flex;margin-bottom:12px" aria-label="Vista"><button data-v="cards" style="flex:1">Encuadros</button><button data-v="table" style="flex:1">Tabla</button></div>
         <div class="row" style="margin-bottom:14px">
           <input class="grow" id="pedBuscar" placeholder="Buscar cliente, producto, ciudad…" aria-label="Buscar pedidos">
           <select id="pedFiltro" style="width:auto" aria-label="Filtrar por estado"></select>
@@ -457,7 +458,7 @@ const CATS_VAR=['Tela / Gamarra','Hilos y avíos','Confección / maquila','Publi
 const CATS_CIF=['Alquiler del taller','Luz, agua e internet','Sueldos fijos','Marketing fijo','Mantenimiento de máquinas','Movilidad','Otros'];
 
 let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto',pais:'51',waEmpresa:'51960614797'}};
-const ui={tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
+const ui={pedView:(()=>{try{return localStorage.getItem('yosca_pedview')==='table'?'table':'cards'}catch(e){return'cards'}})(),tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
 
 /* ---- costos de una prenda (todo en soles) ---- */
 const telaCost=g=>g.modo==='kilos'?num(g.kilos)*num(g.precioKg)*(1+num(g.merma)/100):num(g.metros)*num(g.precioMetro);
@@ -1103,6 +1104,12 @@ function renderPed(){
   const rows=S.orders.filter(o=>(!f||o.estado===f)&&(!q||[o.cliente,o.producto,o.ciudad,o.telefono].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
   $('#pedCount').textContent=rows.length+(rows.length===1?' pedido':' pedidos');
   if(!rows.length){$('#pedTabla').innerHTML='<div class="empty"><b>Aún no hay pedidos</b>Registra uno arriba o impórtalos de Shopify desde Ajustes.</div>';return}
+  document.querySelectorAll('#pedViewSeg button').forEach(b=>b.classList.toggle('on',b.dataset.v===ui.pedView));
+  if(ui.pedView==='table'){
+    $('#pedTabla').innerHTML='<div class="tablewrap"><table class="ordtbl"><thead><tr><th>Fecha</th><th>Cliente</th><th>Producto</th><th class="num">Cant.</th><th class="num">Total</th><th class="num">Utilidad</th><th>Pago</th><th>Estado</th><th></th></tr></thead><tbody>'+rows.map(o=>{
+      const q=num(o.cantidad)||1,u=orderProfit(o);
+      return `<tr><td>${fechaCorta(o.fecha)}</td><td><b>${esc(o.cliente)}</b><div class="ph" style="display:flex;align-items:center;gap:6px;color:var(--on-var)">${esc([o.ciudad,o.telefono].filter(Boolean).join(' · '))}${waBtn(o.telefono,o.cliente,o.producto)}</div></td><td>${esc(o.producto)}<div style="color:var(--on-var)">${[o.talla&&'Talla '+o.talla,o.color].filter(Boolean).map(esc).join(' · ')}</div></td><td class="num">${q}</td><td class="num">${fmt(num(o.precio)*q)}</td><td class="num ${u>0?'pos':u<0?'neg':''}">${u?fmt(u):'—'}</td><td>${esc(o.pago||'—')}</td><td><select class="st st-${esc(o.estado)}" data-st="${esc(o.id)}" aria-label="Estado del pedido">${ESTADOS.map(e=>`<option${e===o.estado?' selected':''}>${e}</option>`).join('')}</select></td><td style="white-space:nowrap"><button class="btn sm" data-ed="${esc(o.id)}">Editar</button> <button class="btn sm del" data-del="${esc(o.id)}" aria-label="Eliminar pedido">✕</button></td></tr>`}).join('')+'</tbody></table></div>';
+    return}
   $('#pedTabla').innerHTML='<div class="ords">'+rows.map(o=>{
     const q=num(o.cantidad)||1,u=orderProfit(o);
     const detalle=[o.talla&&'Talla '+o.talla,o.color,q+(q===1?' unidad':' unidades'),o.pack>1&&'pack x'+o.pack].filter(Boolean).map(esc).join(' · ');
@@ -1121,6 +1128,7 @@ function renderPed(){
         <span class="row" style="gap:8px"><button class="btn sm" data-ed="${esc(o.id)}">Editar</button><button class="btn sm del" data-del="${esc(o.id)}" aria-label="Eliminar pedido">✕</button></span></div>
     </article>`}).join('')+'</div>';
 }
+$('#pedViewSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ui.pedView=b.dataset.v;try{localStorage.setItem('yosca_pedview',ui.pedView)}catch(x){}renderPed()});
 $('#pedBuscar').addEventListener('input',renderPed);
 $('#pedFiltro').addEventListener('change',renderPed);
 $('#pedTabla').addEventListener('change',e=>{const id=e.target.dataset.st;if(!id)return;S.orders.find(o=>o.id===id).estado=e.target.value;save();renderPed()});
