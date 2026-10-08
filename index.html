@@ -172,6 +172,24 @@ a{color:var(--primary)}
 .lmsg{font-size:13px;border-radius:12px;padding:10px 12px}
 .lmsg.err{background:var(--error-soft);color:var(--on)}.lmsg.ok{background:var(--primary-soft);color:var(--on)}
 html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aifab{visibility:hidden}
+.ords{display:flex;flex-direction:column;gap:14px}
+.ord{border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:16px;background:var(--s-lowest);box-shadow:0 1px 2px rgba(11,28,48,.05)}
+.ord-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.ord-who{min-width:0}
+.ord-who .ph>span{white-space:nowrap}
+.ord-who b{font-size:17px;font-weight:800;display:block;line-height:1.25;overflow-wrap:anywhere}
+.ord-who .ph{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:14px;color:var(--on-var);margin-top:4px}
+.ord-prod{font-size:15px;line-height:1.4}
+.ord-prod b{font-weight:700}
+.ord-meta{color:var(--on-var);font-size:13.5px;margin-top:3px}
+.ord-money{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ord-money>div:last-child{grid-column:1/-1}
+.ord-money>div{background:var(--s-low);border-radius:12px;padding:12px 14px;min-width:0}
+.ord-money small{display:block;color:var(--on-var);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px}
+.ord-money b{font-size:17px;font-weight:800;white-space:nowrap}
+.ord-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--on-var);font-size:13.5px;padding-top:2px}
+.ord select.st{width:auto;min-height:40px;padding:6px 10px;font-weight:800;font-size:13px;border-radius:999px;flex:0 0 auto}
+.st-Entregado{border-color:var(--primary);color:var(--primary)}.st-Devuelto,.st-Cancelado{border-color:var(--error);color:var(--error)}.st-Enviado,.st-Confirmado,.st-Pendiente{border-color:var(--warn);color:var(--warn)}
 .chartcard svg{width:100%;height:auto;display:block;overflow:visible}
 .chartcard text{fill:var(--on-var);font:600 11px "Plus Jakarta Sans",system-ui,sans-serif}
 .chartcard .gl{stroke:var(--line);stroke-width:1}
@@ -252,11 +270,12 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
         </form>
       </div>
       <div class="card" style="margin-top:14px">
-        <div class="row" style="margin-bottom:10px">
+        <div class="row sb" style="margin-bottom:12px"><h3>Historial de pedidos</h3><span class="badge" id="pedCount"></span></div>
+        <div class="row" style="margin-bottom:14px">
           <input class="grow" id="pedBuscar" placeholder="Buscar cliente, producto, ciudad…" aria-label="Buscar pedidos">
           <select id="pedFiltro" style="width:auto" aria-label="Filtrar por estado"></select>
         </div>
-        <div class="tablewrap" id="pedTabla"></div>
+        <div id="pedTabla"></div>
       </div>
     </section>
 
@@ -1077,19 +1096,30 @@ pf.addEventListener('submit',e=>{
   save();resetPed();renderPed();toast('Pedido guardado');
 });
 $('#pedCancel').addEventListener('click',resetPed);
+const fechaCorta=f=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(f||''));return m?`${+m[3]} ${MESES[+m[2]-1]} ${m[1]}`:esc(f||'')};
 function renderPed(){
   if(!ui.editOrder)fillGarmentSelect();
   const q=$('#pedBuscar').value.toLowerCase(),f=$('#pedFiltro').value;
   const rows=S.orders.filter(o=>(!f||o.estado===f)&&(!q||[o.cliente,o.producto,o.ciudad,o.telefono].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  $('#pedCount').textContent=rows.length+(rows.length===1?' pedido':' pedidos');
   if(!rows.length){$('#pedTabla').innerHTML='<div class="empty"><b>Aún no hay pedidos</b>Registra uno arriba o impórtalos de Shopify desde Ajustes.</div>';return}
-  $('#pedTabla').innerHTML=`<table><thead><tr><th>Fecha</th><th>Cliente</th><th>Producto</th><th class="num">Total</th><th>Estado</th><th class="num">Utilidad</th><th></th></tr></thead><tbody>${
-    rows.map(o=>{const q=num(o.cantidad)||1,u=orderProfit(o);
-      return `<tr><td>${esc(o.fecha)}</td><td>${esc(o.cliente)}<div class="sub">${esc(o.ciudad)}</div><div class="sub" style="display:flex;align-items:center;gap:2px">${esc(o.telefono||'')}${waBtn(o.telefono,o.cliente,o.producto)}</div></td>
-      <td>${esc(o.producto)}<div class="sub">${esc([o.talla,o.color].filter(Boolean).join(' · '))} ×${q}${o.pack>1?` · pack x${o.pack}`:''}</div></td>
-      <td class="num">${fmt(num(o.precio)*q)}<div class="sub">${o.pack>1?fmt(o.precio)+' c/u · ':''}${esc(o.pago)}</div></td>
-      <td><select data-st="${esc(o.id)}" style="width:auto;padding:6px 8px" aria-label="Estado del pedido">${ESTADOS.map(e=>`<option${e===o.estado?' selected':''}>${e}</option>`).join('')}</select></td>
-      <td class="num ${u>=0?'pos':'neg'}">${u?fmt(u):'—'}</td>
-      <td><button class="btn sm" data-ed="${esc(o.id)}">Editar</button> <button class="btn sm del" data-del="${esc(o.id)}" aria-label="Eliminar pedido">✕</button></td></tr>`}).join('')}</tbody></table>`;
+  $('#pedTabla').innerHTML='<div class="ords">'+rows.map(o=>{
+    const q=num(o.cantidad)||1,u=orderProfit(o);
+    const detalle=[o.talla&&'Talla '+o.talla,o.color,q+(q===1?' unidad':' unidades'),o.pack>1&&'pack x'+o.pack].filter(Boolean).map(esc).join(' · ');
+    return `<article class="ord">
+      <div class="ord-top">
+        <div class="ord-who"><b>${esc(o.cliente)}</b><div class="ph"><span>${esc([o.ciudad,o.telefono].filter(Boolean).join(' · '))}</span>${waBtn(o.telefono,o.cliente,o.producto)}</div></div>
+        <select class="st st-${esc(o.estado)}" data-st="${esc(o.id)}" aria-label="Estado del pedido">${ESTADOS.map(e=>`<option${e===o.estado?' selected':''}>${e}</option>`).join('')}</select>
+      </div>
+      <div class="ord-prod"><b>${esc(o.producto)}</b><div class="ord-meta">${detalle}</div></div>
+      <div class="ord-money">
+        <div><small>Total</small><b>${fmt(num(o.precio)*q)}</b></div>
+        <div><small>Utilidad</small><b class="${u>0?'pos':u<0?'neg':''}">${u?fmt(u):'—'}</b></div>
+        <div><small>Pago</small><b style="font-size:13px">${esc(o.pago||'—')}</b></div>
+      </div>
+      <div class="ord-foot"><span>${fechaCorta(o.fecha)}${o.pack>1?' · '+fmt(o.precio)+' c/u':''}</span>
+        <span class="row" style="gap:8px"><button class="btn sm" data-ed="${esc(o.id)}">Editar</button><button class="btn sm del" data-del="${esc(o.id)}" aria-label="Eliminar pedido">✕</button></span></div>
+    </article>`}).join('')+'</div>';
 }
 $('#pedBuscar').addEventListener('input',renderPed);
 $('#pedFiltro').addEventListener('change',renderPed);
