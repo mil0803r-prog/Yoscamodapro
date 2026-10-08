@@ -153,6 +153,9 @@ a{color:var(--primary)}
 .logincard h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.015em}
 .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:999px;border:1px solid var(--line);background:var(--s-lowest);color:var(--on);font:inherit;font-weight:800;cursor:pointer}
 .gbtn svg{width:20px;height:20px}
+.pw{position:relative}.pw input{padding-right:48px}
+.eye{position:absolute;right:3px;top:50%;transform:translateY(-50%);width:42px;height:42px;border:0;background:transparent;color:var(--on-var);display:grid;place-items:center;cursor:pointer;border-radius:50%}
+.eye:hover{color:var(--on)}
 .sep{display:flex;align-items:center;gap:10px;color:var(--on-var);font-size:12px;font-weight:700}
 .sep::before,.sep::after{content:"";flex:1;height:1px;background:var(--line)}
 .linkbtn{background:none;border:0;color:var(--primary);font:inherit;font-weight:700;cursor:pointer;padding:6px 0;text-align:left}
@@ -349,7 +352,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
       <div class="sep">o con tu correo</div>
       <form id="loginForm" style="display:flex;flex-direction:column;gap:10px" novalidate>
         <div><label for="lEmail">Correo</label><input id="lEmail" type="email" autocomplete="email" inputmode="email" required></div>
-        <div><label for="lPass">Contraseña</label><input id="lPass" type="password" autocomplete="current-password" minlength="6" required></div>
+        <div><label for="lPass">Contraseña</label><div class="pw"><input id="lPass" type="password" autocomplete="current-password" minlength="6" required><button type="button" class="eye" data-eye="lPass" aria-label="Mostrar contraseña" aria-pressed="false"></button></div></div>
         <button class="btn pri" id="lSubmit" type="submit">Entrar</button>
       </form>
       <div id="lMsg" class="lmsg" role="alert" hidden></div>
@@ -364,7 +367,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
     <div class="row"><button class="btn sm ghost" id="aiClear" type="button">Limpiar</button><button class="btn sm" id="aiClose" type="button">Cerrar</button></div></div>
   <div class="aimsgs" id="aiMsgs" aria-live="polite"></div>
   <div class="aichips" id="aiChips"></div>
-  <form class="aiform" id="aiCodeRow" autocomplete="off" hidden><input id="aiCode" type="password" placeholder="Clave de acceso del asistente" aria-label="Clave de acceso del asistente" autocomplete="off"><button class="btn pri" type="submit">Entrar</button></form>
+  <form class="aiform" id="aiCodeRow" autocomplete="off" hidden><div class="pw" style="flex:1"><input id="aiCode" type="password" placeholder="Clave de acceso del asistente" aria-label="Clave de acceso del asistente" autocomplete="off"><button type="button" class="eye" data-eye="aiCode" aria-label="Mostrar clave" aria-pressed="false"></button></div><button class="btn pri" type="submit">Entrar</button></form>
   <form class="aiform" id="aiForm" autocomplete="off"><input id="aiInput" placeholder="Pregúntame sobre tus costos, precios o ventas…" aria-label="Escribe tu pregunta"><button class="btn pri" id="aiSend" type="submit">Enviar</button><button class="btn del" id="aiStop" type="button" hidden>Parar</button></form>
 </section>
 
@@ -392,6 +395,8 @@ const ICONS={
   pkg:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
   target:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
   spark:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+  eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff:'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
   camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'
 };
 const icon=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -503,6 +508,18 @@ async function connectDb(){
   if(!db)return;
   attachDb(db);
 }
+
+/* ojito para mostrar u ocultar contraseñas */
+document.querySelectorAll('[data-eye]').forEach(b=>{
+  b.innerHTML=icon('eye');
+  b.addEventListener('click',()=>{
+    const inp=document.getElementById(b.dataset.eye),ver=inp.type==='password';
+    inp.type=ver?'text':'password';
+    b.innerHTML=icon(ver?'eyeoff':'eye');b.setAttribute('aria-pressed',String(ver));
+    b.setAttribute('aria-label',(ver?'Ocultar ':'Mostrar ')+(b.dataset.eye==='aiCode'?'clave':'contraseña'));
+    inp.focus();
+  });
+});
 
 /* ================= Inicio de sesión (Firebase): Google y correo ================= */
 const AUTH_ERR={'auth/invalid-email':'El correo no es válido.','auth/missing-password':'Escribe tu contraseña.','auth/weak-password':'La contraseña es muy corta (mínimo 6 caracteres).','auth/email-already-in-use':'Ese correo ya tiene una cuenta. Entra con tu contraseña, con Google, o usa "Olvidé mi contraseña".','auth/invalid-credential':'Correo o contraseña incorrectos.','auth/wrong-password':'Correo o contraseña incorrectos.','auth/user-not-found':'Correo o contraseña incorrectos.','auth/invalid-login-credentials':'Correo o contraseña incorrectos.','auth/too-many-requests':'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.','auth/unauthorized-domain':'Este dominio no está autorizado en Firebase. Agrégalo en Authentication → Configuración → Dominios autorizados.','auth/network-request-failed':'Sin conexión. Revisa tu internet.','auth/operation-not-allowed':'Ese método de acceso no está activado en Firebase (Authentication → Método de acceso).','auth/user-disabled':'Esta cuenta está desactivada.'};
