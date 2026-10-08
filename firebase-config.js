@@ -1,15 +1,10 @@
-// Configuración pública de Firebase (no es secreta).
-// Pega aquí el bloque "firebaseConfig" de tu proyecto: Firebase → Configuración del proyecto → Tus apps.
-// Mientras esté en null, la app funciona sin inicio de sesión y guarda los datos solo en este navegador.
-window.YOSCA_FIREBASE = null;
-
-/* Ejemplo (reemplaza con tus valores):
+// Configuración pública de Firebase (no es secreta: la seguridad la dan las reglas de Firestore y la lista de dominios autorizados).
+// Si algún día quieres volver a usar la app sin cuentas, cambia todo esto por:  window.YOSCA_FIREBASE = null;
 window.YOSCA_FIREBASE = {
-  apiKey: "AIza...",
-  authDomain: "tu-proyecto.firebaseapp.com",
-  projectId: "tu-proyecto",
-  storageBucket: "tu-proyecto.firebasestorage.app",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef"
+  apiKey: "AIzaSyD6LwN9IwMeRTw9ftfWFV9fKR6-ZCubjtI",
+  authDomain: "flow-moda.firebaseapp.com",
+  projectId: "flow-moda",
+  storageBucket: "flow-moda.firebasestorage.app",
+  messagingSenderId: "331084967543",
+  appId: "1:331084967543:web:ee9164eaba7f475caa6072"
 };
-*/
