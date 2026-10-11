@@ -144,6 +144,20 @@ a{color:var(--primary)}
 .msg.u{align-self:flex-end;background:var(--primary-c);color:var(--on-primary);border-bottom-right-radius:5px}
 .msg.a{align-self:flex-start;background:var(--s-lowest);border:1px solid var(--line);border-bottom-left-radius:5px}
 .msg.a b{font-weight:800}
+.aitabs{padding:10px 16px 0}
+.aitabs .seg{display:flex}.aitabs .seg button{flex:1;font-size:13px;padding:8px 12px}
+.aiguide{flex:1;overflow-y:auto;padding:14px 16px 24px;display:flex;flex-direction:column;gap:10px}
+.aiguide details{border:1px solid var(--line);border-radius:14px;background:var(--s-lowest)}
+.aiguide summary{cursor:pointer;list-style:none;padding:14px 16px;font-weight:800;font-size:15px;display:flex;align-items:center;gap:10px}
+.aiguide summary::-webkit-details-marker{display:none}
+.aiguide summary::after{content:'+';margin-left:auto;font-size:20px;color:var(--on-var);font-weight:600}
+.aiguide details[open] summary::after{content:'–'}
+.aiguide .gbody{padding:0 16px 16px;font-size:14px;line-height:1.55}
+.aiguide ol,.aiguide ul{margin:6px 0 10px;padding-left:20px}
+.aiguide li{margin:4px 0}
+.aiguide .gtip{background:var(--s-low);border-radius:12px;padding:10px 12px;font-size:13.5px;margin:8px 0}
+.aiguide .gask{margin-top:6px}
+.aiguide .gintro{font-size:14px;color:var(--on-var);line-height:1.5;margin:0 2px 2px}
 .aichips{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px}
 .aichips button{border:1px solid var(--line);background:var(--s-lowest);color:var(--on);border-radius:999px;padding:7px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;text-align:left}
 .aiform{display:flex;gap:8px;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
@@ -401,6 +415,8 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 <section id="aiPanel" class="aipanel" role="dialog" aria-modal="true" aria-label="Asistente de Yosca" hidden>
   <div class="aihead"><div><h2 style="margin:0;font-size:16px">Asistente</h2><p class="sub" style="margin:0">Responde con tus datos reales. No modifica nada.</p></div>
     <div class="row"><button class="btn sm ghost" id="aiClear" type="button">Limpiar</button><button class="btn sm" id="aiClose" type="button">Cerrar</button></div></div>
+  <div class="aitabs"><div class="seg" id="aiTabs"><button type="button" data-at="chat" class="on">Chat</button><button type="button" data-at="guia">Guía de uso</button></div></div>
+  <div class="aiguide" id="aiGuide" hidden></div>
   <div class="aimsgs" id="aiMsgs" aria-live="polite"></div>
   <div class="aichips" id="aiChips"></div>
   <form class="aiform" id="aiCodeRow" autocomplete="off" hidden><div class="pw" style="flex:1"><input id="aiCode" type="password" placeholder="Clave de acceso del asistente" aria-label="Clave de acceso del asistente" autocomplete="off"><button type="button" class="eye" data-eye="aiCode" aria-label="Mostrar clave" aria-pressed="false"></button></div><button class="btn pri" type="submit">Entrar</button></form>
@@ -1429,9 +1445,11 @@ function aiContext(){
     ultimos_pedidos:[...S.orders].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,40).map(orderLite),
     ultimos_gastos_variables:[...S.expenses].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,30).map(g=>({fecha:g.fecha,categoria:g.categoria,descripcion:g.descripcion,monto:num(g.monto)}))};
 }
-const AI_RULES=`Eres el asistente financiero de un taller de ropa en Perú. Hablas en español sencillo, directo y corto. Todos los montos son en soles (S/).
+const aiRules=()=>`Eres el asistente financiero de un taller de ropa en Perú. Hablas en español sencillo, directo y corto. Todos los montos son en soles (S/).
 Reglas: usa SOLO los datos de abajo y las herramientas; nunca inventes cifras. Si falta un dato, dilo y di qué hace falta. Cuando recomiendes un precio, muestra la cuenta (costo total, ganancia por prenda, margen). Referencia: margen menor a 30% es bajo, de 50% a 65% es sano. En venta contra entrega, recuerda que las devoluciones cuestan el flete.
-No puedes crear ni cambiar datos: si hace falta, di en qué pantalla de la app hacerlo (Calculadora, Pedidos, Gastos). Responde con frases cortas y viñetas con guion; sin tablas largas. Para listas largas de pedidos o tendencias, usa las herramientas.`;
+No puedes crear ni cambiar datos: si hace falta, di en qué pantalla de la app hacerlo (Calculadora, Pedidos, Gastos). Responde con frases cortas y viñetas con guion; sin tablas largas. Para listas largas de pedidos o tendencias, usa las herramientas.
+Si te preguntan cómo usar la app, explica con esta GUÍA y nombra la pantalla exacta:
+${guideText()}`;
 function aiTools(){
   const find=n=>{n=String(n||'').toLowerCase().trim();return S.garments.find(g=>g.name.toLowerCase()===n)||S.garments.find(g=>g.name.toLowerCase().includes(n))||(S.garments.length===1?S.garments[0]:null)};
   return [
@@ -1476,7 +1494,7 @@ async function aiSend(q){
   $('#aiSend').hidden=true;$('#aiStop').hidden=false;$('#aiInput').value='';
   aiCtl=new AbortController();
   const hist=aiTurns.slice(0,-1).slice(-11);
-  const turns=[{role:'user',content:AI_RULES+'\n\nDATOS DEL NEGOCIO (JSON):\n'+JSON.stringify(aiContext())},{role:'assistant',content:'Entendido. Tengo tus datos y las reglas. ¿Qué necesitas?'},...hist];
+  const turns=[{role:'user',content:aiRules()+'\n\nDATOS DEL NEGOCIO (JSON):\n'+JSON.stringify(aiContext())},{role:'assistant',content:'Entendido. Tengo tus datos y las reglas. ¿Qué necesitas?'},...hist];
   try{
     const r=await AI(turns,{cache:false,signal:aiCtl.signal,tools:aiTools(),onText:({text})=>{cur.content=text;renderAi()}});
     cur.content=r.text+(r.truncated?'\n\n(La respuesta se cortó. Pregunta por partes.)':'');
@@ -1486,7 +1504,33 @@ async function aiSend(q){
     else cur.content=(e&&e.text?e.text+'\n\n':'')+aiErr(e&&e.code)+(e&&e.detail?'\n\nDetalle técnico: '+e.detail:'')
   }finally{aiBusy=false;aiCtl=null;$('#aiSend').hidden=false;$('#aiStop').hidden=true;renderAi()}
 }
-function openAi(){$('#aiPanel').hidden=false;renderAi();if(aiNeedsCode())aiShowCode(true);else{aiShowCode(false);setTimeout(()=>$('#aiInput').focus(),50)}}
+
+/* ---- Guía de uso (dentro del asistente) ---- */
+const GUIDE=[
+ {t:'Primeros pasos',ic:'spark',pasos:['Entra con Google o con tu correo y contraseña: tus datos quedan en tu cuenta y los ves igual en cualquier dispositivo.','Abajo está el menú: Dashboard, Calculadora, Pedidos, Gastos y Proyección. El engranaje de arriba abre Ajustes.','Orden recomendado: 1) Gastos fijos, 2) una prenda en la Calculadora, 3) registra pedidos, 4) mira el Dashboard.','Arriba también cambias la moneda (S/ o $) y el modo claro u oscuro.'],tip:'Si empiezas por los gastos fijos, el costo de cada prenda sale completo desde el inicio.',q:'¿Por dónde empiezo en la app?'},
+ {t:'Dashboard',ic:'dash',pasos:['Elige el periodo arriba (mes, semana, etc.) para ver ventas entregadas, utilidad, pedidos y gastos.','"Atención inmediata" te avisa de prendas sin precio, vendidas bajo su costo o con margen menor a 30%, y si falta registrar gastos fijos.','Los gráficos se ven por día, semana, mes y ciudad. Cambia entre Ventas, Utilidad y Pedidos con los botones del gráfico.','Cada gráfico tiene la opción de verlo como tabla.','También verás pedidos por estado, productos más vendidos y gastos por categoría.'],tip:'La utilidad del dashboard descuenta fletes y devoluciones, no solo el costo de la prenda.',q:'¿Cómo voy este mes?'},
+ {t:'Calculadora de costos',ic:'calc',pasos:['Crea una prenda con el botón de nueva prenda y ponle nombre. Puedes poner foto.','Tela: elige "Por kilo" (kilos × precio del kilo) o "Por metro". Agrega el % de merma si se desperdicia tela.','Completa hilos, confección (máquina), avíos, etiqueta y empaque. Etiqueta y empaque van por separado.','Con "Agregar costo extra" sumas más categorías (bordado, lavandería, transporte, etc.).','La cuota de gastos fijos (CIF) se suma sola: total de gastos fijos ÷ prendas del mes.','Modo "Por prenda": pones el precio de venta y ves tu ganancia y margen.','Modo "Cuánto quieres ganar": escribes tu meta y la app te dice a cuánto vender (si sabes cuántas prendas) o cuántas prendas necesitas (si sabes el precio).','Packs de 3, 6 o 12: escribe lo que cobras por el pack y la app calcula lo que vale cada prenda.','Guarda cotizaciones para volver a cargarlas después.'],tip:'Margen sano: entre 50% y 65%. Menos de 30% es bajo.',q:'¿A qué precio vendo para ganar S/ 1,000?'},
+ {t:'Pedidos',ic:'bag',pasos:['Llena el formulario: cliente, teléfono, ciudad, producto (puedes elegir una prenda de tu catálogo), talla, color, cantidad, precio, costo, flete, estado y forma de pago.','Para vender en pack (3, 6 o 12), elige el pack y escribe el precio del pack: la app divide el valor por prenda.','Cambia el estado desde la misma tarjeta: Pendiente, Enviado, Entregado, Devuelto o Cancelado.','El icono verde de WhatsApp abre el chat con el cliente con un mensaje listo.','Mira el historial en encuadros o en tabla con el selector de arriba. Busca por cliente, producto o ciudad y filtra por estado.','Editar carga el pedido en el formulario; ✕ lo elimina.','Utilidad: Entregado = (precio − costo) × cantidad − flete. Devuelto = pierdes el flete (por el factor de Ajustes).'],tip:'Escribe el teléfono con o sin 51; la app lo entiende. Configura tu código de país en Ajustes.',q:'¿Qué ciudad me compra más?'},
+ {t:'Gastos',ic:'money',pasos:['Fijos (CIF): alquiler, luz, sueldos, internet… lo que pagas cada mes aunque no vendas.','Variables: gastos del día a día (envíos, publicidad, compras sueltas). Elige la fecha y la categoría.','La "base de prendas por mes" (200, 300, 400, 500 o 600) define cuánto gasto fijo toca a cada prenda: más prendas, menos costo fijo por prenda.','Puedes editar o borrar cualquier gasto.'],tip:'Si cambias la base de prendas, el costo por prenda en la Calculadora se actualiza solo.',q:'¿Cuántas prendas necesito vender para cubrir mis gastos fijos?'},
+ {t:'Proyección',ic:'trend',pasos:['Prueba escenarios de producción: conservador, moderado y expansión (puedes cambiar las cantidades).','Elige una prenda y un lote de 25, 50 o 100 para ver inversión, venta estimada y utilidad.','Verás el punto de equilibrio: cuántas prendas debes vender para recuperar lo invertido.'],tip:'Úsala antes de producir un lote grande para saber cuánto necesitas vender.',q:'Revisa mis costos y dime qué mejorar'},
+ {t:'Ajustes, importar y respaldo',ic:'gear',pasos:['Ajustes (engranaje): nombre de la marca, tipo de cambio S/ por US$, cuánto cuesta una devolución (× flete), código de país y WhatsApp de la empresa.','Importar pedidos de Shopify: en Shopify ve a Pedidos → Exportar → CSV y sube ese archivo. No duplica pedidos ya importados; el costo lo completas tú.','Respaldo automático: la app guarda una copia cada día (últimas 14). Puedes restaurar o descargar cualquiera.','"Crear respaldo ahora" guarda una copia al momento. También puedes descargar el respaldo .json y los pedidos o gastos en .csv.','Cerrar sesión está en la tarjeta de tu cuenta, en Ajustes.'],tip:'Antes de restaurar, la app guarda una copia de tus datos actuales por si te arrepientes.',q:'¿Cómo restauro un respaldo?'},
+ {t:'Usar el asistente',ic:'spark',pasos:['Escribe tu pregunta o toca una de las sugerencias. Responde con tus datos reales: prendas, costos, pedidos y gastos.','Puede calcular precios para una meta de ganancia, comparar meses y decirte qué mejorar.','No cambia ni crea datos: te dice en qué pantalla hacerlo.','"Limpiar" borra la conversación y "Detener" corta una respuesta larga.','Esta guía también está aquí: pregúntame "¿cómo hago X?" y te explico.'],tip:'Mientras más completos estén tus costos y pedidos, mejores son sus respuestas.',q:'¿Qué puedes hacer por mí?'}
+];
+const guideText=()=>GUIDE.map(g=>g.t+': '+g.pasos.join(' ')+' Consejo: '+g.tip).join('\n');
+function renderGuide(){
+  $('#aiGuide').innerHTML='<p class="gintro">Aprende a usar cada parte de la herramienta. Toca una sección para abrirla.</p>'+GUIDE.map((g,i)=>`<details><summary>${icon(g.ic)}<span>${esc(g.t)}</span></summary><div class="gbody"><ol>${g.pasos.map(x=>`<li>${esc(x)}</li>`).join('')}</ol><div class="gtip"><b>Consejo:</b> ${esc(g.tip)}</div><button type="button" class="btn sm gask" data-gq="${i}">Preguntar al asistente</button></div></details>`).join('');
+}
+function aiTab(t){
+  const g=t==='guia';
+  $('#aiGuide').hidden=!g;$('#aiMsgs').hidden=g;
+  $('#aiForm').hidden=g;
+  if(g){$('#aiChips').hidden=true;$('#aiCodeRow').hidden=true}else{renderAi();if(aiNeedsCode())aiShowCode(true)}
+  document.querySelectorAll('#aiTabs button').forEach(b=>b.classList.toggle('on',b.dataset.at===t));
+}
+$('#aiTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)aiTab(b.dataset.at)});
+$('#aiGuide').addEventListener('click',e=>{const b=e.target.closest('[data-gq]');if(!b)return;aiTab('chat');aiSend(GUIDE[+b.dataset.gq].q)});
+renderGuide();
+function openAi(){$('#aiPanel').hidden=false;aiTab('chat');if(aiNeedsCode())aiShowCode(true);else{aiShowCode(false);setTimeout(()=>$('#aiInput').focus(),50)}}
 function closeAi(){if(aiCtl)aiCtl.abort();$('#aiPanel').hidden=true;$('#aiFab').focus()}
 $('#aiFab').innerHTML=icon('spark')+'<span>Asistente</span>';
 $('#aiChips').innerHTML=AI_CHIPS.map(c=>`<button type="button">${esc(c)}</button>`).join('');
