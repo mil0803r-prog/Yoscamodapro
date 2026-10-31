@@ -274,9 +274,13 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
     <div class="pagehead" id="pageHead"></div>
     <!-- DASHBOARD -->
     <section id="v-dash" hidden>
-      <div class="card row sb" style="margin-bottom:14px">
-        <div><span class="caps">Periodo</span><h2 id="hola">Hola</h2></div>
-        <select id="periodo" style="width:auto"><option value="mes">Este mes</option><option value="mesant">Mes anterior</option><option value="7d">Últimos 7 días</option><option value="todo">Todo</option></select>
+      <div class="card row sb" style="margin-bottom:14px;flex-wrap:wrap">
+        <div><span class="caps">Periodo</span><h2 id="hola">Hola</h2><p class="sub" id="perTxt" style="margin:2px 0 0"></p></div>
+        <select id="periodo" style="width:auto;max-width:100%" aria-label="Filtrar por periodo"></select>
+        <div class="row" id="perCustom" style="flex:1 1 100%;gap:10px" hidden>
+          <div class="grow"><label for="perDesde">Desde</label><input id="perDesde" type="date"></div>
+          <div class="grow"><label for="perHasta">Hasta</label><input id="perHasta" type="date"></div>
+        </div>
       </div>
       <div class="grid" id="kpis"></div>
       <div class="card row sb" style="margin-top:14px"><span class="caps">Gráficos por</span>
@@ -539,7 +543,7 @@ const CATS_VAR=['Tela / Gamarra','Hilos y avíos','Confección / maquila','Publi
 const CATS_CIF=['Alquiler del taller','Luz, agua e internet','Sueldos fijos','Marketing fijo','Mantenimiento de máquinas','Movilidad','Otros'];
 
 let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],inventory:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto',pais:'51',waEmpresa:'51960614797'}};
-const ui={pedView:(()=>{try{return localStorage.getItem('yosca_pedview')==='table'?'table':'cards'}catch(e){return'cards'}})(),tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
+const ui={pedView:(()=>{try{return localStorage.getItem('yosca_pedview')==='table'?'table':'cards'}catch(e){return'cards'}})(),tab:'dash',desde:'',hasta:'',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
 
 /* ---- costos de una prenda (todo en soles) ---- */
 const telaCost=g=>g.modo==='kilos'?num(g.kilos)*num(g.precioKg)*(1+num(g.merma)/100):num(g.metros)*num(g.precioMetro);
@@ -786,22 +790,49 @@ function refreshAll(){
 }
 
 /* ================= DASHBOARD ================= */
-function inPeriod(f,p){
-  if(p==='todo')return true;
-  const d=new Date((f||today())+'T00:00:00'),n=new Date();
-  if(p==='mes')return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();
-  if(p==='mesant'){const a=new Date(n.getFullYear(),n.getMonth()-1,1);return d.getFullYear()===a.getFullYear()&&d.getMonth()===a.getMonth()}
-  if(p==='7d')return (n-d)/864e5<=7&&d<=n;
-  return true;
+const addDays=(str,n)=>{const d=new Date(str+'T00:00:00');d.setDate(d.getDate()+n);return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const isoD=d=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const PERIODOS=[['hoy','Hoy'],['ayer','Ayer'],['7d','Últimos 7 días'],['sem','Esta semana'],['semant','Semana anterior'],['30d','Últimos 30 días'],['mes','Este mes'],['mesant','Mes anterior'],['anio','Este año'],['todo','Todo'],['custom','Personalizado (desde – hasta)']];
+function periodRange(p,r){
+  const t=today(),d=new Date(t+'T00:00:00'),mon=addDays(t,-((d.getDay()+6)%7)),y=d.getFullYear(),m=d.getMonth();
+  switch(p){
+    case 'hoy':return[t,t];
+    case 'ayer':{const q=addDays(t,-1);return[q,q]}
+    case '7d':return[addDays(t,-6),t];
+    case 'sem':return[mon,addDays(mon,6)];
+    case 'semant':return[addDays(mon,-7),addDays(mon,-1)];
+    case '30d':return[addDays(t,-29),t];
+    case 'mes':return[isoD(new Date(y,m,1)),isoD(new Date(y,m+1,0))];
+    case 'mesant':return[isoD(new Date(y,m-1,1)),isoD(new Date(y,m,0))];
+    case 'anio':return[y+'-01-01',y+'-12-31'];
+    case 'custom':{let a=(r&&r.desde)||ui.desde||null,b=(r&&r.hasta)||ui.hasta||null;if(a&&b&&a>b)[a,b]=[b,a];return[a,b]}
+    default:return[null,null];
+  }
 }
-function cifFor(p){
+function inPeriod(f,p,r){
+  const [a,b]=periodRange(p,r),x=String(f||today()).slice(0,10);
+  return (!a||x>=a)&&(!b||x<=b);
+}
+function periodLabel(p,r){
+  if(p==='custom'){const [a,b]=periodRange(p,r);return a&&b?`${fechaCorta(a)} – ${fechaCorta(b)}`:a?`desde ${fechaCorta(a)}`:b?`hasta ${fechaCorta(b)}`:'todo el tiempo'}
+  const l=(PERIODOS.find(x=>x[0]===p)||[0,'Todo'])[1];return l.toLowerCase()
+}
+function cifFor(p,r){
   const t=cifTotal();
   if(p==='mes'||p==='mesant')return t;
-  if(p==='7d')return t*7/30;
-  const dates=[...S.orders,...S.expenses].map(x=>x.fecha).filter(Boolean).sort();
-  if(!dates.length)return 0;
-  const a=new Date(dates[0]+'T00:00:00'),n=new Date();
-  return t*Math.max(1,(n.getFullYear()-a.getFullYear())*12+n.getMonth()-a.getMonth()+1);
+  let [a,b]=periodRange(p,r);
+  if(p==='todo'||(!a&&!b)){
+    const dates=[...S.orders,...S.expenses].map(x=>x.fecha).filter(Boolean).sort();
+    if(!dates.length)return 0;
+    const f0=new Date(dates[0]+'T00:00:00'),n=new Date();
+    return t*Math.max(1,(n.getFullYear()-f0.getFullYear())*12+n.getMonth()-f0.getMonth()+1);
+  }
+  const hoy=today();
+  if(!b||b>hoy)b=hoy;
+  if(!a){const dates=[...S.orders,...S.expenses].map(x=>x.fecha).filter(Boolean).sort();a=dates[0]||b}
+  if(a>b)return 0;
+  const dias=Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/864e5)+1;
+  return t*dias/30.4375;
 }
 function bars(rows,f){
   if(!rows.length)return '<div class="empty">Sin datos en este periodo</div>';
@@ -809,8 +840,10 @@ function bars(rows,f){
   return rows.map(([l,v])=>`<div style="margin:10px 0"><div class="row sb"><span>${esc(l)}</span><b>${f(v)}</b></div><div class="bar"><i style="width:${Math.max(3,v/max*100)}%"></i></div></div>`).join('');
 }
 function renderDash(){
-  $('#periodo').value=ui.periodo;
+  $('#periodo').value=ui.periodo;$('#perCustom').hidden=ui.periodo!=='custom';
+  $('#perDesde').value=ui.desde||'';$('#perHasta').value=ui.hasta||'';
   const p=ui.periodo;
+  {const [pa,pb]=periodRange(p);$('#perTxt').textContent=p==='todo'?'Todo el tiempo':pa&&pb?(pa===pb?fechaCorta(pa):fechaCorta(pa)+' – '+fechaCorta(pb)):periodLabel(p)}
   const os=S.orders.filter(o=>inPeriod(o.fecha,p)),gs=S.expenses.filter(g=>inPeriod(g.fecha,p));
   const ventas=os.reduce((a,o)=>a+orderRevenue(o),0),bruta=os.reduce((a,o)=>a+orderProfit(o),0);
   const vars=gs.reduce((a,g)=>a+num(g.monto),0),fijos=cifFor(p),neta=bruta-vars-fijos;
@@ -824,7 +857,7 @@ function renderDash(){
     k('Ventas entregadas',fmt(ventas))+
     k('Utilidad de pedidos',fmt(bruta),bruta>=0?'pos':'neg')+
     k('Gastos variables',fmt(vars))+
-    k('Gastos fijos (CIF)',fmt(fijos),'',p==='7d'?'prorrateado a 7 días':'')+
+    k('Gastos fijos (CIF)',fmt(fijos),'',['mes','mesant','todo'].includes(p)?'':'prorrateado al periodo')+
     k('Pedidos',os.length)+
     k('Tasa de entrega',Number.isFinite(tasa)?pct(tasa):'—')+
     k('Por cobrar',fmt(porCobrar),'','en proceso');
@@ -848,7 +881,9 @@ function renderDash(){
   $('#gastoCat').innerHTML=bars(Object.entries(cat).sort((a,b)=>b[1]-a[1]),fmt);
   renderCharts();
 }
-$('#periodo').addEventListener('change',e=>{ui.periodo=e.target.value;renderDash()});
+$('#periodo').innerHTML=PERIODOS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+$('#periodo').addEventListener('change',e=>{ui.periodo=e.target.value;if(ui.periodo==='custom'&&!ui.desde&&!ui.hasta){ui.desde=periodRange('mes')[0];ui.hasta=today()}renderDash()});
+['perDesde','perHasta'].forEach(id=>$('#'+id).addEventListener('change',e=>{ui[id==='perDesde'?'desde':'hasta']=e.target.value||'';renderDash()}));
 
 /* ---- gráficos: por mes, por día y por ciudad ---- */
 const METRICS={ventas:{label:'Ventas entregadas',money:true,f:orderRevenue},utilidad:{label:'Utilidad de pedidos (antes de gastos)',money:true,f:orderProfit},pedidos:{label:'Pedidos (sin cancelados)',money:false,f:o=>o.estado==='Cancelado'?0:1}};
@@ -912,7 +947,7 @@ function renderCharts(){
   const diaBody=ui.tbl.dia?tableView({hd:'Día',list:dias.filter(i=>i.v!==0).map(i=>[i.tip,i.v]).reverse()},m):(nonZero(dias)?colChart(dias,m,5,`${m.label} por día`):emptyMsg);
   const ciuBody=ui.tbl.ciudad?tableView({hd:'Ciudad',list:ciu},m):(ciu.length?ciu.map(([c,v])=>`<div class="crow" data-tip="${esc(c)}" data-tipv="${esc(fval(v,m))}"><span class="nm">${esc(c)}</span><div class="bar"><i style="width:${Math.max(3,Math.abs(v)/mx*100)}%;${v<0?'background:var(--error)':''}"></i></div><b class="${v<0?'neg':''}">${fval(v,m)}</b></div>`).join(''):emptyMsg);
   const perTxt={mes:'mes',dia:'día',hoy:''};
-  const perNames={mes:'este mes',mesant:'el mes anterior','7d':'los últimos 7 días',todo:'todo el tiempo'};
+  const perNames=new Proxy({},{get:()=>periodLabel(ui.periodo)});
   $('#charts').innerHTML=
     chartCard('dia','Por día',`${esc(m.label)} · últimos 30 días (${unit})`,diaBody)+
     chartCard('sem','Por semana',`${esc(m.label)} · últimas 12 semanas, de lunes a domingo (${unit})`,semBody)+
@@ -1707,9 +1742,9 @@ $('#impShop').addEventListener('change',e=>{
 /* ================= ASISTENTE IA ================= */
 let AI=null,aiCtl=null,aiBusy=false;const aiTurns=[];
 const AI_CHIPS=['¿Cómo voy este mes?','¿Qué stock tengo bajo?','¿Qué prenda me deja más margen?','¿A qué precio vendo para ganar S/ 1,000?','¿Cuántas prendas necesito vender para cubrir mis gastos fijos?','¿Qué ciudad me compra más?','Revisa mis costos y dime qué mejorar'];
-function periodStats(p){
-  const os=S.orders.filter(o=>inPeriod(o.fecha,p)),gs=S.expenses.filter(g=>inPeriod(g.fecha,p));
-  const ventas=os.reduce((a,o)=>a+orderRevenue(o),0),bruta=os.reduce((a,o)=>a+orderProfit(o),0),vars=gs.reduce((a,g)=>a+num(g.monto),0),fijos=cifFor(p);
+function periodStats(p,r){
+  const os=S.orders.filter(o=>inPeriod(o.fecha,p,r)),gs=S.expenses.filter(g=>inPeriod(g.fecha,p,r));
+  const ventas=os.reduce((a,o)=>a+orderRevenue(o),0),bruta=os.reduce((a,o)=>a+orderProfit(o),0),vars=gs.reduce((a,g)=>a+num(g.monto),0),fijos=cifFor(p,r);
   const ent=os.filter(o=>o.estado==='Entregado').length,dev=os.filter(o=>o.estado==='Devuelto').length;
   const por={};ESTADOS.forEach(e=>{const n=os.filter(o=>o.estado===e).length;if(n)por[e]=n});
   return {periodo:p,pedidos:os.length,por_estado:por,ventas_entregadas:r2(ventas),utilidad_pedidos:r2(bruta),gastos_variables:r2(vars),gastos_fijos_cif:r2(fijos),utilidad_neta:r2(bruta-vars-fijos),tasa_entrega_pct:ent+dev?r2(ent/(ent+dev)*100):null};
@@ -1741,9 +1776,9 @@ function aiTools(){
      execute(i){const t=(v)=>String(v||'').toLowerCase().trim();
        const r=S.orders.filter(o=>(!i.estado||o.estado.toLowerCase()===t(i.estado))&&(!i.ciudad||String(o.ciudad||'').toLowerCase().includes(t(i.ciudad)))&&(!i.producto||String(o.producto||'').toLowerCase().includes(t(i.producto)))&&(!i.desde||o.fecha>=i.desde)&&(!i.hasta||o.fecha<=i.hasta));
        return {coincidencias:r.length,ventas_entregadas:r2(r.reduce((a,o)=>a+orderRevenue(o),0)),utilidad:r2(r.reduce((a,o)=>a+orderProfit(o),0)),pedidos:r.sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,40).map(orderLite)}}},
-    {name:'resumen_periodo',description:'Resumen del negocio de un periodo: pedidos, ventas, utilidad, gastos variables, gastos fijos (CIF), utilidad neta y tasa de entrega. periodo: mes, mesant, 7d o todo.',
-     inputSchema:{type:'object',properties:{periodo:{type:'string',enum:['mes','mesant','7d','todo']}},required:['periodo']},
-     execute(i){return periodStats(['mes','mesant','7d','todo'].includes(i.periodo)?i.periodo:'mes')}},
+    {name:'resumen_periodo',description:'Resumen del negocio de un periodo: pedidos, ventas, utilidad, gastos variables, gastos fijos (CIF), utilidad neta y tasa de entrega. periodo: hoy, ayer, 7d, sem (esta semana), semant, 30d, mes, mesant, anio o todo. Para un rango propio manda desde y hasta (AAAA-MM-DD).',
+     inputSchema:{type:'object',properties:{periodo:{type:'string',enum:['hoy','ayer','7d','sem','semant','30d','mes','mesant','anio','todo']},desde:{type:'string'},hasta:{type:'string'}}},
+     execute(i){const ok=/^\d{4}-\d{2}-\d{2}$/;if(ok.test(i.desde||'')||ok.test(i.hasta||''))return periodStats('custom',{desde:ok.test(i.desde||'')?i.desde:'',hasta:ok.test(i.hasta||'')?i.hasta:''});return periodStats(['hoy','ayer','7d','sem','semant','30d','mes','mesant','anio','todo'].includes(i.periodo)?i.periodo:'mes')}},
     {name:'tendencia',description:'Serie de ventas, utilidad o pedidos agrupada por dia, semana (lunes a domingo) o mes. Devuelve los ultimos N periodos.',
      inputSchema:{type:'object',properties:{agrupar:{type:'string',enum:['dia','semana','mes']},metrica:{type:'string',enum:['ventas','utilidad','pedidos']},ultimos:{type:'number'}},required:['agrupar']},
      execute(i){const m=METRICS[i.metrica]||METRICS.ventas,map=new Map();
@@ -1791,7 +1826,7 @@ async function aiSend(q){
 /* ---- Guía de uso (dentro del asistente) ---- */
 const GUIDE=[
  {t:'Primeros pasos',ic:'spark',pasos:['Entra con Google o con tu correo y contraseña: tus datos quedan en tu cuenta y los ves igual en cualquier dispositivo.','Abajo está el menú: Dashboard, Calculadora, Pedidos, Gastos y Proyección. El engranaje de arriba abre Ajustes.','Orden recomendado: 1) Gastos fijos, 2) una prenda en la Calculadora, 3) registra pedidos, 4) mira el Dashboard.','Arriba también cambias la moneda (S/ o $) y el modo claro u oscuro.'],tip:'Si empiezas por los gastos fijos, el costo de cada prenda sale completo desde el inicio.',q:'¿Por dónde empiezo en la app?'},
- {t:'Dashboard',ic:'dash',pasos:['Elige el periodo arriba (mes, semana, etc.) para ver ventas entregadas, utilidad, pedidos y gastos.','"Atención inmediata" te avisa de prendas sin precio, vendidas bajo su costo o con margen menor a 30%, y si falta registrar gastos fijos.','Los gráficos se ven por día, semana, mes y ciudad. Cambia entre Ventas, Utilidad y Pedidos con los botones del gráfico.','Cada gráfico tiene la opción de verlo como tabla.','También verás pedidos por estado, productos más vendidos y gastos por categoría.'],tip:'La utilidad del dashboard descuenta fletes y devoluciones, no solo el costo de la prenda.',q:'¿Cómo voy este mes?'},
+ {t:'Dashboard',ic:'dash',pasos:['Elige el periodo arriba: hoy, ayer, últimos 7 o 30 días, esta semana o la anterior, este mes o el anterior, este año, todo, o "Personalizado" para poner tu propio rango desde – hasta para ver ventas entregadas, utilidad, pedidos y gastos.','"Atención inmediata" te avisa de prendas sin precio, vendidas bajo su costo o con margen menor a 30%, y si falta registrar gastos fijos.','Los gráficos se ven por día, semana, mes y ciudad. Cambia entre Ventas, Utilidad y Pedidos con los botones del gráfico.','Cada gráfico tiene la opción de verlo como tabla.','También verás pedidos por estado, productos más vendidos y gastos por categoría.'],tip:'La utilidad del dashboard descuenta fletes y devoluciones, no solo el costo de la prenda.',q:'¿Cómo voy este mes?'},
  {t:'Calculadora de costos',ic:'calc',pasos:['Crea una prenda con el botón de nueva prenda y ponle nombre. Puedes poner foto.','Tela: elige "Por kilo" (kilos × precio del kilo) o "Por metro". Agrega el % de merma si se desperdicia tela.','Completa hilos, confección (máquina), avíos, etiqueta y empaque. Etiqueta y empaque van por separado.','Con "Agregar costo extra" sumas más categorías (bordado, lavandería, transporte, etc.).','La cuota de gastos fijos (CIF) se suma sola: total de gastos fijos ÷ prendas del mes.','Modo "Por prenda": pones el precio de venta y ves tu ganancia y margen.','Modo "Cuánto quieres ganar": escribes tu meta y la app te dice a cuánto vender (si sabes cuántas prendas) o cuántas prendas necesitas (si sabes el precio).','Packs de 3, 6 o 12: escribe lo que cobras por el pack y la app calcula lo que vale cada prenda.','Guarda cotizaciones para volver a cargarlas después.'],tip:'Margen sano: entre 50% y 65%. Menos de 30% es bajo.',q:'¿A qué precio vendo para ganar S/ 1,000?'},
  {t:'Pedidos',ic:'bag',pasos:['Llena el formulario: cliente, teléfono, ciudad, producto (puedes elegir una prenda de tu catálogo), talla, color, cantidad, precio, costo, flete, estado y forma de pago.','Para vender en pack (3, 6 o 12), elige el pack y escribe el precio del pack: la app divide el valor por prenda.','Cambia el estado desde la misma tarjeta: Pendiente, Enviado, Entregado, Devuelto o Cancelado.','El icono verde de WhatsApp abre el chat con el cliente con un mensaje listo.','Mira el historial en encuadros o en tabla con el selector de arriba. Busca por cliente, producto o ciudad y filtra por estado.','Editar carga el pedido en el formulario; ✕ lo elimina.','Utilidad: Entregado = (precio − costo) × cantidad − flete. Devuelto = pierdes el flete (por el factor de Ajustes).'],tip:'Escribe el teléfono con o sin 51; la app lo entiende. Configura tu código de país en Ajustes.',q:'¿Qué ciudad me compra más?'},
  {t:'Inventario',ic:'box',pasos:['Toca "+ Registrar producto". Elige si es una prenda terminada o un material (tela, hilos, avíos). Si es prenda, puedes tomar nombre, costo y precio de tu catálogo de la Calculadora.','Para varias tallas y colores a la vez: escribe las tallas (S, M, L) y los colores (Negro, Blanco), toca "Generar tablero" y pon el stock de cada fila. Cada talla y color tiene su propio inventario. Con "+ Agregar talla o color" sumas más después.','Completa también el mínimo (te avisa cuando quede igual o menos), costo por unidad, SKU y ubicación.','Entrada: suma stock (compra, producción terminada, devolución). Salida: resta stock (venta, uso en producción, merma, muestra). Contar: pones lo que realmente hay y la app registra la diferencia.','Cada producto tiene su Historial con fecha, motivo y saldo de cada movimiento.','Arriba ves productos, unidades, valor a costo, valor de venta, stock bajo y agotados. "Por reponer" lista lo que se acaba, con botón de entrada.','Pedidos: en el formulario elige "Descontar del inventario". Al pasar el pedido a Enviado o Entregado se descuenta solo; si pasa a Devuelto o Cancelado, el stock regresa.','Puedes buscar, filtrar por tipo o por stock bajo/agotado y descargar el inventario en .csv.'],tip:'Pon un mínimo en cada producto para que la app te avise antes de quedarte sin stock.',q:'¿Qué productos tengo con stock bajo?'},
