@@ -141,7 +141,6 @@ nav.bottom button.on{color:var(--primary);background:var(--primary-soft)}
   .app{max-width:760px}
   #menuBtn,.navback{display:none!important}
 }
-}
 .toast,.ask{position:fixed;left:12px;right:12px;bottom:calc(20px + env(safe-area-inset-bottom,0px));max-width:560px;margin:0 auto;background:var(--on);color:var(--surface);padding:12px 14px;border-radius:14px;z-index:40;box-shadow:0 6px 24px rgba(0,0,0,.3)}
 .ask{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ask span{flex:1 1 200px}
 input[type=range]{padding:0;accent-color:var(--primary-c)}
@@ -224,6 +223,8 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .dlg{position:fixed;inset:0;z-index:35;background:rgba(11,28,48,.5);display:flex;align-items:flex-end;justify-content:center}
 .dlg[hidden]{display:none}
 .dlgcard{background:var(--surface);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.ord.flash{animation:invflash 2.2s ease}
+@keyframes invflash{0%,60%{box-shadow:0 0 0 3px var(--primary),0 6px 22px rgba(0,176,116,.35)}100%{box-shadow:0 1px 2px rgba(11,28,48,.05)}}
 .mvrow{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
 .mvrow:first-child{border-top:0}
 .ord-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--on-var);font-size:13.5px;padding-top:2px}
@@ -1279,7 +1280,7 @@ function renderInv(){
   $('#invList').innerHTML='<div class="ords">'+rows.map(i=>{
     const st=invStatus(i),mv=(i.mov||[]).slice(0,6);
     const meta=[i.sku&&'SKU '+i.sku,i.categoria,i.ubicacion&&'📍 '+i.ubicacion].filter(Boolean).map(esc).join(' · ');
-    return `<article class="ord">
+    return `<article class="ord" id="inv-${esc(i.id)}">
       <div class="ord-top"><div class="ord-who"><b>${esc(invName(i))}</b><div class="ph"><span>${i.tipo==='prenda'?'Prenda terminada':'Material'}</span></div></div><span class="badge sb-${st}" style="font-size:12px;padding:5px 12px">${invLabel[st]}</span></div>
       <div class="inv-stock"><b class="${st==='out'?'neg':st==='low'?'warn':''}">${num(i.stock)}</b><span class="sub">${esc(i.unidad||'unid')} en stock${num(i.minimo)>0?' · mínimo '+num(i.minimo):''}</span></div>
       ${meta?`<div class="ord-meta" style="margin-top:-6px">${meta}</div>`:''}
@@ -1297,10 +1298,11 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#dlg').hidden)d
 function invForm(it){
   const n=it||{tipo:'prenda',unidad:'unid',stock:0,minimo:0,costo:0,precio:0};
   const opt=(a,v)=>a.map(x=>`<option${x===v?' selected':''}>${esc(x)}</option>`).join('');
+  const tipoTxt0=it?(n.tipo==='material'?'Material':'Prenda terminada'):'',garName0=(S.garments.find(g=>g.id===n.garmentId)||{}).name||'';
   dlgOpen(`<h2 style="margin:0 0 4px">${it?'Editar producto':'Registrar producto'}</h2><p class="sub" style="margin-bottom:12px">${it?'Cambia los datos. Para mover el stock usa Entrada, Salida o Contar.':'Prendas terminadas, telas, hilos, avíos…'}</p>
   <form id="invForm" class="form" autocomplete="off">
-    <div><label for="i-tipo">Tipo</label><select id="i-tipo" name="tipo"><option value="prenda"${n.tipo==='prenda'?' selected':''}>Prenda terminada</option><option value="material"${n.tipo==='material'?' selected':''}>Material (tela, hilos, avíos…)</option></select></div>
-    <div id="i-gbox"><label for="i-gar">Tomar datos de tu catálogo</label><select id="i-gar" name="garmentId"><option value="">— Escribir a mano —</option>${S.garments.map(g=>`<option value="${esc(g.id)}"${n.garmentId===g.id?' selected':''}>${esc(g.name)}</option>`).join('')}</select></div>
+    <div><label for="i-tipo">Tipo</label><input id="i-tipo" name="tipoTxt" list="dl-tipo" value="${esc(tipoTxt0)}" placeholder="Escribe: Prenda terminada o Material" required><datalist id="dl-tipo"><option value="Prenda terminada"><option value="Material"></datalist></div>
+    <div id="i-gbox"><label for="i-gar">Tomar datos de tu catálogo</label><input id="i-gar" name="garmentName" list="dl-gar" value="${esc(garName0)}" placeholder="Escribe el nombre de la prenda (opcional)"><datalist id="dl-gar">${S.garments.map(g=>`<option value="${esc(g.name)}">`).join('')}</datalist></div>
     <div class="full"><label for="i-nombre">Nombre</label><input id="i-nombre" name="nombre" required value="${esc(n.nombre||'')}" placeholder="Ej. Polera básica, Tela algodón pima"></div>
     <div><label for="i-sku">SKU / código</label><input id="i-sku" name="sku" value="${esc(n.sku||'')}"></div>
     <div><label for="i-cat">Categoría</label><input id="i-cat" name="categoria" value="${esc(n.categoria||'')}" placeholder="Ej. Poleras, Telas"></div>
@@ -1316,16 +1318,30 @@ function invForm(it){
     <div class="row full"><button class="btn pri" type="submit">Guardar</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>
   </form>`);
   const f=$('#invForm');f.dataset.id=it?it.id:'';
-  const vis=()=>{const m=f.tipo.value==='material';$('#i-gbox').hidden=m;$('#i-pbox').hidden=m};vis();f.tipo.addEventListener('change',vis);
-  f.garmentId.addEventListener('change',()=>{const g=S.garments.find(x=>x.id===f.garmentId.value);if(!g)return;const c=gCalc(g);f.nombre.value=g.name;f.costo.value=r2(c.total);f.precio.value=c.pvp||0;if(!f.categoria.value&&g.tipo)f.categoria.value=g.tipo});
+  const esMat=t=>/mat|tela|hilo|av[ií]o|insumo|cinta|bot[oó]n|cierre|elástic|elastic|etiqueta|forro|tejido|rollo/i.test(t||'');
+  const vis=()=>{const m=esMat(f.tipoTxt.value);$('#i-gbox').hidden=m;$('#i-pbox').hidden=m};vis();f.tipoTxt.addEventListener('input',vis);
+  const fromCat=()=>{const g=S.garments.find(x=>x.name.trim().toLowerCase()===f.garmentName.value.trim().toLowerCase());if(!g)return;const c=gCalc(g);f.nombre.value=g.name;f.costo.value=r2(c.total);f.precio.value=c.pvp||0;if(!f.categoria.value&&g.tipo)f.categoria.value=g.tipo};
+  f.garmentName.addEventListener('input',fromCat);f.garmentName.addEventListener('change',fromCat);
   f.addEventListener('submit',e=>{
     e.preventDefault();const fd=Object.fromEntries(new FormData(f));
     ['stock','minimo','costo','precio'].forEach(k=>{if(k in fd)fd[k]=Math.max(0,num(fd[k]))});
-    if(fd.tipo==='material'){fd.garmentId='';fd.precio=0}
-    if(f.dataset.id){Object.assign(invFind(f.dataset.id),fd);toast('Producto actualizado')}
-    else{const stock=fd.stock||0;fd.stock=0;const it2={id:uid(),mov:[],...fd};S.inventory.push(it2);if(stock>0)invMove(it2,stock,'entrada','Stock inicial','',today());toast('Producto registrado')}
-    save();dlgClose();renderInv();
+    const tt=String(fd.tipoTxt||'').trim();fd.tipo=esMat(tt)?'material':'prenda';
+    if(!/^(prenda terminada|material)$/i.test(tt)&&!String(fd.categoria||'').trim())fd.categoria=tt;
+    const gm=S.garments.find(x=>x.name.trim().toLowerCase()===String(fd.garmentName||'').trim().toLowerCase());
+    fd.garmentId=fd.tipo==='prenda'&&gm?gm.id:'';delete fd.tipoTxt;delete fd.garmentName;
+    if(fd.tipo==='material')fd.precio=0;
+    let focoId;
+    if(f.dataset.id){focoId=f.dataset.id;Object.assign(invFind(f.dataset.id),fd);toast('Producto actualizado')}
+    else{const stock=fd.stock||0;fd.stock=0;const it2={id:uid(),mov:[],...fd};S.inventory.push(it2);if(stock>0)invMove(it2,stock,'entrada','Stock inicial','',today());focoId=it2.id;toast('Producto registrado')}
+    save();dlgClose();invFoco(focoId);
   });
+}
+function invFoco(id){
+  const miss=()=>!document.getElementById('inv-'+id);
+  renderInv();
+  if(miss()){$('#invBuscar').value='';$('#invTipo').value='';$('#invEstado').value='';renderInv()}
+  const el=document.getElementById('inv-'+id);if(!el)return;
+  setTimeout(()=>{el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2200)},120);
 }
 function movForm(it,tipo){
   const ent=tipo==='entrada',adj=tipo==='ajuste';
@@ -1344,7 +1360,7 @@ function movForm(it,tipo){
     else{if(c<=0){toast('Escribe una cantidad mayor a 0');return}
       if(!ent&&c>num(it.stock)){toast(`Solo hay ${num(it.stock)} ${it.unidad||''}. Si contaste distinto, usa "Contar".`);return}
       invMove(it,ent?c:-c,tipo,fd.motivo,fd.nota,fd.fecha)}
-    save();dlgClose();renderInv();toast('Movimiento guardado');
+    save();dlgClose();invFoco(it.id);toast('Movimiento guardado');
   });
 }
 $('#invAdd').addEventListener('click',()=>invForm());
