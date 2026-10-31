@@ -543,7 +543,7 @@ const CATS_VAR=['Tela / Gamarra','Hilos y avíos','Confección / maquila','Publi
 const CATS_CIF=['Alquiler del taller','Luz, agua e internet','Sueldos fijos','Marketing fijo','Mantenimiento de máquinas','Movilidad','Otros'];
 
 let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],inventory:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto',pais:'51',waEmpresa:'51960614797'}};
-const ui={pedView:(()=>{try{return localStorage.getItem('yosca_pedview')==='table'?'table':'cards'}catch(e){return'cards'}})(),tab:'dash',desde:'',hasta:'',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
+const ui={pedView:(()=>{try{return localStorage.getItem('yosca_pedview')==='table'?'table':'cards'}catch(e){return'cards'}})(),tab:'dash',desde:'',hasta:'',diaR:'30',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
 
 /* ---- costos de una prenda (todo en soles) ---- */
 const telaCost=g=>g.modo==='kilos'?num(g.kilos)*num(g.precioKg)*(1+num(g.merma)/100):num(g.metros)*num(g.precioMetro);
@@ -792,12 +792,13 @@ function refreshAll(){
 /* ================= DASHBOARD ================= */
 const addDays=(str,n)=>{const d=new Date(str+'T00:00:00');d.setDate(d.getDate()+n);return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const isoD=d=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
-const PERIODOS=[['hoy','Hoy'],['ayer','Ayer'],['7d','Últimos 7 días'],['sem','Esta semana'],['semant','Semana anterior'],['30d','Últimos 30 días'],['mes','Este mes'],['mesant','Mes anterior'],['anio','Este año'],['todo','Todo'],['custom','Personalizado (desde – hasta)']];
+const PERIODOS=[['hoy','Hoy'],['ayer','Ayer'],['hoyayer','Hoy y ayer'],['7d','Últimos 7 días'],['sem','Esta semana'],['semant','Semana anterior'],['30d','Últimos 30 días'],['mes','Este mes'],['mesant','Mes anterior'],['anio','Este año'],['todo','Todo'],['custom','Personalizado (desde – hasta)']];
 function periodRange(p,r){
   const t=today(),d=new Date(t+'T00:00:00'),mon=addDays(t,-((d.getDay()+6)%7)),y=d.getFullYear(),m=d.getMonth();
   switch(p){
     case 'hoy':return[t,t];
     case 'ayer':{const q=addDays(t,-1);return[q,q]}
+    case 'hoyayer':return[addDays(t,-1),t];
     case '7d':return[addDays(t,-6),t];
     case 'sem':return[mon,addDays(mon,6)];
     case 'semant':return[addDays(mon,-7),addDays(mon,-1)];
@@ -944,18 +945,22 @@ function renderCharts(){
   const emptyMsg='<div class="empty">Aún no hay datos para este gráfico.</div>';
   const mesBody=ui.tbl.mes?tableView({hd:'Mes',list:meses.map(i=>[i.tip,i.v])},m):(nonZero(meses)?colChart(meses,m,1,`${m.label} por mes`):emptyMsg);
   const semBody=ui.tbl.sem?tableView({hd:'Semana',list:sems.map(i=>[i.tip,i.v]).reverse()},m):(nonZero(sems)?colChart(sems,m,2,`${m.label} por semana`):emptyMsg);
-  const diaBody=ui.tbl.dia?tableView({hd:'Día',list:dias.filter(i=>i.v!==0).map(i=>[i.tip,i.v]).reverse()},m):(nonZero(dias)?colChart(dias,m,5,`${m.label} por día`):emptyMsg);
+  const diaChips=`<div class="chips" style="margin-bottom:10px">${[['30','Últimos 30 días'],['hoy','Hoy'],['ayer','Ayer'],['hoyayer','Hoy y ayer']].map(([k,l])=>`<button class="chip${ui.diaR===k?' on':''}" data-dr="${k}" type="button">${l}</button>`).join('')}</div>`;
+  const diaTiles=()=>{const t=today(),lista=ui.diaR==='hoy'?[t]:ui.diaR==='ayer'?[addDays(t,-1)]:[t,addDays(t,-1)];
+    return `<div class="grid">${lista.map(f=>{const os=S.orders.filter(o=>String(o.fecha||'').slice(0,10)===f);const sum=k=>os.reduce((a,o)=>a+METRICS[k].f(o),0);
+      return `<div class="kpi"><span class="caps">${f===t?'Hoy':'Ayer'} · ${esc(fechaCorta(f))}</span><b>${fmt(sum('ventas'))}</b><small>ventas entregadas</small><div class="row sb" style="margin-top:8px"><span class="sub">Utilidad</span><b class="${sum('utilidad')<0?'neg':'pos'}" style="font-size:15px">${fmt(sum('utilidad'))}</b></div><div class="row sb"><span class="sub">Pedidos</span><b style="font-size:15px">${sum('pedidos')}</b></div></div>`}).join('')}</div>`};
+  const diaBody=diaChips+(ui.diaR!=='30'?diaTiles():ui.tbl.dia?tableView({hd:'Día',list:dias.filter(i=>i.v!==0).map(i=>[i.tip,i.v]).reverse()},m):(nonZero(dias)?colChart(dias,m,5,`${m.label} por día`):emptyMsg));
   const ciuBody=ui.tbl.ciudad?tableView({hd:'Ciudad',list:ciu},m):(ciu.length?ciu.map(([c,v])=>`<div class="crow" data-tip="${esc(c)}" data-tipv="${esc(fval(v,m))}"><span class="nm">${esc(c)}</span><div class="bar"><i style="width:${Math.max(3,Math.abs(v)/mx*100)}%;${v<0?'background:var(--error)':''}"></i></div><b class="${v<0?'neg':''}">${fval(v,m)}</b></div>`).join(''):emptyMsg);
   const perTxt={mes:'mes',dia:'día',hoy:''};
   const perNames=new Proxy({},{get:()=>periodLabel(ui.periodo)});
   $('#charts').innerHTML=
-    chartCard('dia','Por día',`${esc(m.label)} · últimos 30 días (${unit})`,diaBody)+
+    chartCard('dia','Por día',`${esc(m.label)} · ${ui.diaR==='30'?'últimos 30 días':ui.diaR==='hoy'?'hoy':ui.diaR==='ayer'?'ayer':'hoy y ayer'} (${unit})`,diaBody)+
     chartCard('sem','Por semana',`${esc(m.label)} · últimas 12 semanas, de lunes a domingo (${unit})`,semBody)+
     chartCard('mes','Por mes',`${esc(m.label)} · últimos 6 meses (${unit})`,mesBody)+
     chartCard('ciudad','Por ciudad',`${esc(m.label)} · ${perNames[ui.periodo]} (cambia el periodo arriba)`,ciuBody);
 }
 $('#metricSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ui.metric=b.dataset.metric;renderCharts()});
-$('#charts').addEventListener('click',e=>{const b=e.target.closest('[data-tbl]');if(!b)return;ui.tbl[b.dataset.tbl]=!ui.tbl[b.dataset.tbl];renderCharts()});
+$('#charts').addEventListener('click',e=>{const c=e.target.closest('[data-dr]');if(c){ui.diaR=c.dataset.dr;renderCharts();return}const b=e.target.closest('[data-tbl]');if(!b)return;ui.tbl[b.dataset.tbl]=!ui.tbl[b.dataset.tbl];renderCharts()});
 /* globo de información al pasar el dedo o el mouse */
 (function(){
   const tip=$('#tip');
@@ -1776,9 +1781,9 @@ function aiTools(){
      execute(i){const t=(v)=>String(v||'').toLowerCase().trim();
        const r=S.orders.filter(o=>(!i.estado||o.estado.toLowerCase()===t(i.estado))&&(!i.ciudad||String(o.ciudad||'').toLowerCase().includes(t(i.ciudad)))&&(!i.producto||String(o.producto||'').toLowerCase().includes(t(i.producto)))&&(!i.desde||o.fecha>=i.desde)&&(!i.hasta||o.fecha<=i.hasta));
        return {coincidencias:r.length,ventas_entregadas:r2(r.reduce((a,o)=>a+orderRevenue(o),0)),utilidad:r2(r.reduce((a,o)=>a+orderProfit(o),0)),pedidos:r.sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,40).map(orderLite)}}},
-    {name:'resumen_periodo',description:'Resumen del negocio de un periodo: pedidos, ventas, utilidad, gastos variables, gastos fijos (CIF), utilidad neta y tasa de entrega. periodo: hoy, ayer, 7d, sem (esta semana), semant, 30d, mes, mesant, anio o todo. Para un rango propio manda desde y hasta (AAAA-MM-DD).',
-     inputSchema:{type:'object',properties:{periodo:{type:'string',enum:['hoy','ayer','7d','sem','semant','30d','mes','mesant','anio','todo']},desde:{type:'string'},hasta:{type:'string'}}},
-     execute(i){const ok=/^\d{4}-\d{2}-\d{2}$/;if(ok.test(i.desde||'')||ok.test(i.hasta||''))return periodStats('custom',{desde:ok.test(i.desde||'')?i.desde:'',hasta:ok.test(i.hasta||'')?i.hasta:''});return periodStats(['hoy','ayer','7d','sem','semant','30d','mes','mesant','anio','todo'].includes(i.periodo)?i.periodo:'mes')}},
+    {name:'resumen_periodo',description:'Resumen del negocio de un periodo: pedidos, ventas, utilidad, gastos variables, gastos fijos (CIF), utilidad neta y tasa de entrega. periodo: hoy, ayer, hoyayer (hoy y ayer), 7d, sem (esta semana), semant, 30d, mes, mesant, anio o todo. Para un rango propio manda desde y hasta (AAAA-MM-DD).',
+     inputSchema:{type:'object',properties:{periodo:{type:'string',enum:['hoy','ayer','hoyayer','7d','sem','semant','30d','mes','mesant','anio','todo']},desde:{type:'string'},hasta:{type:'string'}}},
+     execute(i){const ok=/^\d{4}-\d{2}-\d{2}$/;if(ok.test(i.desde||'')||ok.test(i.hasta||''))return periodStats('custom',{desde:ok.test(i.desde||'')?i.desde:'',hasta:ok.test(i.hasta||'')?i.hasta:''});return periodStats(['hoy','ayer','hoyayer','7d','sem','semant','30d','mes','mesant','anio','todo'].includes(i.periodo)?i.periodo:'mes')}},
     {name:'tendencia',description:'Serie de ventas, utilidad o pedidos agrupada por dia, semana (lunes a domingo) o mes. Devuelve los ultimos N periodos.',
      inputSchema:{type:'object',properties:{agrupar:{type:'string',enum:['dia','semana','mes']},metrica:{type:'string',enum:['ventas','utilidad','pedidos']},ultimos:{type:'number'}},required:['agrupar']},
      execute(i){const m=METRICS[i.metrica]||METRICS.ventas,map=new Map();
