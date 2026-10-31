@@ -127,19 +127,22 @@ td.num,th.num{text-align:right}
 .alert{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:var(--warn-soft);color:var(--on);font-size:13px}
 .alert.err{background:var(--error-soft)}
 .hint{font-size:12px;color:var(--on-var);margin-top:6px}
-nav.bottom{position:fixed;left:0;top:0;bottom:0;width:68px;z-index:20;background:var(--s-lowest);border-right:1px solid var(--line);border-radius:0 20px 20px 0;box-shadow:8px 0 24px rgba(11,28,48,.08);padding:calc(14px + env(safe-area-inset-top,0px)) 6px calc(14px + env(safe-area-inset-bottom,0px));overflow-y:auto}
+nav.bottom{position:fixed;left:0;top:0;bottom:0;width:260px;max-width:82vw;z-index:50;background:var(--s-lowest);border-right:1px solid var(--line);border-radius:0 20px 20px 0;box-shadow:8px 0 30px rgba(11,28,48,.18);padding:calc(18px + env(safe-area-inset-top,0px)) 12px calc(18px + env(safe-area-inset-bottom,0px));overflow-y:auto;transform:translateX(-105%);transition:transform .22s ease;visibility:hidden}
+nav.bottom.open{transform:none;visibility:visible}
 nav.bottom div{display:flex;flex-direction:column;gap:6px}
-nav.bottom button{border:0;background:transparent;color:var(--on-var);font:inherit;font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 2px;border-radius:14px;cursor:pointer;min-width:0}
+nav.bottom button{border:0;background:transparent;color:var(--on-var);font:inherit;font-size:15px;font-weight:700;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px;padding:14px 14px;border-radius:14px;cursor:pointer;min-width:0;text-align:left;white-space:nowrap}
+nav.bottom button svg{width:22px;height:22px;flex:0 0 auto}
 nav.bottom button.on{color:var(--primary);background:var(--primary-soft)}
-body{padding-left:68px}
+.navback{position:fixed;inset:0;z-index:45;background:rgba(11,28,48,.45)}
+.navback[hidden]{display:none}
 @media (min-width:900px){
-  nav.bottom{width:224px;padding:22px 14px}
-  nav.bottom button{flex-direction:row;justify-content:flex-start;gap:12px;font-size:14px;padding:13px 14px}
-  nav.bottom button svg{width:22px;height:22px}
+  nav.bottom{width:224px;z-index:20;transform:none;visibility:visible;box-shadow:8px 0 24px rgba(11,28,48,.08);padding:22px 14px}
   body{padding-left:224px}
   .app{max-width:760px}
+  #menuBtn,.navback{display:none!important}
 }
-.toast,.ask{position:fixed;left:calc(68px + 12px);right:12px;bottom:calc(20px + env(safe-area-inset-bottom,0px));max-width:560px;margin:0 auto;background:var(--on);color:var(--surface);padding:12px 14px;border-radius:14px;z-index:40;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+}
+.toast,.ask{position:fixed;left:12px;right:12px;bottom:calc(20px + env(safe-area-inset-bottom,0px));max-width:560px;margin:0 auto;background:var(--on);color:var(--surface);padding:12px 14px;border-radius:14px;z-index:40;box-shadow:0 6px 24px rgba(0,0,0,.3)}
 .ask{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ask span{flex:1 1 200px}
 input[type=range]{padding:0;accent-color:var(--primary-c)}
 a{color:var(--primary)}
@@ -243,7 +246,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 <body>
 <div class="app">
   <header class="top">
-    <div class="brandrow"><svg class="logo" viewBox="0 0 40 40" width="40" height="40" role="img" aria-label="Yosca Moda"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00c383"/><stop offset="1" stop-color="#005c3b"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#lg)"/><path d="M11.5 10.5 20 22l8.5-11.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 22v8" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/><circle cx="28.5" cy="10.5" r="1.7" fill="#73fbb8"/></svg><div class="brand"><b id="brandName">YOSCA</b><small>Taller &amp; Finanzas</small></div></div>
+    <div class="brandrow"><button class="iconbtn" id="menuBtn" type="button" aria-label="Abrir menú" aria-expanded="false"></button><svg class="logo" viewBox="0 0 40 40" width="40" height="40" role="img" aria-label="Yosca Moda"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00c383"/><stop offset="1" stop-color="#005c3b"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#lg)"/><path d="M11.5 10.5 20 22l8.5-11.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 22v8" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/><circle cx="28.5" cy="10.5" r="1.7" fill="#73fbb8"/></svg><div class="brand"><b id="brandName">YOSCA</b><small>Taller &amp; Finanzas</small></div></div>
     <div class="tools">
       <div class="seg" id="curSeg" aria-label="Moneda"><button data-cur="PEN" title="Soles">S/</button><button data-cur="USD" title="Dólares">$</button></div>
       <button class="iconbtn" id="themeBtn" title="Cambiar tema" aria-label="Cambiar tema"></button>
@@ -427,7 +430,8 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
   </main>
 </div>
 
-<nav class="bottom"><div id="nav"></div></nav>
+<div class="navback" id="navBack" hidden></div>
+<nav class="bottom" id="mainNav" aria-label="Secciones"><div id="nav"></div></nav>
 <div id="toast" class="toast" role="status" hidden></div>
 <div id="ask" class="ask" role="alertdialog" hidden><span id="askMsg"></span><button class="btn sm pri" id="askYes" type="button">Sí</button><button class="btn sm" id="askNo" type="button">No</button></div>
 <input type="file" id="photoIn" accept="image/*" hidden>
@@ -741,7 +745,12 @@ $('#setBtn').innerHTML=icon('gear');$('#setBtn').addEventListener('click',()=>sh
 
 const TABS=[['dash','Dashboard','dash'],['calc','Calculadora','calc'],['ped','Pedidos','bag'],['inv','Inventario','box'],['gas','Gastos','money'],['proy','Proyección','trend']];
 $('#nav').innerHTML=TABS.map(([k,n,i])=>`<button data-tab="${k}">${icon(i)}<span>${n}</span></button>`).join('');
-$('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)showTab(b.dataset.tab)});
+$('#menuBtn').innerHTML='<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>';
+function navOpen(v){$('#mainNav').classList.toggle('open',v);$('#navBack').hidden=!v;$('#menuBtn').setAttribute('aria-expanded',String(v))}
+$('#menuBtn').addEventListener('click',()=>navOpen(!$('#mainNav').classList.contains('open')));
+$('#navBack').addEventListener('click',()=>navOpen(false));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')navOpen(false)});
+$('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b){showTab(b.dataset.tab);navOpen(false)}});
 const HEADS={dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],inv:['box','Inventario','Prendas y materiales: cuánto tienes y qué se acaba'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
 function showTab(t){
   ui.tab=t;
