@@ -70,3 +70,7 @@ Abre tu enlace, toca **Asistente**. Si iniciaste sesión (y tu correo está en `
 GEMINI_API_KEY=tu_clave ASISTENTE_CLAVE=tu_contraseña node dev-server.mjs
 ```
 Abre http://localhost:3000
+
+
+## Inventario
+Sección **Inventario**: prendas terminadas y materiales con stock, mínimo (alerta de stock bajo), entradas, salidas, conteo físico, historial y valor del inventario. En Pedidos puedes elegir qué producto descontar: al pasar a Enviado o Entregado se descuenta solo, y si el pedido se devuelve o cancela el stock regresa. Se guarda en `users/{uid}/inventory` y entra en los respaldos.

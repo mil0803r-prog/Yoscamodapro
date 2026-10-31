@@ -127,8 +127,8 @@ td.num,th.num{text-align:right}
 .alert.err{background:var(--error-soft)}
 .hint{font-size:12px;color:var(--on-var);margin-top:6px}
 nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--s-lowest);border-top:1px solid var(--line);border-radius:20px 20px 0 0;box-shadow:0 -8px 24px rgba(11,28,48,.08);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px))}
-nav.bottom div{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
-nav.bottom button{border:0;background:transparent;color:var(--on-var);font:inherit;font-size:10.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:12px;cursor:pointer;min-width:0}
+nav.bottom div{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr);gap:1px}
+nav.bottom button{border:0;background:transparent;color:var(--on-var);font:inherit;font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:12px;cursor:pointer;min-width:0}
 nav.bottom button.on{color:var(--primary);background:var(--primary-soft)}
 .toast,.ask{position:fixed;left:16px;right:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));max-width:560px;margin:0 auto;background:var(--on);color:var(--surface);padding:12px 14px;border-radius:14px;z-index:40;box-shadow:0 6px 24px rgba(0,0,0,.3)}
 .ask{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ask span{flex:1 1 200px}
@@ -198,11 +198,22 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .ord-meta{color:var(--on-var);font-size:13.5px;margin-top:3px}
 .ord-money{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .ord-money>div:last-child{grid-column:1/-1}
+.inv-money>div:last-child{grid-column:auto}
 .ord-money>div{background:var(--s-low);border-radius:12px;padding:12px 14px;min-width:0}
 .ord-money small{display:block;color:var(--on-var);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px}
 .ord-money b{font-size:17px;font-weight:800;white-space:nowrap}
 .bkrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
 .bkrow:first-child{border-top:0}
+.sb-ok{background:var(--primary-soft);color:var(--primary)}.sb-low{background:var(--warn-soft);color:var(--warn)}.sb-out{background:var(--error-soft);color:var(--error)}
+.inv-stock{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.inv-stock b{font-size:30px;font-weight:800;line-height:1}
+.inv-acts{display:flex;gap:8px;flex-wrap:wrap}
+.inv-acts .btn{flex:1 1 0;min-width:84px}
+.dlg{position:fixed;inset:0;z-index:35;background:rgba(11,28,48,.5);display:flex;align-items:flex-end;justify-content:center}
+.dlg[hidden]{display:none}
+.dlgcard{background:var(--surface);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.mvrow{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+.mvrow:first-child{border-top:0}
 .ord-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--on-var);font-size:13.5px;padding-top:2px}
 .ord select.st{width:auto;min-height:40px;padding:6px 10px;font-weight:800;font-size:13px;border-radius:999px;flex:0 0 auto}
 .st-Entregado{border-color:var(--primary);color:var(--primary)}.st-Devuelto,.st-Cancelado{border-color:var(--error);color:var(--error)}.st-Enviado,.st-Confirmado,.st-Pendiente{border-color:var(--warn);color:var(--warn)}
@@ -266,6 +277,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
         <form id="pedForm" class="form" autocomplete="off" style="margin-top:10px">
           <div><label for="p-fecha">Fecha</label><input id="p-fecha" type="date" name="fecha" required></div>
           <div><label for="p-gar">Prenda del catálogo</label><select id="p-gar" name="garmentId"></select></div>
+          <div><label for="p-inv">Descontar del inventario (opcional)</label><select id="p-inv" name="invId"></select></div>
           <div><label for="p-pack">Venta por</label><select id="p-pack" name="pack"><option value="1">Por unidad</option><option value="3">Pack por 3</option><option value="6">Pack por 6</option><option value="12">Pack por 12</option></select></div>
           <div id="packBox" hidden><label for="p-pp">Precio del pack completo (S/)</label><input id="p-pp" type="number" name="precioPack" min="0" step="any"></div>
           <div class="full alert" id="packHint" style="background:var(--primary-soft)" hidden></div>
@@ -342,6 +354,24 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
         <div class="card"><div class="tablewrap" id="gasTabla"></div></div>
       </div>
     </section>
+
+    <!-- INVENTARIO -->
+    <section id="v-inv" hidden>
+      <button class="btn pri" id="invAdd" type="button" style="width:100%;min-height:50px;font-size:16px;margin-bottom:12px">+ Registrar producto</button>
+      <div class="grid" id="invKpis"></div>
+      <div class="card" id="invAlertas" style="margin-top:14px"></div>
+      <div class="card" style="margin-top:14px">
+        <div class="row sb" style="margin-bottom:12px"><h3>Existencias</h3><span class="badge" id="invCount"></span></div>
+        <div class="row" style="margin-bottom:14px">
+          <input id="invBuscar" placeholder="Buscar nombre, SKU, talla, color…" style="flex:1;min-width:150px" aria-label="Buscar en el inventario">
+          <select id="invTipo" style="width:auto" aria-label="Tipo"><option value="">Todo</option><option value="prenda">Prendas</option><option value="material">Materiales</option></select>
+          <select id="invEstado" style="width:auto" aria-label="Estado del stock"><option value="">Todo el stock</option><option value="low">Stock bajo</option><option value="out">Agotados</option></select>
+        </div>
+        <div id="invList"></div>
+        <div class="row" style="margin-top:14px"><button class="btn" id="invExp" type="button">Descargar inventario (.csv)</button></div>
+      </div>
+    </section>
+    <div class="dlg" id="dlg" hidden><div class="dlgcard" id="dlgBody" role="dialog" aria-modal="true"></div></div>
 
     <!-- PROYECCIÓN -->
     <section id="v-proy" hidden></section>
@@ -437,6 +467,7 @@ const r2=n=>Math.round(n*100)/100;
 const ICONS={
   dash:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
   calc:'<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8.01" y2="11"/><line x1="12" y1="11" x2="12.01" y2="11"/><line x1="16" y1="11" x2="16.01" y2="11"/><line x1="8" y1="15" x2="8.01" y2="15"/><line x1="12" y1="15" x2="12.01" y2="15"/><line x1="16" y1="15" x2="16.01" y2="15"/><line x1="8" y1="18.5" x2="12" y2="18.5"/>',
+  box:'<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><line x1="12" y1="13" x2="12" y2="21"/>',
   bag:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>',
   money:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
   trend:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
@@ -472,13 +503,13 @@ const waBtn=(raw,nombre,producto)=>{const u=waUrl(raw,nombre,producto);return u?
 
 /* ================= estado y reglas ================= */
 const KEY='yosca_pro_v2';
-const COLS=['garments','quotes','orders','expenses','cif'];
+const COLS=['garments','quotes','orders','expenses','cif','inventory'];
 const ESTADOS=['Pendiente','Confirmado','Enviado','Entregado','Devuelto','Cancelado'];
 const PAGOS=['Contra entrega','Yape / Plin','Efectivo','Transferencia','Tarjeta'];
 const CATS_VAR=['Tela / Gamarra','Hilos y avíos','Confección / maquila','Publicidad','Envíos','Empaque','Servicios','Otros'];
 const CATS_CIF=['Alquiler del taller','Luz, agua e internet','Sueldos fijos','Marketing fijo','Mantenimiento de máquinas','Movilidad','Otros'];
 
-let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto',pais:'51',waEmpresa:'51960614797'}};
+let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],inventory:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto',pais:'51',waEmpresa:'51960614797'}};
 const ui={pedView:(()=>{try{return localStorage.getItem('yosca_pedview')==='table'?'table':'cards'}catch(e){return'cards'}})(),tab:'dash',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
 
 /* ---- costos de una prenda (todo en soles) ---- */
@@ -699,19 +730,19 @@ $('#themeBtn').addEventListener('click',()=>{
 $('#curSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.settings.moneda=b.dataset.cur;applyTheme();save();refreshAll();toast(b.dataset.cur==='USD'?`Mostrando en dólares (S/ ${S.settings.tc} = $1)`:'Mostrando en soles (S/)')});
 $('#setBtn').innerHTML=icon('gear');$('#setBtn').addEventListener('click',()=>showTab('set'));
 
-const TABS=[['dash','Dashboard','dash'],['calc','Calculadora','calc'],['ped','Pedidos','bag'],['gas','Gastos','money'],['proy','Proyección','trend']];
+const TABS=[['dash','Dashboard','dash'],['calc','Calculadora','calc'],['ped','Pedidos','bag'],['inv','Inventario','box'],['gas','Gastos','money'],['proy','Proyección','trend']];
 $('#nav').innerHTML=TABS.map(([k,n,i])=>`<button data-tab="${k}">${icon(i)}<span>${n}</span></button>`).join('');
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)showTab(b.dataset.tab)});
-const HEADS={dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
+const HEADS={dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],inv:['box','Inventario','Prendas y materiales: cuánto tienes y qué se acaba'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
 function showTab(t){
   ui.tab=t;
   const hd=HEADS[t];$('#pageHead').innerHTML=`<div class="pico">${icon(hd[0])}</div><div><h1>${hd[1]}</h1><p>${hd[2]}</p></div>`;
-  ['dash','calc','ped','gas','proy','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
+  ['dash','calc','ped','inv','gas','proy','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   scrollTo(0,0);renderTab();
 }
 function renderTab(){
-  ({dash:renderDash,calc:renderCalc,ped:renderPed,gas:renderGas,proy:renderProy,set:renderSet})[ui.tab]();
+  ({dash:renderDash,calc:renderCalc,ped:renderPed,inv:renderInv,gas:renderGas,proy:renderProy,set:renderSet})[ui.tab]();
 }
 function refreshAll(){
   if(!ui.gid||!S.garments.find(g=>g.id===ui.gid))ui.gid=S.garments[0]?.id||null;
@@ -766,6 +797,9 @@ function renderDash(){
   const al=[];
   const pend=S.orders.filter(o=>o.estado==='Pendiente').length;
   if(pend)al.push(['', `${pend} ${pend===1?'pedido pendiente':'pedidos pendientes'} por confirmar.`]);
+  {const ag=S.inventory.filter(i=>invStatus(i)==='out').length,bj=S.inventory.filter(i=>invStatus(i)==='low').length;
+   if(ag)al.push(['err',`${ag} ${ag===1?'producto agotado':'productos agotados'} en el inventario.`]);
+   if(bj)al.push(['',`${bj} ${bj===1?'producto con stock bajo':'productos con stock bajo'} en el inventario.`])}
   S.garments.forEach(g=>{const c=gCalc(g);
     if(!c.pvp)al.push(['',`"${esc(g.name)}" no tiene precio de venta (PVP).`]);
     else if(c.ganancia<=0)al.push(['err',`"${esc(g.name)}" se vende por debajo de su costo (${fmt(c.total)}).`]);
@@ -1078,6 +1112,7 @@ pf.estado.innerHTML=ESTADOS.map(e=>`<option>${e}</option>`).join('');
 pf.pago.innerHTML=PAGOS.map(e=>`<option>${e}</option>`).join('');
 $('#pedFiltro').innerHTML='<option value="">Todos los estados</option>'+ESTADOS.map(e=>`<option>${e}</option>`).join('');
 function fillGarmentSelect(){
+  fillInvSelect();
   pf.garmentId.innerHTML='<option value="">— Otra prenda —</option>'+S.garments.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('');
 }
 pf.garmentId.addEventListener('change',()=>{
@@ -1115,7 +1150,9 @@ pf.addEventListener('submit',e=>{
     if(!(fd.precioPack>0)){toast(`Escribe el precio del pack de ${fd.pack}`);return}
     fd.packs=fd.cantidad;fd.cantidad=fd.packs*fd.pack;fd.precio=r2(fd.precioPack/fd.pack);
   }else{fd.pack=1;delete fd.precioPack;fd.packs=0}
-  if(ui.editOrder){Object.assign(S.orders.find(o=>o.id===ui.editOrder),fd)}else{S.orders.unshift({id:uid(),...fd})}
+  let ord;
+  if(ui.editOrder){ord=S.orders.find(o=>o.id===ui.editOrder);Object.assign(ord,fd)}else{ord={id:uid(),...fd};S.orders.unshift(ord)}
+  orderStockSync(ord);
   save();resetPed();renderPed();toast('Pedido guardado');
 });
 $('#pedCancel').addEventListener('click',resetPed);
@@ -1153,15 +1190,157 @@ function renderPed(){
 $('#pedViewSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ui.pedView=b.dataset.v;try{localStorage.setItem('yosca_pedview',ui.pedView)}catch(x){}renderPed()});
 $('#pedBuscar').addEventListener('input',renderPed);
 $('#pedFiltro').addEventListener('change',renderPed);
-$('#pedTabla').addEventListener('change',e=>{const id=e.target.dataset.st;if(!id)return;S.orders.find(o=>o.id===id).estado=e.target.value;save();renderPed()});
+$('#pedTabla').addEventListener('change',e=>{const id=e.target.dataset.st;if(!id)return;const od=S.orders.find(o=>o.id===id);od.estado=e.target.value;orderStockSync(od);save();renderPed()});
 $('#pedTabla').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.ed){const o=S.orders.find(x=>x.id===b.dataset.ed);ui.editOrder=o.id;fillGarmentSelect();
     Object.keys(o).forEach(k=>{if(pf[k]&&k!=='id')pf[k].value=o[k]});
     pf.pack.value=String(o.pack>1?o.pack:1);if(o.pack>1)pf.cantidad.value=o.packs||1;syncPack();syncWaForm();
     $('#pedTitle').textContent='Editar pedido';$('#pedCancel').hidden=false;pf.scrollIntoView({behavior:'smooth'})}
-  if(b.dataset.del)ask('¿Eliminar este pedido?',()=>{S.orders=S.orders.filter(o=>o.id!==b.dataset.del);save();renderPed()});
+  if(b.dataset.del)ask('¿Eliminar este pedido?',()=>{const od=S.orders.find(o=>o.id===b.dataset.del);if(od)orderStockRelease(od);S.orders=S.orders.filter(o=>o.id!==b.dataset.del);save();renderPed()});
 });
+
+/* ================= INVENTARIO ================= */
+const INV_UNID=['unid','m','kg','rollo','cono','caja'];
+const MOT_IN=['Compra','Producción terminada','Devolución de cliente','Otro'];
+const MOT_OUT=['Venta','Uso en producción','Merma / dañado','Muestra / regalo','Otro'];
+const invFind=id=>S.inventory.find(x=>x.id===id);
+const invName=i=>[i.nombre,i.talla,i.color].filter(Boolean).join(' · ');
+function invStatus(i){const st=num(i.stock),mn=num(i.minimo);return st<=0?'out':(mn>0&&st<=mn?'low':'ok')}
+const invLabel={ok:'Disponible',low:'Stock bajo',out:'Agotado'};
+function invMove(it,delta,tipo,motivo,nota,fecha,ref){
+  it.stock=r2(num(it.stock)+delta);
+  (it.mov=it.mov||[]).unshift({id:uid(),ts:Date.now(),fecha:fecha||today(),tipo,cant:delta,motivo:motivo||'',nota:nota||'',saldo:it.stock,ref:ref||''});
+  it.mov=it.mov.slice(0,80);
+}
+function orderStockRelease(o){
+  if(!o.stockDesc)return;
+  const it=invFind(o.stockInv);
+  if(it)invMove(it,+o.stockDesc,'entrada','Pedido anulado o editado','Pedido de '+(o.cliente||''),today(),o.id);
+  o.stockDesc=0;o.stockInv='';
+}
+function orderStockSync(o){
+  const it=o.invId?invFind(o.invId):null,q=num(o.cantidad)||1;
+  const want=!!it&&(o.estado==='Enviado'||o.estado==='Entregado');
+  if(o.stockDesc&&!(want&&o.stockInv===o.invId&&num(o.stockDesc)===q))orderStockRelease(o);
+  if(want&&!o.stockDesc){
+    invMove(it,-q,'salida','Venta','Pedido de '+(o.cliente||''),o.fecha,o.id);o.stockDesc=q;o.stockInv=it.id;
+    if(num(it.stock)<0)toast(`Ojo: "${invName(it)}" quedó en ${it.stock}. Revisa tu stock.`);
+  }
+}
+function fillInvSelect(){
+  const sel=pf&&pf.invId;if(!sel)return;
+  const v=sel.value;
+  sel.innerHTML='<option value="">— No descontar —</option>'+S.inventory.filter(i=>i.tipo==='prenda').map(i=>`<option value="${esc(i.id)}">${esc(invName(i))} (stock ${num(i.stock)})</option>`).join('');
+  if(v&&invFind(v))sel.value=v;
+}
+function invSuggest(){
+  if(!pf.invId||pf.invId.value||ui.editOrder)return;
+  const t=(pf.talla.value||'').trim().toLowerCase(),c=(pf.color.value||'').trim().toLowerCase(),g=pf.garmentId.value;
+  if(!g&&!pf.producto.value.trim())return;
+  const nom=pf.producto.value.trim().toLowerCase();
+  const m=S.inventory.filter(i=>i.tipo==='prenda'&&((g&&i.garmentId===g)||(nom&&String(i.nombre).toLowerCase()===nom))&&(!t||String(i.talla||'').toLowerCase()===t)&&(!c||String(i.color||'').toLowerCase()===c));
+  if(m.length===1)pf.invId.value=m[0].id;
+}
+['talla','color','producto'].forEach(n=>pf[n].addEventListener('input',invSuggest));pf.garmentId.addEventListener('change',()=>setTimeout(invSuggest,0));
+
+const invKpi=(l,v,s='',cls='')=>`<div class="kpi"><span class="caps">${l}</span><b class="${cls}">${v}</b>${s?`<small>${s}</small>`:''}</div>`;
+function renderInv(){
+  const all=S.inventory;
+  const uds=all.reduce((a,i)=>a+Math.max(0,num(i.stock)),0);
+  const vc=all.reduce((a,i)=>a+Math.max(0,num(i.stock))*num(i.costo),0);
+  const vv=all.filter(i=>i.tipo==='prenda').reduce((a,i)=>a+Math.max(0,num(i.stock))*num(i.precio),0);
+  const bajos=all.filter(i=>invStatus(i)==='low'),agot=all.filter(i=>invStatus(i)==='out');
+  $('#invKpis').innerHTML=invKpi('Productos',all.length,'registrados')+invKpi('Unidades en stock',uds.toLocaleString('es-PE'))+invKpi('Valor a costo',fmt(vc),'lo que invertiste')+invKpi('Valor de venta',fmt(vv),'prendas a su precio','pos')+invKpi('Stock bajo',bajos.length,'por reponer',bajos.length?'warn':'')+invKpi('Agotados',agot.length,'sin stock',agot.length?'neg':'');
+  const al=[...agot.map(i=>['err',`<b>${esc(invName(i))}</b> está agotado.`,i.id]),...bajos.map(i=>['',`<b>${esc(invName(i))}</b>: quedan ${num(i.stock)} ${esc(i.unidad||'')} (mínimo ${num(i.minimo)}).`,i.id])];
+  $('#invAlertas').innerHTML=`<div class="row sb"><h3>Por reponer</h3><span class="badge">${al.length}</span></div>`+(al.length?`<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">${al.slice(0,12).map(([c,m,id])=>`<div class="alert ${c}" style="justify-content:space-between;align-items:center"><span>${m}</span><button class="btn sm" data-inv-in="${esc(id)}">+ Entrada</button></div>`).join('')}${al.length>12?`<p class="hint">Y ${al.length-12} más. Filtra por "Stock bajo" o "Agotados" abajo.</p>`:''}</div>`:'<div class="empty"><b>Todo en orden</b>Nada por reponer por ahora.</div>');
+  const q=$('#invBuscar').value.toLowerCase(),tp=$('#invTipo').value,es=$('#invEstado').value;
+  const rows=all.filter(i=>(!tp||i.tipo===tp)&&(!es||invStatus(i)===es)&&(!q||[i.nombre,i.sku,i.talla,i.color,i.categoria,i.ubicacion].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre))||String(a.talla).localeCompare(String(b.talla)));
+  $('#invCount').textContent=rows.length+(rows.length===1?' producto':' productos');
+  if(!rows.length){$('#invList').innerHTML=`<div class="empty"><b>${all.length?'Sin resultados':'Aún no hay productos'}</b>${all.length?'Cambia la búsqueda o los filtros.':'Toca "+ Registrar producto" para empezar: prendas terminadas, telas, hilos, avíos.'}</div>`;return}
+  $('#invList').innerHTML='<div class="ords">'+rows.map(i=>{
+    const st=invStatus(i),mv=(i.mov||[]).slice(0,6);
+    const meta=[i.sku&&'SKU '+i.sku,i.categoria,i.ubicacion&&'📍 '+i.ubicacion].filter(Boolean).map(esc).join(' · ');
+    return `<article class="ord">
+      <div class="ord-top"><div class="ord-who"><b>${esc(invName(i))}</b><div class="ph"><span>${i.tipo==='prenda'?'Prenda terminada':'Material'}</span></div></div><span class="badge sb-${st}" style="font-size:12px;padding:5px 12px">${invLabel[st]}</span></div>
+      <div class="inv-stock"><b class="${st==='out'?'neg':st==='low'?'warn':''}">${num(i.stock)}</b><span class="sub">${esc(i.unidad||'unid')} en stock${num(i.minimo)>0?' · mínimo '+num(i.minimo):''}</span></div>
+      ${meta?`<div class="ord-meta" style="margin-top:-6px">${meta}</div>`:''}
+      <div class="ord-money inv-money"><div><small>Costo unitario</small><b>${fmt(num(i.costo))}</b></div><div><small>${i.tipo==='prenda'?'Precio venta':'Valor en stock'}</small><b>${i.tipo==='prenda'?fmt(num(i.precio)):fmt(Math.max(0,num(i.stock))*num(i.costo))}</b></div></div>
+      <div class="inv-acts"><button class="btn sm pri" data-inv-in="${esc(i.id)}">+ Entrada</button><button class="btn sm" data-inv-out="${esc(i.id)}">− Salida</button><button class="btn sm" data-inv-adj="${esc(i.id)}">Contar</button></div>
+      <details><summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--on-var)">Historial (${(i.mov||[]).length})</summary><div style="margin-top:8px">${mv.length?mv.map(m=>`<div class="mvrow"><div><b>${esc(m.motivo||m.tipo)}</b><div class="sub">${esc(fechaCorta(m.fecha))}${m.nota?' · '+esc(m.nota):''}</div></div><div style="text-align:right"><b class="${m.cant>=0?'pos':'neg'}">${m.cant>=0?'+':''}${m.cant}</b><div class="sub">saldo ${m.saldo}</div></div></div>`).join(''):'<p class="hint">Sin movimientos todavía.</p>'}</div></details>
+      <div class="ord-foot"><span></span><span class="row" style="gap:8px"><button class="btn sm" data-inv-ed="${esc(i.id)}">Editar</button><button class="btn sm del" data-inv-del="${esc(i.id)}" aria-label="Eliminar producto">✕</button></span></div>
+    </article>`}).join('')+'</div>';
+}
+/* ventanas (diálogos) */
+function dlgOpen(html){$('#dlgBody').innerHTML=html;$('#dlg').hidden=false;const f=$('#dlgBody').querySelector('input:not([type=hidden]),select');if(f)setTimeout(()=>f.focus(),60)}
+function dlgClose(){$('#dlg').hidden=true;$('#dlgBody').innerHTML=''}
+$('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg'||e.target.closest('[data-dlg-x]'))dlgClose()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#dlg').hidden)dlgClose()});
+function invForm(it){
+  const n=it||{tipo:'prenda',unidad:'unid',stock:0,minimo:0,costo:0,precio:0};
+  const opt=(a,v)=>a.map(x=>`<option${x===v?' selected':''}>${esc(x)}</option>`).join('');
+  dlgOpen(`<h2 style="margin:0 0 4px">${it?'Editar producto':'Registrar producto'}</h2><p class="sub" style="margin-bottom:12px">${it?'Cambia los datos. Para mover el stock usa Entrada, Salida o Contar.':'Prendas terminadas, telas, hilos, avíos…'}</p>
+  <form id="invForm" class="form" autocomplete="off">
+    <div><label for="i-tipo">Tipo</label><select id="i-tipo" name="tipo"><option value="prenda"${n.tipo==='prenda'?' selected':''}>Prenda terminada</option><option value="material"${n.tipo==='material'?' selected':''}>Material (tela, hilos, avíos…)</option></select></div>
+    <div id="i-gbox"><label for="i-gar">Tomar datos de tu catálogo</label><select id="i-gar" name="garmentId"><option value="">— Escribir a mano —</option>${S.garments.map(g=>`<option value="${esc(g.id)}"${n.garmentId===g.id?' selected':''}>${esc(g.name)}</option>`).join('')}</select></div>
+    <div class="full"><label for="i-nombre">Nombre</label><input id="i-nombre" name="nombre" required value="${esc(n.nombre||'')}" placeholder="Ej. Polera básica, Tela algodón pima"></div>
+    <div><label for="i-sku">SKU / código</label><input id="i-sku" name="sku" value="${esc(n.sku||'')}"></div>
+    <div><label for="i-cat">Categoría</label><input id="i-cat" name="categoria" value="${esc(n.categoria||'')}" placeholder="Ej. Poleras, Telas"></div>
+    <div><label for="i-talla">Talla</label><input id="i-talla" name="talla" value="${esc(n.talla||'')}"></div>
+    <div><label for="i-color">Color</label><input id="i-color" name="color" value="${esc(n.color||'')}"></div>
+    <div><label for="i-unid">Unidad</label><select id="i-unid" name="unidad">${opt(INV_UNID,n.unidad||'unid')}</select></div>
+    ${it?'':`<div><label for="i-stock">Stock inicial</label><input id="i-stock" type="number" name="stock" min="0" step="any" value="0"></div>`}
+    <div><label for="i-min">Avisar cuando quede (mínimo)</label><input id="i-min" type="number" name="minimo" min="0" step="any" value="${num(n.minimo)}"></div>
+    <div><label for="i-costo">Costo por unidad (S/)</label><input id="i-costo" type="number" name="costo" min="0" step="any" value="${num(n.costo)}"></div>
+    <div id="i-pbox"><label for="i-precio">Precio de venta (S/)</label><input id="i-precio" type="number" name="precio" min="0" step="any" value="${num(n.precio)}"></div>
+    <div class="full"><label for="i-ubi">Ubicación</label><input id="i-ubi" name="ubicacion" value="${esc(n.ubicacion||'')}" placeholder="Ej. Estante 2, almacén"></div>
+    <div class="full"><label for="i-nota">Notas</label><textarea id="i-nota" name="nota">${esc(n.nota||'')}</textarea></div>
+    <div class="row full"><button class="btn pri" type="submit">Guardar</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>
+  </form>`);
+  const f=$('#invForm');f.dataset.id=it?it.id:'';
+  const vis=()=>{const m=f.tipo.value==='material';$('#i-gbox').hidden=m;$('#i-pbox').hidden=m};vis();f.tipo.addEventListener('change',vis);
+  f.garmentId.addEventListener('change',()=>{const g=S.garments.find(x=>x.id===f.garmentId.value);if(!g)return;const c=gCalc(g);f.nombre.value=g.name;f.costo.value=r2(c.total);f.precio.value=c.pvp||0;if(!f.categoria.value&&g.tipo)f.categoria.value=g.tipo});
+  f.addEventListener('submit',e=>{
+    e.preventDefault();const fd=Object.fromEntries(new FormData(f));
+    ['stock','minimo','costo','precio'].forEach(k=>{if(k in fd)fd[k]=Math.max(0,num(fd[k]))});
+    if(fd.tipo==='material'){fd.garmentId='';fd.precio=0}
+    if(f.dataset.id){Object.assign(invFind(f.dataset.id),fd);toast('Producto actualizado')}
+    else{const stock=fd.stock||0;fd.stock=0;const it2={id:uid(),mov:[],...fd};S.inventory.push(it2);if(stock>0)invMove(it2,stock,'entrada','Stock inicial','',today());toast('Producto registrado')}
+    save();dlgClose();renderInv();
+  });
+}
+function movForm(it,tipo){
+  const ent=tipo==='entrada',adj=tipo==='ajuste';
+  const mot=ent?MOT_IN:MOT_OUT;
+  dlgOpen(`<h2 style="margin:0 0 4px">${adj?'Contar stock':ent?'Entrada de stock':'Salida de stock'}</h2><p class="sub" style="margin-bottom:12px"><b>${esc(invName(it))}</b> · ahora hay ${num(it.stock)} ${esc(it.unidad||'')}</p>
+  <form id="movForm" class="form" autocomplete="off">
+    <div><label for="m-cant">${adj?'Conteo real (lo que hay ahora)':'Cantidad ('+esc(it.unidad||'unid')+')'}</label><input id="m-cant" type="number" name="cant" min="0" step="any" required ${adj?`value="${num(it.stock)}"`:''}></div>
+    <div><label for="m-fecha">Fecha</label><input id="m-fecha" type="date" name="fecha" value="${today()}" required></div>
+    ${adj?'':`<div class="full"><label for="m-mot">Motivo</label><select id="m-mot" name="motivo">${mot.map(x=>`<option>${x}</option>`).join('')}</select></div>`}
+    <div class="full"><label for="m-nota">Nota (opcional)</label><input id="m-nota" name="nota" placeholder="${adj?'Ej. Conteo del sábado':'Ej. Proveedor, lote, cliente'}"></div>
+    <div class="row full"><button class="btn pri" type="submit">Guardar</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>
+  </form>`);
+  $('#movForm').addEventListener('submit',e=>{
+    e.preventDefault();const fd=Object.fromEntries(new FormData(e.target)),c=num(fd.cant);
+    if(adj){const d=r2(c-num(it.stock));if(d===0){toast('El conteo es igual al stock actual');return}invMove(it,d,'ajuste','Conteo físico',fd.nota,fd.fecha)}
+    else{if(c<=0){toast('Escribe una cantidad mayor a 0');return}
+      if(!ent&&c>num(it.stock)){toast(`Solo hay ${num(it.stock)} ${it.unidad||''}. Si contaste distinto, usa "Contar".`);return}
+      invMove(it,ent?c:-c,tipo,fd.motivo,fd.nota,fd.fecha)}
+    save();dlgClose();renderInv();toast('Movimiento guardado');
+  });
+}
+$('#invAdd').addEventListener('click',()=>invForm());
+['#invBuscar','#invTipo','#invEstado'].forEach(x=>{$(x).addEventListener(x==='#invBuscar'?'input':'change',renderInv)});
+$('#v-inv').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const d=b.dataset,id=d.invIn||d.invOut||d.invAdj||d.invEd||d.invDel,it=id&&invFind(id);if(!it)return;
+  if(d.invIn)movForm(it,'entrada');
+  else if(d.invOut)movForm(it,'salida');
+  else if(d.invAdj)movForm(it,'ajuste');
+  else if(d.invEd)invForm(it);
+  else if(d.invDel)ask(`¿Eliminar "${invName(it)}" del inventario? Se borra también su historial.`,()=>{S.inventory=S.inventory.filter(x=>x.id!==it.id);S.orders.forEach(o=>{if(o.invId===it.id){o.invId='';o.stockDesc=0;o.stockInv=''}});save();renderInv()});
+});
+$('#invExp').addEventListener('click',()=>download(`inventario-${today()}.csv`,toCsv(S.inventory.map(i=>({...i,estado:invLabel[invStatus(i)],valor_costo:r2(Math.max(0,num(i.stock))*num(i.costo))})),['tipo','nombre','sku','categoria','talla','color','unidad','stock','minimo','estado','costo','precio','valor_costo','ubicacion','nota']),'text/csv'));
 
 /* ================= GASTOS ================= */
 const cf=$('#cifForm'),gf=$('#gasForm');
@@ -1432,7 +1611,7 @@ $('#impShop').addEventListener('change',e=>{
 
 /* ================= ASISTENTE IA ================= */
 let AI=null,aiCtl=null,aiBusy=false;const aiTurns=[];
-const AI_CHIPS=['¿Cómo voy este mes?','¿Qué prenda me deja más margen?','¿A qué precio vendo para ganar S/ 1,000?','¿Cuántas prendas necesito vender para cubrir mis gastos fijos?','¿Qué ciudad me compra más?','Revisa mis costos y dime qué mejorar'];
+const AI_CHIPS=['¿Cómo voy este mes?','¿Qué stock tengo bajo?','¿Qué prenda me deja más margen?','¿A qué precio vendo para ganar S/ 1,000?','¿Cuántas prendas necesito vender para cubrir mis gastos fijos?','¿Qué ciudad me compra más?','Revisa mis costos y dime qué mejorar'];
 function periodStats(p){
   const os=S.orders.filter(o=>inPeriod(o.fecha,p)),gs=S.expenses.filter(g=>inPeriod(g.fecha,p));
   const ventas=os.reduce((a,o)=>a+orderRevenue(o),0),bruta=os.reduce((a,o)=>a+orderProfit(o),0),vars=gs.reduce((a,g)=>a+num(g.monto),0),fijos=cifFor(p);
@@ -1449,12 +1628,14 @@ function aiContext(){
     una_devolucion_cuesta_veces_el_flete:S.settings.factor,prendas_base_al_mes:S.settings.base,
     prendas:gar,gastos_fijos_cif:{total_mensual:r2(cifTotal()),cuota_por_prenda:r2(cuotaCif()),detalle:S.cif.map(x=>({nombre:x.nombre,categoria:x.categoria,monto:num(x.monto),estado:x.estado}))},
     este_mes:periodStats('mes'),mes_anterior:periodStats('mesant'),total_pedidos_registrados:S.orders.length,
+    inventario:{productos:S.inventory.length,unidades:r2(S.inventory.reduce((a,i)=>a+Math.max(0,num(i.stock)),0)),valor_a_costo:r2(S.inventory.reduce((a,i)=>a+Math.max(0,num(i.stock))*num(i.costo),0)),por_reponer:S.inventory.filter(i=>invStatus(i)!=='ok').length,
+      articulos:S.inventory.slice(0,120).map(i=>({tipo:i.tipo,nombre:i.nombre,talla:i.talla||'',color:i.color||'',unidad:i.unidad,stock:num(i.stock),minimo:num(i.minimo),estado:invLabel[invStatus(i)],costo:num(i.costo),precio:num(i.precio)}))},
     ultimos_pedidos:[...S.orders].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,40).map(orderLite),
     ultimos_gastos_variables:[...S.expenses].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,30).map(g=>({fecha:g.fecha,categoria:g.categoria,descripcion:g.descripcion,monto:num(g.monto)}))};
 }
 const aiRules=()=>`Eres el asistente financiero de un taller de ropa en Perú. Hablas en español sencillo, directo y corto. Todos los montos son en soles (S/).
 Reglas: usa SOLO los datos de abajo y las herramientas; nunca inventes cifras. Si falta un dato, dilo y di qué hace falta. Cuando recomiendes un precio, muestra la cuenta (costo total, ganancia por prenda, margen). Referencia: margen menor a 30% es bajo, de 50% a 65% es sano. En venta contra entrega, recuerda que las devoluciones cuestan el flete.
-No puedes crear ni cambiar datos: si hace falta, di en qué pantalla de la app hacerlo (Calculadora, Pedidos, Gastos). Responde con frases cortas y viñetas con guion; sin tablas largas. Para listas largas de pedidos o tendencias, usa las herramientas.
+No puedes crear ni cambiar datos: si hace falta, di en qué pantalla de la app hacerlo (Calculadora, Pedidos, Inventario, Gastos). Responde con frases cortas y viñetas con guion; sin tablas largas. Para listas largas de pedidos o tendencias, usa las herramientas.
 Si te preguntan cómo usar la app, explica con esta GUÍA y nombra la pantalla exacta:
 ${guideText()}`;
 function aiTools(){
@@ -1518,6 +1699,7 @@ const GUIDE=[
  {t:'Dashboard',ic:'dash',pasos:['Elige el periodo arriba (mes, semana, etc.) para ver ventas entregadas, utilidad, pedidos y gastos.','"Atención inmediata" te avisa de prendas sin precio, vendidas bajo su costo o con margen menor a 30%, y si falta registrar gastos fijos.','Los gráficos se ven por día, semana, mes y ciudad. Cambia entre Ventas, Utilidad y Pedidos con los botones del gráfico.','Cada gráfico tiene la opción de verlo como tabla.','También verás pedidos por estado, productos más vendidos y gastos por categoría.'],tip:'La utilidad del dashboard descuenta fletes y devoluciones, no solo el costo de la prenda.',q:'¿Cómo voy este mes?'},
  {t:'Calculadora de costos',ic:'calc',pasos:['Crea una prenda con el botón de nueva prenda y ponle nombre. Puedes poner foto.','Tela: elige "Por kilo" (kilos × precio del kilo) o "Por metro". Agrega el % de merma si se desperdicia tela.','Completa hilos, confección (máquina), avíos, etiqueta y empaque. Etiqueta y empaque van por separado.','Con "Agregar costo extra" sumas más categorías (bordado, lavandería, transporte, etc.).','La cuota de gastos fijos (CIF) se suma sola: total de gastos fijos ÷ prendas del mes.','Modo "Por prenda": pones el precio de venta y ves tu ganancia y margen.','Modo "Cuánto quieres ganar": escribes tu meta y la app te dice a cuánto vender (si sabes cuántas prendas) o cuántas prendas necesitas (si sabes el precio).','Packs de 3, 6 o 12: escribe lo que cobras por el pack y la app calcula lo que vale cada prenda.','Guarda cotizaciones para volver a cargarlas después.'],tip:'Margen sano: entre 50% y 65%. Menos de 30% es bajo.',q:'¿A qué precio vendo para ganar S/ 1,000?'},
  {t:'Pedidos',ic:'bag',pasos:['Llena el formulario: cliente, teléfono, ciudad, producto (puedes elegir una prenda de tu catálogo), talla, color, cantidad, precio, costo, flete, estado y forma de pago.','Para vender en pack (3, 6 o 12), elige el pack y escribe el precio del pack: la app divide el valor por prenda.','Cambia el estado desde la misma tarjeta: Pendiente, Enviado, Entregado, Devuelto o Cancelado.','El icono verde de WhatsApp abre el chat con el cliente con un mensaje listo.','Mira el historial en encuadros o en tabla con el selector de arriba. Busca por cliente, producto o ciudad y filtra por estado.','Editar carga el pedido en el formulario; ✕ lo elimina.','Utilidad: Entregado = (precio − costo) × cantidad − flete. Devuelto = pierdes el flete (por el factor de Ajustes).'],tip:'Escribe el teléfono con o sin 51; la app lo entiende. Configura tu código de país en Ajustes.',q:'¿Qué ciudad me compra más?'},
+ {t:'Inventario',ic:'box',pasos:['Toca "+ Registrar producto". Elige si es una prenda terminada o un material (tela, hilos, avíos). Si es prenda, puedes tomar nombre, costo y precio de tu catálogo de la Calculadora.','Escribe stock inicial, mínimo (te avisa cuando quede igual o menos), costo por unidad, talla, color, SKU y ubicación.','Entrada: suma stock (compra, producción terminada, devolución). Salida: resta stock (venta, uso en producción, merma, muestra). Contar: pones lo que realmente hay y la app registra la diferencia.','Cada producto tiene su Historial con fecha, motivo y saldo de cada movimiento.','Arriba ves productos, unidades, valor a costo, valor de venta, stock bajo y agotados. "Por reponer" lista lo que se acaba, con botón de entrada.','Pedidos: en el formulario elige "Descontar del inventario". Al pasar el pedido a Enviado o Entregado se descuenta solo; si pasa a Devuelto o Cancelado, el stock regresa.','Puedes buscar, filtrar por tipo o por stock bajo/agotado y descargar el inventario en .csv.'],tip:'Pon un mínimo en cada producto para que la app te avise antes de quedarte sin stock.',q:'¿Qué productos tengo con stock bajo?'},
  {t:'Gastos',ic:'money',pasos:['Fijos (CIF): alquiler, luz, sueldos, internet… lo que pagas cada mes aunque no vendas.','Variables: gastos del día a día (envíos, publicidad, compras sueltas). Elige la fecha y la categoría.','La "base de prendas por mes" (200, 300, 400, 500 o 600) define cuánto gasto fijo toca a cada prenda: más prendas, menos costo fijo por prenda.','Puedes editar o borrar cualquier gasto.'],tip:'Si cambias la base de prendas, el costo por prenda en la Calculadora se actualiza solo.',q:'¿Cuántas prendas necesito vender para cubrir mis gastos fijos?'},
  {t:'Proyección',ic:'trend',pasos:['Prueba escenarios de producción: conservador, moderado y expansión (puedes cambiar las cantidades).','Elige una prenda y un lote de 25, 50 o 100 para ver inversión, venta estimada y utilidad.','Verás el punto de equilibrio: cuántas prendas debes vender para recuperar lo invertido.'],tip:'Úsala antes de producir un lote grande para saber cuánto necesitas vender.',q:'Revisa mis costos y dime qué mejorar'},
  {t:'Ajustes, importar y respaldo',ic:'gear',pasos:['Ajustes (engranaje): nombre de la marca, tipo de cambio S/ por US$, cuánto cuesta una devolución (× flete), código de país y WhatsApp de la empresa.','Importar pedidos de Shopify: en Shopify ve a Pedidos → Exportar → CSV y sube ese archivo. No duplica pedidos ya importados; el costo lo completas tú.','Respaldo automático: la app guarda una copia cada día (últimas 14). Puedes restaurar o descargar cualquiera.','"Crear respaldo ahora" guarda una copia al momento. También puedes descargar el respaldo .json y los pedidos o gastos en .csv.','Cerrar sesión está en la tarjeta de tu cuenta, en Ajustes.'],tip:'Antes de restaurar, la app guarda una copia de tus datos actuales por si te arrepientes.',q:'¿Cómo restauro un respaldo?'},
