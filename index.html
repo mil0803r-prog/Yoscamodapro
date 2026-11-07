@@ -397,6 +397,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
         <div class="row" style="margin-bottom:14px">
           <input id="invBuscar" placeholder="Buscar nombre, SKU, talla, color…" style="flex:1;min-width:150px" aria-label="Buscar en el inventario">
           <select id="invTipo" style="width:auto" aria-label="Tipo"><option value="">Todo</option><option value="prenda">Prendas</option><option value="material">Materiales</option></select>
+          <select id="invCuello" style="width:auto" aria-label="Cuello o modelo"><option value="">Todos los cuellos</option></select>
           <select id="invEstado" style="width:auto" aria-label="Estado del stock"><option value="">Todo el stock</option><option value="low">Stock bajo</option><option value="out">Agotados</option></select>
         </div>
         <div id="invList"></div>
@@ -1279,7 +1280,8 @@ const INV_UNID=['unid','m','kg','rollo','cono','caja'];
 const MOT_IN=['Compra','Producción terminada','Devolución de cliente','Otro'];
 const MOT_OUT=['Venta','Uso en producción','Merma / dañado','Muestra / regalo','Otro'];
 const invFind=id=>S.inventory.find(x=>x.id===id);
-const invName=i=>[i.nombre,i.talla,i.color].filter(Boolean).join(' · ');
+const invName=i=>[i.nombre,i.cuello,i.talla,i.color].filter(Boolean).join(' · ');
+const invKey=i=>i.tipo+'|'+String(i.nombre||'').trim().toLowerCase()+'|'+String(i.cuello||'').trim().toLowerCase();
 function invStatus(i){const st=num(i.stock),mn=num(i.minimo);return st<=0?'out':(mn>0&&st<=mn?'low':'ok')}
 const invLabel={ok:'Disponible',low:'Stock bajo',out:'Agotado'};
 function invMove(it,delta,tipo,motivo,nota,fecha,ref){
@@ -1328,20 +1330,22 @@ function renderInv(){
   $('#invKpis').innerHTML=invKpi('Productos',all.length,'registrados')+invKpi('Unidades en stock',uds.toLocaleString('es-PE'))+invKpi('Valor a costo',fmt(vc),'lo que invertiste')+invKpi('Valor de venta',fmt(vv),'prendas a su precio','pos')+invKpi('Stock bajo',bajos.length,'por reponer',bajos.length?'warn':'')+invKpi('Agotados',agot.length,'sin stock',agot.length?'neg':'');
   const al=[...agot.map(i=>['err',`<b>${esc(invName(i))}</b> está agotado.`,i.id]),...bajos.map(i=>['',`<b>${esc(invName(i))}</b>: quedan ${num(i.stock)} ${esc(i.unidad||'')} (mínimo ${num(i.minimo)}).`,i.id])];
   $('#invAlertas').innerHTML=`<div class="row sb"><h3>Por reponer</h3><span class="badge">${al.length}</span></div>`+(al.length?`<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">${al.slice(0,12).map(([c,m,id])=>`<div class="alert ${c}" style="justify-content:space-between;align-items:center"><span>${m}</span><button class="btn sm" data-inv-in="${esc(id)}">+ Entrada</button></div>`).join('')}${al.length>12?`<p class="hint">Y ${al.length-12} más. Filtra por "Stock bajo" o "Agotados" abajo.</p>`:''}</div>`:'<div class="empty"><b>Todo en orden</b>Nada por reponer por ahora.</div>');
-  const q=$('#invBuscar').value.toLowerCase(),tp=$('#invTipo').value,es=$('#invEstado').value;
-  const rows=all.filter(i=>(!tp||i.tipo===tp)&&(!es||invStatus(i)===es)&&(!q||[i.nombre,i.sku,i.talla,i.color,i.categoria,i.ubicacion].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre))||String(a.talla).localeCompare(String(b.talla)));
+  {const cs=[...new Set(all.map(i=>String(i.cuello||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));const sel=$('#invCuello'),v=sel.value;
+   sel.innerHTML='<option value="">Todos los cuellos</option>'+cs.map(c=>`<option>${esc(c)}</option>`).join('');sel.value=cs.includes(v)?v:'';sel.hidden=!cs.length}
+  const q=$('#invBuscar').value.toLowerCase(),tp=$('#invTipo').value,es=$('#invEstado').value,cu=$('#invCuello').value;
+  const rows=all.filter(i=>(!tp||i.tipo===tp)&&(!es||invStatus(i)===es)&&(!cu||String(i.cuello||'').trim()===cu)&&(!q||[i.nombre,i.cuello,i.sku,i.talla,i.color,i.categoria,i.ubicacion].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre))||String(a.talla).localeCompare(String(b.talla)));
   $('#invCount').textContent=rows.length+(rows.length===1?' producto':' productos');
   if(!rows.length){$('#invList').innerHTML=`<div class="empty"><b>${all.length?'Sin resultados':'Aún no hay productos'}</b>${all.length?'Cambia la búsqueda o los filtros.':'Toca "+ Registrar producto" para empezar: prendas terminadas, telas, hilos, avíos.'}</div>`;return}
   const grp=new Map();
-  rows.forEach(i=>{const k=i.tipo+'|'+String(i.nombre||'').trim().toLowerCase();if(!grp.has(k))grp.set(k,[]);grp.get(k).push(i)});
-  $('#invList').innerHTML='<div class="ords">'+[...grp.values()].map(vs=>{
+  rows.forEach(i=>{const k=invKey(i);if(!grp.has(k))grp.set(k,[]);grp.get(k).push(i)});
+  $('#invList').innerHTML='<div class="ords">'+[...grp.values()].sort((x,y)=>String(x[0].nombre).localeCompare(String(y[0].nombre))||String(x[0].cuello||'').localeCompare(String(y[0].cuello||''))).map(vs=>{
     vs.sort((x,y)=>cmpSz(x.talla,y.talla)||String(x.color||'').localeCompare(String(y.color||'')));
     const f=vs[0],tot=vs.reduce((a,i)=>a+num(i.stock),0),nOut=vs.filter(i=>invStatus(i)==='out').length,nLow=vs.filter(i=>invStatus(i)==='low').length;
     const gst=nOut===vs.length?'out':(nOut||nLow?'low':'ok');
     const glabel=gst==='ok'?'Disponible':(nOut===vs.length?'Agotado':(nOut+nLow)+' por reponer');
     const meta=[f.sku&&'SKU '+f.sku,f.categoria,f.ubicacion&&'📍 '+f.ubicacion].filter(Boolean).map(esc).join(' · ');
     return `<article class="ord">
-      <div class="ord-top"><div class="ord-who"><b>${esc(f.nombre)}</b><div class="ph"><span>${f.tipo==='prenda'?'Prenda terminada':'Material'} · ${vs.length} ${vs.length===1?'variante':'variantes'}</span></div></div><span class="badge sb-${gst}" style="font-size:12px;padding:5px 12px">${glabel}</span></div>
+      <div class="ord-top"><div class="ord-who"><b>${esc(f.nombre)}${f.cuello?' · '+esc(f.cuello):''}</b><div class="ph"><span>${f.tipo==='prenda'?'Prenda terminada':'Material'} · ${vs.length} ${vs.length===1?'variante':'variantes'}</span></div></div><span class="badge sb-${gst}" style="font-size:12px;padding:5px 12px">${glabel}</span></div>
       <div class="inv-stock"><b>${r2(tot)}</b><span class="sub">${esc(f.unidad||'unid')} en total</span></div>
       ${meta?`<div class="ord-meta" style="margin-top:-6px">${meta}</div>`:''}
       <div class="ord-money inv-money"><div><small>Costo unitario</small><b>${fmt(num(f.costo))}</b></div><div><small>${f.tipo==='prenda'?'Precio venta':'Valor en stock'}</small><b>${f.tipo==='prenda'?fmt(num(f.precio)):fmt(vs.reduce((a,i)=>a+Math.max(0,num(i.stock))*num(i.costo),0))}</b></div></div>
@@ -1371,6 +1375,7 @@ function invForm(it,base){
   <form id="invForm" class="form" autocomplete="off">
     <div><label for="i-tipo">Tipo</label><input id="i-tipo" name="tipoTxt" list="dl-tipo" value="${esc(tipoTxt0)}" placeholder="Escribe: Prenda terminada o Material" required><datalist id="dl-tipo"><option value="Prenda terminada"><option value="Material"></datalist></div>
     <div id="i-gbox"><label for="i-gar">Tomar datos de tu catálogo</label><input id="i-gar" name="garmentName" list="dl-gar" value="${esc(garName0)}" placeholder="Escribe el nombre de la prenda (opcional)"><datalist id="dl-gar">${S.garments.map(g=>`<option value="${esc(g.name)}">`).join('')}</datalist></div>
+    <div class="full" id="i-cbox"><label for="i-cuello">Cuello / modelo (separa el stock)</label><input id="i-cuello" name="cuello" list="dl-cuello" value="${esc(n.cuello||'')}" placeholder="Ej. Cuello redondo, Cuello V"><datalist id="dl-cuello">${[...new Set(['Cuello redondo','Cuello V',...S.inventory.map(x=>x.cuello).filter(Boolean)])].map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
     <div class="full"><label for="i-nombre">Nombre</label><input id="i-nombre" name="nombre" required value="${esc(n.nombre||'')}" placeholder="Ej. Polera básica, Tela algodón pima"></div>
     <div><label for="i-sku">SKU / código</label><input id="i-sku" name="sku" value="${esc(n.sku||'')}"></div>
     <div><label for="i-cat">Categoría</label><input id="i-cat" name="categoria" value="${esc(n.categoria||'')}" placeholder="Ej. Poleras, Telas"></div>
@@ -1386,11 +1391,12 @@ function invForm(it,base){
     <div id="i-pbox"><label for="i-precio">Precio de venta (S/)</label><input id="i-precio" type="number" name="precio" min="0" step="any" value="${num(n.precio)}"></div>
     <div class="full"><label for="i-ubi">Ubicación</label><input id="i-ubi" name="ubicacion" value="${esc(n.ubicacion||'')}" placeholder="Ej. Estante 2, almacén"></div>
     <div class="full"><label for="i-nota">Notas</label><textarea id="i-nota" name="nota">${esc(n.nota||'')}</textarea></div>
+    ${it?`<label class="full" style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" name="aplicarTodas" value="1" checked style="width:auto"> Aplicar estos datos (nombre, cuello, costo, precio…) a todas las tallas y colores de este producto</label>`:''}
     <div class="row full"><button class="btn pri" type="submit">Guardar</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>
   </form>`);
   const f=$('#invForm');f.dataset.id=it?it.id:'';
   const esMat=t=>/mat|tela|hilo|av[ií]o|insumo|cinta|bot[oó]n|cierre|elástic|elastic|etiqueta|forro|tejido|rollo/i.test(t||'');
-  const vis=()=>{const m=esMat(f.tipoTxt.value);$('#i-gbox').hidden=m;$('#i-pbox').hidden=m};vis();f.tipoTxt.addEventListener('input',vis);
+  const vis=()=>{const m=esMat(f.tipoTxt.value);$('#i-gbox').hidden=m;$('#i-pbox').hidden=m;$('#i-cbox').hidden=m};vis();f.tipoTxt.addEventListener('input',vis);
   const fromCat=()=>{const g=S.garments.find(x=>x.name.trim().toLowerCase()===f.garmentName.value.trim().toLowerCase());if(!g)return;const c=gCalc(g);f.nombre.value=g.name;f.costo.value=r2(c.total);f.precio.value=c.pvp||0;if(!f.categoria.value&&g.tipo)f.categoria.value=g.tipo};
   f.garmentName.addEventListener('input',fromCat);f.garmentName.addEventListener('change',fromCat);
   if(!it){
@@ -1418,16 +1424,20 @@ function invForm(it,base){
     if(!/^(prenda terminada|material)$/i.test(tt)&&!String(fd.categoria||'').trim())fd.categoria=tt;
     const gm=S.garments.find(x=>x.name.trim().toLowerCase()===String(fd.garmentName||'').trim().toLowerCase());
     fd.garmentId=fd.tipo==='prenda'&&gm?gm.id:'';delete fd.tipoTxt;delete fd.garmentName;
+    fd.cuello=fd.tipo==='material'?'':String(fd.cuello||'').trim();
+    const aplicar=!!fd.aplicarTodas;delete fd.aplicarTodas;
     if(fd.tipo==='material')fd.precio=0;
     let focoId;
-    if(f.dataset.id){focoId=f.dataset.id;Object.assign(invFind(f.dataset.id),fd);toast('Variante actualizada')}
+    if(f.dataset.id){focoId=f.dataset.id;const cur=invFind(f.dataset.id),kold=invKey(cur);
+      if(aplicar){const comun={...fd};delete comun.talla;delete comun.color;S.inventory.filter(x=>invKey(x)===kold).forEach(x=>Object.assign(x,comun))}
+      Object.assign(cur,fd);toast(aplicar?'Producto actualizado (todas sus variantes)':'Variante actualizada')}
     else{
       let vr=[...f.querySelectorAll('.vfrow')].map(r=>({talla:r.querySelector('[data-v=talla]').value.trim(),color:r.querySelector('[data-v=color]').value.trim(),stock:Math.max(0,num(r.querySelector('[data-v=stock]').value))}));
       const used=vr.filter(x=>x.talla||x.color||x.stock>0);vr=used.length?used:vr.slice(0,1);
       const mer=new Map();vr.forEach(x=>{const k=(x.talla+'|'+x.color).toLowerCase();if(mer.has(k))mer.get(k).stock+=x.stock;else mer.set(k,{...x})});
       const low=v=>String(v||'').trim().toLowerCase();let nuevos=0,sumados=0;
       for(const x of mer.values()){
-        const ex=S.inventory.find(y=>y.tipo===fd.tipo&&low(y.nombre)===low(fd.nombre)&&low(y.talla)===low(x.talla)&&low(y.color)===low(x.color));
+        const ex=S.inventory.find(y=>y.tipo===fd.tipo&&low(y.nombre)===low(fd.nombre)&&low(y.cuello)===low(fd.cuello)&&low(y.talla)===low(x.talla)&&low(y.color)===low(x.color));
         if(ex){if(x.stock>0)invMove(ex,x.stock,'entrada','Stock agregado','',today());sumados++;focoId=focoId||ex.id}
         else{const it2={id:uid(),mov:[],...fd,talla:x.talla,color:x.color,stock:0};S.inventory.push(it2);if(x.stock>0)invMove(it2,x.stock,'entrada','Stock inicial','',today());nuevos++;focoId=focoId||it2.id}
       }
@@ -1439,7 +1449,7 @@ function invForm(it,base){
 function invFoco(id){
   const miss=()=>!document.getElementById('inv-'+id);
   renderInv();
-  if(miss()){$('#invBuscar').value='';$('#invTipo').value='';$('#invEstado').value='';renderInv()}
+  if(miss()){$('#invBuscar').value='';$('#invCuello').value='';$('#invTipo').value='';$('#invEstado').value='';renderInv()}
   const el=document.getElementById('inv-'+id);if(!el)return;
   setTimeout(()=>{el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2200)},120);
 }
@@ -1464,7 +1474,7 @@ function movForm(it,tipo){
   });
 }
 $('#invAdd').addEventListener('click',()=>invForm());
-['#invBuscar','#invTipo','#invEstado'].forEach(x=>{$(x).addEventListener(x==='#invBuscar'?'input':'change',renderInv)});
+['#invBuscar','#invTipo','#invEstado','#invCuello'].forEach(x=>{$(x).addEventListener(x==='#invBuscar'?'input':'change',renderInv)});
 $('#v-inv').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   const d=b.dataset,id=d.invIn||d.invOut||d.invAdj||d.invEd||d.invDel||d.invVar,it=id&&invFind(id);if(!it)return;
@@ -1475,7 +1485,7 @@ $('#v-inv').addEventListener('click',e=>{
   else if(d.invEd)invForm(it);
   else if(d.invDel)ask(`¿Eliminar "${invName(it)}" del inventario? Se borra también su historial.`,()=>{S.inventory=S.inventory.filter(x=>x.id!==it.id);S.orders.forEach(o=>{if(o.invId===it.id){o.invId='';o.stockDesc=0;o.stockInv=''}});save();renderInv()});
 });
-$('#invExp').addEventListener('click',()=>download(`inventario-${today()}.csv`,toCsv(S.inventory.map(i=>({...i,estado:invLabel[invStatus(i)],valor_costo:r2(Math.max(0,num(i.stock))*num(i.costo))})),['tipo','nombre','sku','categoria','talla','color','unidad','stock','minimo','estado','costo','precio','valor_costo','ubicacion','nota']),'text/csv'));
+$('#invExp').addEventListener('click',()=>download(`inventario-${today()}.csv`,toCsv(S.inventory.map(i=>({...i,estado:invLabel[invStatus(i)],valor_costo:r2(Math.max(0,num(i.stock))*num(i.costo))})),['tipo','nombre','cuello','sku','categoria','talla','color','unidad','stock','minimo','estado','costo','precio','valor_costo','ubicacion','nota']),'text/csv'));
 
 /* ================= GASTOS ================= */
 const cf=$('#cifForm'),gf=$('#gasForm');
@@ -1764,7 +1774,7 @@ function aiContext(){
     prendas:gar,gastos_fijos_cif:{total_mensual:r2(cifTotal()),cuota_por_prenda:r2(cuotaCif()),detalle:S.cif.map(x=>({nombre:x.nombre,categoria:x.categoria,monto:num(x.monto),estado:x.estado}))},
     este_mes:periodStats('mes'),mes_anterior:periodStats('mesant'),total_pedidos_registrados:S.orders.length,
     inventario:{productos:S.inventory.length,unidades:r2(S.inventory.reduce((a,i)=>a+Math.max(0,num(i.stock)),0)),valor_a_costo:r2(S.inventory.reduce((a,i)=>a+Math.max(0,num(i.stock))*num(i.costo),0)),por_reponer:S.inventory.filter(i=>invStatus(i)!=='ok').length,
-      articulos:S.inventory.slice(0,120).map(i=>({tipo:i.tipo,nombre:i.nombre,talla:i.talla||'',color:i.color||'',unidad:i.unidad,stock:num(i.stock),minimo:num(i.minimo),estado:invLabel[invStatus(i)],costo:num(i.costo),precio:num(i.precio)}))},
+      articulos:S.inventory.slice(0,120).map(i=>({tipo:i.tipo,nombre:i.nombre,cuello:i.cuello||'',talla:i.talla||'',color:i.color||'',unidad:i.unidad,stock:num(i.stock),minimo:num(i.minimo),estado:invLabel[invStatus(i)],costo:num(i.costo),precio:num(i.precio)}))},
     ultimos_pedidos:[...S.orders].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,40).map(orderLite),
     ultimos_gastos_variables:[...S.expenses].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,30).map(g=>({fecha:g.fecha,categoria:g.categoria,descripcion:g.descripcion,monto:num(g.monto)}))};
 }
@@ -1834,7 +1844,7 @@ const GUIDE=[
  {t:'Dashboard',ic:'dash',pasos:['Elige el periodo arriba: hoy, ayer, últimos 7 o 30 días, esta semana o la anterior, este mes o el anterior, este año, todo, o "Personalizado" para poner tu propio rango desde – hasta para ver ventas entregadas, utilidad, pedidos y gastos.','"Atención inmediata" te avisa de prendas sin precio, vendidas bajo su costo o con margen menor a 30%, y si falta registrar gastos fijos.','Los gráficos se ven por día, semana, mes y ciudad. Cambia entre Ventas, Utilidad y Pedidos con los botones del gráfico.','Cada gráfico tiene la opción de verlo como tabla.','También verás pedidos por estado, productos más vendidos y gastos por categoría.'],tip:'La utilidad del dashboard descuenta fletes y devoluciones, no solo el costo de la prenda.',q:'¿Cómo voy este mes?'},
  {t:'Calculadora de costos',ic:'calc',pasos:['Crea una prenda con el botón de nueva prenda y ponle nombre. Puedes poner foto.','Tela: elige "Por kilo" (kilos × precio del kilo) o "Por metro". Agrega el % de merma si se desperdicia tela.','Completa hilos, confección (máquina), avíos, etiqueta y empaque. Etiqueta y empaque van por separado.','Con "Agregar costo extra" sumas más categorías (bordado, lavandería, transporte, etc.).','La cuota de gastos fijos (CIF) se suma sola: total de gastos fijos ÷ prendas del mes.','Modo "Por prenda": pones el precio de venta y ves tu ganancia y margen.','Modo "Cuánto quieres ganar": escribes tu meta y la app te dice a cuánto vender (si sabes cuántas prendas) o cuántas prendas necesitas (si sabes el precio).','Packs de 3, 6 o 12: escribe lo que cobras por el pack y la app calcula lo que vale cada prenda.','Guarda cotizaciones para volver a cargarlas después.'],tip:'Margen sano: entre 50% y 65%. Menos de 30% es bajo.',q:'¿A qué precio vendo para ganar S/ 1,000?'},
  {t:'Pedidos',ic:'bag',pasos:['Llena el formulario: cliente, teléfono, ciudad, producto (puedes elegir una prenda de tu catálogo), talla, color, cantidad, precio, costo, flete, estado y forma de pago.','Para vender en pack (3, 6 o 12), elige el pack y escribe el precio del pack: la app divide el valor por prenda.','Cambia el estado desde la misma tarjeta: Pendiente, Enviado, Entregado, Devuelto o Cancelado.','El icono verde de WhatsApp abre el chat con el cliente con un mensaje listo.','Mira el historial en encuadros o en tabla con el selector de arriba. Busca por cliente, producto o ciudad y filtra por estado.','Editar carga el pedido en el formulario; ✕ lo elimina.','Utilidad: Entregado = (precio − costo) × cantidad − flete. Devuelto = pierdes el flete (por el factor de Ajustes).'],tip:'Escribe el teléfono con o sin 51; la app lo entiende. Configura tu código de país en Ajustes.',q:'¿Qué ciudad me compra más?'},
- {t:'Inventario',ic:'box',pasos:['Toca "+ Registrar producto". Elige si es una prenda terminada o un material (tela, hilos, avíos). Si es prenda, puedes tomar nombre, costo y precio de tu catálogo de la Calculadora.','Para varias tallas y colores a la vez: escribe las tallas (S, M, L) y los colores (Negro, Blanco), toca "Generar tablero" y pon el stock de cada fila. Cada talla y color tiene su propio inventario. Con "+ Agregar talla o color" sumas más después.','Completa también el mínimo (te avisa cuando quede igual o menos), costo por unidad, SKU y ubicación.','Entrada: suma stock (compra, producción terminada, devolución). Salida: resta stock (venta, uso en producción, merma, muestra). Contar: pones lo que realmente hay y la app registra la diferencia.','Cada producto tiene su Historial con fecha, motivo y saldo de cada movimiento.','Arriba ves productos, unidades, valor a costo, valor de venta, stock bajo y agotados. "Por reponer" lista lo que se acaba, con botón de entrada.','Pedidos: en el formulario elige "Descontar del inventario". Al pasar el pedido a Enviado o Entregado se descuenta solo; si pasa a Devuelto o Cancelado, el stock regresa.','Puedes buscar, filtrar por tipo o por stock bajo/agotado y descargar el inventario en .csv.'],tip:'Pon un mínimo en cada producto para que la app te avise antes de quedarte sin stock.',q:'¿Qué productos tengo con stock bajo?'},
+ {t:'Inventario',ic:'box',pasos:['Toca "+ Registrar producto". Elige si es una prenda terminada o un material (tela, hilos, avíos). Si es prenda, puedes tomar nombre, costo y precio de tu catálogo de la Calculadora.','Cuello / modelo: si vendes la misma prenda en cuello redondo y cuello V, escribe el cuello en cada una y el stock queda separado en tarjetas distintas (puedes filtrar por cuello).','Para varias tallas y colores a la vez: escribe las tallas (S, M, L) y los colores (Negro, Blanco), toca "Generar tablero" y pon el stock de cada fila. Cada talla y color tiene su propio inventario. Con "+ Agregar talla o color" sumas más después.','Completa también el mínimo (te avisa cuando quede igual o menos), costo por unidad, SKU y ubicación.','Entrada: suma stock (compra, producción terminada, devolución). Salida: resta stock (venta, uso en producción, merma, muestra). Contar: pones lo que realmente hay y la app registra la diferencia.','Cada producto tiene su Historial con fecha, motivo y saldo de cada movimiento.','Arriba ves productos, unidades, valor a costo, valor de venta, stock bajo y agotados. "Por reponer" lista lo que se acaba, con botón de entrada.','Pedidos: en el formulario elige "Descontar del inventario". Al pasar el pedido a Enviado o Entregado se descuenta solo; si pasa a Devuelto o Cancelado, el stock regresa.','Puedes buscar, filtrar por tipo o por stock bajo/agotado y descargar el inventario en .csv.'],tip:'Pon un mínimo en cada producto para que la app te avise antes de quedarte sin stock.',q:'¿Qué productos tengo con stock bajo?'},
  {t:'Gastos',ic:'money',pasos:['Fijos (CIF): alquiler, luz, sueldos, internet… lo que pagas cada mes aunque no vendas.','Variables: gastos del día a día (envíos, publicidad, compras sueltas). Elige la fecha y la categoría.','La "base de prendas por mes" (200, 300, 400, 500 o 600) define cuánto gasto fijo toca a cada prenda: más prendas, menos costo fijo por prenda.','Puedes editar o borrar cualquier gasto.'],tip:'Si cambias la base de prendas, el costo por prenda en la Calculadora se actualiza solo.',q:'¿Cuántas prendas necesito vender para cubrir mis gastos fijos?'},
  {t:'Proyección',ic:'trend',pasos:['Prueba escenarios de producción: conservador, moderado y expansión (puedes cambiar las cantidades).','Elige una prenda y un lote de 25, 50 o 100 para ver inversión, venta estimada y utilidad.','Verás el punto de equilibrio: cuántas prendas debes vender para recuperar lo invertido.'],tip:'Úsala antes de producir un lote grande para saber cuánto necesitas vender.',q:'Revisa mis costos y dime qué mejorar'},
  {t:'Ajustes, importar y respaldo',ic:'gear',pasos:['Ajustes (engranaje): nombre de la marca, tipo de cambio S/ por US$, cuánto cuesta una devolución (× flete), código de país y WhatsApp de la empresa.','Importar pedidos de Shopify: en Shopify ve a Pedidos → Exportar → CSV y sube ese archivo. No duplica pedidos ya importados; el costo lo completas tú.','Respaldo automático: la app guarda una copia cada día (últimas 14). Puedes restaurar o descargar cualquiera.','"Crear respaldo ahora" guarda una copia al momento. También puedes descargar el respaldo .json y los pedidos o gastos en .csv.','Cerrar sesión está en la tarjeta de tu cuenta, en Ajustes.'],tip:'Antes de restaurar, la app guarda una copia de tus datos actuales por si te arrepientes.',q:'¿Cómo restauro un respaldo?'},
