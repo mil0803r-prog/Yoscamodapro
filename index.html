@@ -1420,8 +1420,6 @@ function invForm(it,base){
   <form id="invForm" class="form" autocomplete="off">
     <div><label for="i-tipo">Tipo</label><input id="i-tipo" name="tipoTxt" list="dl-tipo" value="${esc(tipoTxt0)}" placeholder="Escribe: Prenda terminada o Material" required><datalist id="dl-tipo"><option value="Prenda terminada"><option value="Material"></datalist></div>
     <div class="full"><label for="i-nombre">Nombre</label><input id="i-nombre" name="nombre" required value="${esc(n.nombre||'')}" placeholder="Ej. Polera básica, Tela algodón pima"></div>
-    <div><label for="i-sku">SKU / código</label><input id="i-sku" name="sku" value="${esc(n.sku||'')}"></div>
-    <div><label for="i-cat">Categoría</label><input id="i-cat" name="categoria" value="${esc(n.categoria||'')}" placeholder="Ej. Poleras, Telas"></div>
     ${it?`<div><label for="i-talla">Talla</label><input id="i-talla" name="talla" value="${esc(n.talla||'')}"></div>
     <div><label for="i-color">Color</label><input id="i-color" name="color" value="${esc(n.color||'')}"></div>`:`<div class="full vgrid"><label>Tallas y colores · cada fila tiene su propio stock</label>
       <div class="vgen"><input id="g-tallas" placeholder="Tallas: S, M, L, XL"><input id="g-colores" placeholder="Colores: Negro, Blanco"><button type="button" class="btn sm" id="g-gen">Generar tablero</button></div>
@@ -1462,7 +1460,6 @@ function invForm(it,base){
     e.preventDefault();const fd=Object.fromEntries(new FormData(f));
     ['minimo','costo','precio'].forEach(k=>{if(k in fd)fd[k]=Math.max(0,num(fd[k]))});delete fd.stock;
     const tt=String(fd.tipoTxt||'').trim();fd.tipo=esMat(tt)?'material':'prenda';
-    if(!/^(prenda terminada|material)$/i.test(tt)&&!String(fd.categoria||'').trim())fd.categoria=tt;
     fd.garmentId=fd.tipo==='prenda'?String((f.dataset.id&&invFind(f.dataset.id)||base||{}).garmentId||''):'';delete fd.tipoTxt;
     fd.cuello=fd.tipo==='material'?'':String((f.dataset.id&&invFind(f.dataset.id)||base||{}).cuello||'').trim();
     const aplicar=!!fd.aplicarTodas;delete fd.aplicarTodas;
