@@ -241,7 +241,6 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .tchip{min-width:0;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--s-lowest);color:var(--on);font:inherit;font-weight:800;font-size:12px;line-height:1.2;cursor:pointer}
 .tchip.on{background:var(--primary-c);border-color:var(--primary-c);color:var(--on-primary)}
 .vgen{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 10px}
-.vgen .btn{grid-column:1/-1}
 .vfhead,.vfrow{display:grid;grid-template-columns:1fr 1.2fr .9fr auto;gap:6px;align-items:center}
 .vfhead{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--on-var);margin-bottom:4px}
 #vRows{display:flex;flex-direction:column;gap:6px}
@@ -1428,7 +1427,8 @@ function invForm(it,base){
     ${it?`<div><label for="i-talla">Talla</label><input id="i-talla" name="talla" value="${esc(n.talla||'')}"></div>
     <div><label for="i-color">Color</label><input id="i-color" name="color" value="${esc(n.color||'')}"></div>`:`<div class="full vgrid"><label>Tallas y colores · cada fila tiene su propio stock</label>
       <div class="tsel"><span class="sub">Tallas:</span><div class="tchips" id="g-tchips">${['XS','S','M','L','XL','XXL','XXXL'].map(t=>`<button type="button" class="tchip" data-t="${t}" aria-pressed="false">${t}</button>`).join('')}</div></div>
-      <div class="vgen"><input id="g-tallas" placeholder="Otras tallas: 28, 30, Única"><input id="g-colores" placeholder="Colores: Negro, Blanco"><button type="button" class="btn sm" id="g-gen">Generar tablero</button></div>
+      <div class="vgen"><input id="g-tallas" placeholder="Otras tallas: 28, 30, Única"><input id="g-colores" placeholder="Colores: Negro, Blanco"></div>
+      <p class="hint" style="margin:0 0 8px">Al tocar una talla o escribir colores, las filas de abajo se llenan solas. Solo pon el stock.</p>
       <div class="vfhead"><span>Talla</span><span>Color</span><span>Stock</span><span></span></div>
       <div id="vRows"></div>
       <div class="row" style="justify-content:space-between;margin-top:6px"><button type="button" class="btn sm" id="vAdd">+ Agregar fila</button><span class="sub" id="vTot"></span></div></div>`}
@@ -1447,21 +1447,29 @@ function invForm(it,base){
   if(!it){
     const rowsEl=$('#vRows');
     const addRow=(t='',c='',st='')=>{const d=document.createElement('div');d.className='vfrow';d.innerHTML=`<input data-v="talla" placeholder="Ej. M" value="${esc(t)}" aria-label="Talla"><input data-v="color" placeholder="Ej. Negro" value="${esc(c)}" aria-label="Color"><input data-v="stock" type="number" min="0" step="any" placeholder="0" value="${esc(st)}" aria-label="Stock"><button type="button" class="btn sm del" data-vdel aria-label="Quitar fila">✕</button>`;rowsEl.appendChild(d);return d};
-    const getRows=()=>[...rowsEl.querySelectorAll('.vfrow')].map(r=>({r,talla:r.querySelector('[data-v=talla]').value.trim(),color:r.querySelector('[data-v=color]').value.trim(),stock:Math.max(0,num(r.querySelector('[data-v=stock]').value))}));
+    const getRows=()=>[...rowsEl.querySelectorAll('.vfrow')].map(r=>({r,talla:r.querySelector('[data-v=talla]').value.trim(),color:r.querySelector('[data-v=color]').value.trim(),stock:Math.max(0,num(r.querySelector('[data-v=stock]').value)),stockRaw:r.querySelector('[data-v=stock]').value}));
     const tot=()=>{const g=getRows();$('#vTot').textContent=`${g.length} ${g.length===1?'fila':'filas'} · ${r2(g.reduce((a,x)=>a+x.stock,0))} unidades`};
     addRow();tot();
     $('#vAdd').addEventListener('click',()=>{const r=addRow();r.querySelector('input').focus();tot()});
     rowsEl.addEventListener('input',tot);
     rowsEl.addEventListener('click',e=>{const b=e.target.closest('[data-vdel]');if(!b)return;if(rowsEl.children.length>1)b.closest('.vfrow').remove();else{b.closest('.vfrow').querySelectorAll('input').forEach(i=>i.value='')}tot()});
     $('#g-tchips').addEventListener('click',e=>{const b=e.target.closest('.tchip');if(!b)return;const on=b.classList.toggle('on');b.setAttribute('aria-pressed',String(on))});
-    $('#g-gen').addEventListener('click',()=>{
-      const ts=[...$('#g-tchips').querySelectorAll('.tchip.on')].map(b=>b.dataset.t).concat($('#g-tallas').value.split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean)).filter((v,i,a)=>a.findIndex(y=>y.toLowerCase()===v.toLowerCase())===i).sort(cmpSz),cs=$('#g-colores').value.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);
-      if(!ts.length&&!cs.length){toast('Escribe tallas y/o colores para generar el tablero');return}
-      getRows().forEach(x=>{if(!x.talla&&!x.color&&!x.stock)x.r.remove()});
-      const have=new Set(getRows().map(x=>(x.talla+'|'+x.color).toLowerCase()));
-      (ts.length?ts:['']).forEach(t=>(cs.length?cs:['']).forEach(c=>{const k=(t+'|'+c).toLowerCase();if(!have.has(k)){have.add(k);addRow(t,c)}}));
-      tot();const first=rowsEl.querySelector('[data-v=stock]');if(first)first.focus();
-    });
+    const selSizes=()=>[...$('#g-tchips').querySelectorAll('.tchip.on')].map(b=>b.dataset.t).concat($('#g-tallas').value.split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean)).filter((v,i,a)=>a.findIndex(y=>y.toLowerCase()===v.toLowerCase())===i).sort(cmpSz);
+    const selColors=()=>$('#g-colores').value.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean).filter((v,i,a)=>a.findIndex(y=>y.toLowerCase()===v.toLowerCase())===i);
+    const syncRows=()=>{
+      const ts=selSizes(),cs=selColors(),old=getRows(),stockOf=new Map();
+      old.filter(x=>x.r.dataset.auto).forEach(x=>stockOf.set((x.talla+'|'+x.color).toLowerCase(),x.stockRaw));
+      const manual=old.filter(x=>!x.r.dataset.auto&&(x.talla||x.color||x.stock));
+      rowsEl.innerHTML='';
+      if(ts.length||cs.length)(ts.length?ts:['']).forEach(t=>(cs.length?cs:['']).forEach((c,ci)=>{const k=(t+'|'+c).toLowerCase(),k0=(t+'|').toLowerCase();let v=stockOf.get(k);if(v===undefined&&ci===0&&c&&stockOf.has(k0))v=stockOf.get(k0);const d=addRow(t,c,v||'');d.dataset.auto='1'}));
+      manual.forEach(x=>addRow(x.talla,x.color,x.stockRaw));
+      if(!rowsEl.children.length)addRow();
+      tot();
+    };
+    rowsEl.addEventListener('input',e=>{const f=e.target.dataset&&e.target.dataset.v;if(f==='talla'||f==='color'){const r=e.target.closest('.vfrow');if(r)delete r.dataset.auto}});
+    $('#g-tchips').addEventListener('click',()=>syncRows());
+    let tmr;const deb=()=>{clearTimeout(tmr);tmr=setTimeout(syncRows,300)};
+    $('#g-tallas').addEventListener('input',deb);$('#g-colores').addEventListener('input',deb);
   }
   f.addEventListener('submit',e=>{
     e.preventDefault();const fd=Object.fromEntries(new FormData(f));
