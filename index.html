@@ -244,6 +244,25 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .vfhead,.vfrow{display:grid;grid-template-columns:1fr 1.2fr .9fr auto;gap:6px;align-items:center}
 .vfhead{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--on-var);margin-bottom:4px}
 #vRows{display:flex;flex-direction:column;gap:6px}
+.ti-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ti-top .ico{width:44px;height:44px;border-radius:14px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;flex:none}
+.ti-top .ico svg{width:24px;height:24px}
+.ti-chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 12px}
+.ti-chip{font-size:12px;font-weight:700;border-radius:99px;padding:4px 10px;background:var(--s-high);color:var(--on-var)}
+.ti-chip.ok{background:var(--primary-soft);color:var(--primary)}.ti-chip.warn{background:var(--warn-soft);color:var(--warn)}
+.ti-step{display:flex;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.ti-step:first-of-type{border-top:0}
+.ti-step .n{width:28px;height:28px;border-radius:50%;background:var(--s-high);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+.ti-step.hecho .n{background:var(--primary);color:var(--on-primary)}
+.ti-step h4{font-size:15px;margin-bottom:4px}.ti-step .c{flex:1;min-width:0;font-size:14px;line-height:1.5}
+.ti-step ol,.ti-step ul{margin:6px 0 6px 18px}.ti-step li{margin:3px 0}
+.ti-rec{width:100%;border-collapse:collapse;margin:8px 0;font-size:13.5px}
+.ti-rec th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--on-var);text-align:left;padding:6px 8px}
+.ti-rec td{padding:8px;border-top:1px solid var(--line);vertical-align:middle;word-break:break-all}
+.ti-rec code,.ti-code{background:var(--s-low);border-radius:6px;padding:2px 6px;font-size:12.5px}
+.ti-res{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.ti-res div{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:10px;background:var(--s-low);font-size:13.5px}
+.ti-res .ok{background:var(--primary-soft)}.ti-res .no{background:var(--error-soft)}
 .mvrow{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
 .mvrow:first-child{border-top:0}
 .ord-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--on-var);font-size:13.5px;padding-top:2px}
@@ -418,11 +437,16 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
     <!-- AJUSTES -->
     <!-- TIENDA (solo para la cuenta del dueño) -->
     <section id="v-tienda" hidden>
-      <div class="card row sb" style="margin-bottom:12px;flex-wrap:wrap">
-        <div><h2>Editor de la tienda</h2><p class="sub">Cambia colores, precios, textos y botones de la tienda de tus clientas. Solo lo ves tú.</p></div>
-        <a class="btn sm" href="tienda/editor.html" target="_blank" rel="noopener">Abrir en pantalla completa</a>
+      <div id="tiHead"></div>
+      <div id="tiBody"></div>
+      <div id="tiEditor">
+        <div class="row" style="margin-bottom:10px;gap:8px;flex-wrap:wrap">
+          <a class="btn sm pri" id="tiVer" href="tienda/index.html" target="_blank" rel="noopener">Ver mi tienda</a>
+          <a class="btn sm" href="tienda/editor.html" target="_blank" rel="noopener">Editor en pantalla completa</a>
+          <span class="hint" style="margin:0">Los cambios se ven al instante a la derecha. Toca <b>Guardar cambios</b> para publicarlos.</span>
+        </div>
+        <iframe id="tiendaFrame" title="Editor de la tienda" style="width:100%;height:calc(100vh - 290px);min-height:540px;border:1px solid var(--line);border-radius:14px;background:#fff"></iframe>
       </div>
-      <iframe id="tiendaFrame" title="Editor de la tienda" style="width:100%;height:calc(100vh - 250px);min-height:540px;border:1px solid var(--line);border-radius:14px;background:#fff"></iframe>
     </section>
     <section id="v-set" hidden>
       <div class="card" id="accCard" hidden style="margin-bottom:14px">
@@ -808,7 +832,168 @@ function showTab(t){
 function renderTab(){
   ({dash:renderDash,calc:renderCalc,ped:renderPed,inv:renderInv,gas:renderGas,proy:renderProy,tienda:renderTienda,set:renderSet})[ui.tab]();
 }
-function renderTienda(){const f=$('#tiendaFrame');if(puedeTienda()&&f&&!f.getAttribute('src'))f.setAttribute('src','tienda/editor.html')}
+/* ================= TIENDA (solo cuenta del dueño): editor, dominio y nube ================= */
+const DNS_A='76.76.21.21',DNS_CNAME='cname.vercel-dns.com';
+const SUFIJOS2=['com.pe','org.pe','net.pe','edu.pe','gob.pe','nom.pe','com.co','com.mx','com.ar','com.br','com.ec','com.bo','com.cl','com.uy','com.ve','com.gt','com.pa'];
+function tiCfg(){const t=S.settings.tienda=S.settings.tienda&&typeof S.settings.tienda==='object'?S.settings.tienda:{};t.dominio=t.dominio||'';if(t.www==null)t.www=true;t.nube=t.nube||{url:'',clave:'',tienda:'yosca'};t.pasos=t.pasos||{};return t}
+function tiNorm(v){return String(v||'').trim().toLowerCase().replace(/^https?:\/\//,'').replace(/[\/?#].*$/,'').replace(/\.$/,'')}
+const tiValido=d=>/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(d);
+function tiInfo(dom){
+  dom=tiNorm(dom);if(!tiValido(dom))return null;
+  const l=dom.split('.');const base=l.length>=3&&SUFIJOS2.includes(l.slice(-2).join('.'))?3:2;
+  const apex=l.length<=base;
+  const sub=apex?'':l.slice(0,l.length-base).join('.');
+  const raiz=l.slice(-base).join('.');
+  return {dom,apex,sub,raiz,esWww:sub==='www'};
+}
+function tiRegistros(dom,www){
+  const i=tiInfo(dom);if(!i)return [];
+  if(i.apex){const r=[{tipo:'A',nombre:'@',valor:DNS_A,nota:'Dominio principal'}];if(www)r.push({tipo:'CNAME',nombre:'www',valor:DNS_CNAME,nota:'Con www'});return r}
+  return [{tipo:'CNAME',nombre:i.sub,valor:DNS_CNAME,nota:'Subdominio'}];
+}
+const tiNubeCfg=()=>{const n=tiCfg().nube;return {url:String(n.url||'').trim().replace(/\/+$/,''),clave:String(n.clave||'').trim(),tienda:String(n.tienda||'yosca').trim()||'yosca'}};
+function tiUrl(){const t=tiCfg(),i=tiInfo(t.dominio);return i?'https://'+i.dom:''}
+function tiConfigJs(){const n=tiNubeCfg();return '/* Conexión con la nube (Supabase). Estos datos son públicos: se pueden ver en la página. NO pongas aquí la clave service_role. */\nwindow.YOSCA_NUBE = {\n  url: '+JSON.stringify(n.url)+',\n  clave: '+JSON.stringify(n.clave)+',\n  tienda: '+JSON.stringify(n.tienda)+'\n};\n'}
+function tiGuardarLocal(){try{const n=tiNubeCfg();if(n.url&&n.clave)localStorage.setItem('yosca_tienda_nube',JSON.stringify(n));else localStorage.removeItem('yosca_tienda_nube')}catch(e){}}
+const tiCopiar=async(t)=>{try{await navigator.clipboard.writeText(t);toast('Copiado: '+t)}catch(e){toast('No se pudo copiar. Selecciónalo y cópialo a mano.')}};
+const TI_TABS=[['editor','Editor'],['dominio','Dominio'],['nube','Nube'],['ayuda','Ayuda']];
+
+function tiCabecera(){
+  const t=tiCfg(),i=tiInfo(t.dominio),n=tiNubeCfg();
+  const dom=i?(t.verificado?`<span class="ti-chip ok">Dominio: ${esc(i.dom)} ✓</span>`:`<span class="ti-chip warn">Dominio: ${esc(i.dom)} · sin verificar</span>`):'<span class="ti-chip">Dominio: sin configurar</span>';
+  const nube=n.url&&n.clave?'<span class="ti-chip ok">Nube conectada</span>':'<span class="ti-chip">Nube: sin conectar</span>';
+  $('#tiHead').innerHTML=`<div class="card"><div class="ti-top"><span class="ico">${icon('store')}</span><div style="flex:1;min-width:200px"><h2 style="margin:0">Tu tienda online</h2><p class="sub" style="margin:2px 0 0">Edítala, ponle tu propio dominio y conéctala a la nube. Solo lo ves tú.</p></div></div>
+    <div class="ti-chips">${dom}${nube}</div>
+    <div class="seg" id="tiSeg" style="display:flex;width:100%">${TI_TABS.map(([k,l])=>`<button type="button" data-ti="${k}" class="${ui.tiTab===k?'on':''}" style="flex:1">${l}</button>`).join('')}</div></div>`;
+}
+function tiPaso(n,titulo,cuerpo,id){const t=tiCfg(),h=!!t.pasos[id];return `<div class="ti-step ${h?'hecho':''}"><span class="n">${h?'✓':n}</span><div class="c"><h4>${titulo}</h4>${cuerpo}<label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-weight:600;font-size:13px"><input type="checkbox" data-paso="${id}" ${h?'checked':''} style="width:auto"> Ya lo hice</label></div></div>`}
+function tiTablaDns(){
+  const t=tiCfg(),r=tiRegistros(t.dominio,t.www),i=tiInfo(t.dominio);
+  if(!i)return '<p class="hint">Escribe tu dominio arriba para ver los datos que debes poner.</p>';
+  return `<table class="ti-rec"><thead><tr><th>Tipo</th><th>Nombre / Host</th><th>Valor / Apunta a</th><th></th></tr></thead><tbody>${r.map(x=>`<tr><td><b>${x.tipo}</b></td><td><code>${esc(x.nombre)}</code></td><td><code>${esc(x.valor)}</code></td><td><button class="btn sm" type="button" data-copia="${esc(x.valor)}">Copiar</button></td></tr>`).join('')}</tbody></table>
+  <p class="hint">${i.apex?'Si ya tienes otros registros <b>A</b>, <b>AAAA</b> o <b>CNAME</b> para <code>@</code>'+(t.www?' o <code>www</code>':'')+', bórralos: si no, chocan con estos.':'Si ya existe un registro para <code>'+esc(i.sub)+'</code>, bórralo antes de crear este.'}</p>`;
+}
+function tiDominio(){
+  const t=tiCfg(),i=tiInfo(t.dominio);
+  $('#tiBody').innerHTML=`<div class="card" style="margin-top:12px"><h3>Tu dominio</h3>
+    <p class="sub">El dominio que verán tus clientas, por ejemplo <b>yoscamoda.com</b>. Si aún no lo tienes, cómpralo en tu proveedor de dominios (Namecheap, GoDaddy, Hostinger u otro) y vuelve aquí.</p>
+    <div class="form" style="margin-top:10px"><div class="full"><label for="tiDom">Dominio de la tienda</label><input id="tiDom" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="yoscamoda.com" value="${esc(t.dominio)}"><p class="hint" id="tiDomMsg"></p></div>
+    <label class="full" id="tiWwwBox" style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="tiWww" ${t.www?'checked':''} style="width:auto"> También que funcione con <span id="tiWwwTxt">www.</span></label></div></div>
+    <div class="card" style="margin-top:12px"><h3>Configuración paso a paso</h3><p class="sub">Tu tienda va en un proyecto de Vercel <b>aparte</b>, para que ese dominio muestre solo la tienda y nunca este panel.</p>
+    ${tiPaso(1,'Crear el proyecto de la tienda en Vercel',`<ol><li>Entra a <b>vercel.com</b> → <b>Add New… → Project</b>.</li><li>Elige el repositorio <code class="ti-code">mil0803r-prog/Yoscamodapro</code> → <b>Import</b>.</li><li>Nombre del proyecto: <code class="ti-code">yosca-tienda</code>.</li><li>En <b>Root Directory</b> toca <b>Edit</b> y elige la carpeta <code class="ti-code">tienda</code>.</li><li><b>Framework Preset:</b> Other. No cambies nada más y toca <b>Deploy</b>.</li></ol><p class="hint">Si usas una rama distinta de la principal, en <b>Settings → Git → Production Branch</b> pon la misma rama que usa tu otro proyecto.</p>`,'p1')}
+    ${tiPaso(2,'Agregar tu dominio al proyecto',`<ol><li>Abre el proyecto <b>yosca-tienda</b> → <b>Settings → Domains</b>.</li><li>Escribe <b id="tiDomP2">${esc(i?i.dom:'tu dominio')}</b> y toca <b>Add</b>.</li><li>Si te ofrece redirigir <b>${i&&i.apex?'www → '+esc(i.dom):'el otro nombre'}</b> al principal, acepta.</li></ol>${i?`<button class="btn sm" type="button" data-copia="${esc(i.dom)}">Copiar dominio</button>`:''}`,'p2')}
+    ${tiPaso(3,'Crear los registros DNS en tu proveedor del dominio',`<p>Entra al panel DNS de donde compraste el dominio y crea estos registros:</p><div id="tiDns">${tiTablaDns()}</div><p class="hint">Los cambios pueden tardar desde unos minutos hasta 24 horas en verse.</p>`,'p3')}
+    ${tiPaso(4,'Verificar que ya funciona',`<p>Cuando hayas hecho los pasos, toca el botón. Revisa el DNS y si la tienda responde con candado (https).</p><div class="row" style="margin-top:8px"><button class="btn pri" type="button" id="tiVerificar">Verificar mi dominio</button>${i?`<a class="btn" href="https://${esc(i.dom)}" target="_blank" rel="noopener">Abrir ${esc(i.dom)}</a>`:''}</div><div class="ti-res" id="tiRes"></div>`,'p4')}
+    ${tiPaso(5,'Conectar con la nube (recomendado)',`<p>Para que los cambios del editor se vean en tu dominio sin subir archivos, conecta Supabase en la pestaña <b>Nube</b> y copia el <code class="ti-code">config.js</code> a la carpeta <code class="ti-code">tienda</code>.</p><button class="btn sm" type="button" data-ti="nube">Ir a Nube</button>`,'p5')}
+    </div>`;
+  tiActDominio();
+}
+function tiActDominio(){
+  const t=tiCfg(),i=tiInfo(t.dominio),m=$('#tiDomMsg');if(!m)return;
+  m.textContent=!t.dominio?'':i?(i.esWww?'Consejo: escribe el dominio sin www (ej. '+i.raiz+') y deja marcada la casilla de abajo.':i.apex?'Dominio principal detectado.':'Subdominio detectado: '+i.dom):'Escríbelo sin https:// ni espacios. Ejemplo: yoscamoda.com';
+  m.style.color=t.dominio&&!i?'var(--error)':'';
+  const box=$('#tiWwwBox');if(box){box.hidden=!(i&&i.apex);const x=$('#tiWwwTxt');if(x&&i)x.textContent='www.'+i.dom}
+  const d=$('#tiDns');if(d)d.innerHTML=tiTablaDns();
+  const p=$('#tiDomP2');if(p)p.textContent=i?i.dom:'tu dominio';
+}
+async function tiDoh(nombre,tipo){
+  const c=new AbortController(),to=setTimeout(()=>c.abort(),7000);
+  try{const r=await fetch('https://dns.google/resolve?name='+encodeURIComponent(nombre)+'&type='+tipo,{signal:c.signal});if(!r.ok)return null;return await r.json()}catch(e){return null}finally{clearTimeout(to)}
+}
+const tiImg=u=>new Promise(res=>{const im=new Image();const to=setTimeout(()=>{im.src='';res(false)},7000);im.onload=()=>{clearTimeout(to);res(true)};im.onerror=()=>{clearTimeout(to);res(false)};im.src=u+'/img/foto-01.jpg?v='+Date.now()});
+async function tiVerificar(){
+  const t=tiCfg(),i=tiInfo(t.dominio),box=$('#tiRes');if(!box)return;
+  if(!i){box.innerHTML='<div class="no">Primero escribe un dominio válido.</div>';return}
+  box.innerHTML='<div>Comprobando… esto tarda unos segundos.</div>';$('#tiVerificar').disabled=true;
+  const filas=[];
+  const nombres=i.apex?[i.dom].concat(t.www?['www.'+i.dom]:[]):[i.dom];
+  for(const n of nombres){
+    const A=await tiDoh(n,'A');
+    if(!A){filas.push([false,`No pude consultar el DNS de <b>${esc(n)}</b> desde aquí (puede ser tu conexión). Prueba con "Abrir ${esc(i.dom)}".`]);continue}
+    const resp=(A.Answer||[]),aVals=resp.filter(x=>x.type===1).map(x=>x.data),cn=resp.filter(x=>x.type===5).map(x=>String(x.data).toLowerCase());
+    const aVercel=cn.some(x=>x.includes('vercel-dns.com')||x.includes('vercel'))||aVals.includes(DNS_A);
+    if(aVercel)filas.push([true,`<b>${esc(n)}</b> apunta a Vercel (${cn.length?'CNAME '+esc(cn[0].replace(/\.$/,'')):'A '+esc(aVals.join(', '))}).`]);
+    else if(aVals.length)filas.push([false,`<b>${esc(n)}</b> apunta a ${esc(aVals.join(', '))}. Debería ser <b>${n.startsWith('www.')||!i.apex?'CNAME '+DNS_CNAME:'A '+DNS_A}</b>. Cámbialo en tu proveedor.`]);
+    else filas.push([false,`<b>${esc(n)}</b> todavía no tiene registros DNS. Crea los del paso 3 (o espera si los acabas de crear).`]);
+  }
+  const vivo=await tiImg('https://'+i.dom);
+  filas.push([vivo,vivo?`<b>https://${esc(i.dom)}</b> responde con el candado de seguridad.`:`<b>https://${esc(i.dom)}</b> aún no responde. Si el DNS ya está bien, espera unos minutos: Vercel crea el certificado solo.`]);
+  box.innerHTML=filas.map(([ok,tx])=>`<div class="${ok?'ok':'no'}"><span>${ok?'✓':'✗'}</span><span>${tx}</span></div>`).join('');
+  t.verificado=filas.every(f=>f[0]);t.verificadoEn=Date.now();save();tiCabecera();$('#tiVerificar').disabled=false;
+  if(t.verificado)toast('¡Tu dominio ya funciona!');
+}
+function tiNube(){
+  const t=tiCfg(),n=t.nube;
+  $('#tiBody').innerHTML=`<div class="card" style="margin-top:12px"><h3>Conexión con la nube (Supabase)</h3>
+    <p class="sub">Con la nube, lo que cambias en el editor se publica solo en tu dominio. Sin ella, tendrías que descargar <b>datos.js</b> y subirlo cada vez. Estos tres datos son públicos; <b>nunca</b> pongas la clave <i>service_role</i>.</p>
+    <div class="form" style="margin-top:10px"><div class="full"><label for="tnUrl">Dirección del proyecto (Project URL)</label><input id="tnUrl" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://abcdefgh.supabase.co" value="${esc(n.url||'')}"></div>
+    <div class="full"><label for="tnClave">Clave pública (anon public)</label><input id="tnClave" autocapitalize="off" spellcheck="false" placeholder="eyJhbGciOi…" value="${esc(n.clave||'')}"></div>
+    <div class="full"><label for="tnTienda">Nombre corto de la tienda</label><input id="tnTienda" autocapitalize="off" value="${esc(n.tienda||'yosca')}"><p class="hint">El mismo que usaste en el paso 4 de la guía (por defecto <b>yosca</b>).</p></div></div>
+    <div class="row" style="margin-top:10px"><button class="btn pri" type="button" id="tnProbar">Probar conexión</button></div><div class="ti-res" id="tnRes"></div></div>
+    <div class="card" style="margin-top:12px"><h3>Archivo config.js</h3>
+    <p class="sub">Descárgalo y reemplaza el archivo <code class="ti-code">tienda/config.js</code> de tu repositorio (o <code class="ti-code">web/config.js</code> si lo subes a mano). Así la tienda de tu dominio lee los datos de la nube.</p>
+    <pre id="tnCfg" style="background:var(--s-low);border-radius:10px;padding:10px;overflow:auto;font-size:12px;margin-top:8px;white-space:pre-wrap;word-break:break-all"></pre>
+    <div class="row" style="margin-top:10px"><button class="btn" type="button" id="tnCopiar">Copiar</button><button class="btn pri" type="button" id="tnDescargar">Descargar config.js</button></div></div>`;
+  tiActNube();
+}
+function tiActNube(){const p=$('#tnCfg');if(p)p.textContent=tiConfigJs()}
+async function tiProbarNube(){
+  const n=tiNubeCfg(),box=$('#tnRes');
+  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(n.url)){box.innerHTML='<div class="no"><span>✗</span><span>La dirección debe verse así: <b>https://abcdefgh.supabase.co</b></span></div>';return}
+  if(!n.clave||n.clave.length<30){box.innerHTML='<div class="no"><span>✗</span><span>Falta la clave pública (anon public).</span></div>';return}
+  box.innerHTML='<div>Probando…</div>';
+  try{
+    const r=await fetch(n.url+'/rest/v1/tiendas?id=eq.'+encodeURIComponent(n.tienda)+'&select=id',{headers:{apikey:n.clave,Authorization:'Bearer '+n.clave}});
+    if(r.status===401||r.status===403){box.innerHTML='<div class="no"><span>✗</span><span>La clave no es válida para ese proyecto. Copia otra vez la clave <b>anon public</b>.</span></div>';return}
+    if(!r.ok){box.innerHTML=`<div class="no"><span>✗</span><span>El proyecto respondió con un error (${r.status}). ¿Corriste el paso 2 de la guía (crear las tablas)?</span></div>`;return}
+    const f=await r.json();
+    box.innerHTML=f.length?'<div class="ok"><span>✓</span><span>Conectada. Se encontró la tienda <b>'+esc(n.tienda)+'</b>.</span></div>':'<div class="no"><span>!</span><span>Se conectó, pero no existe una tienda llamada <b>'+esc(n.tienda)+'</b>. Corre los pasos 2 y 4 de la guía.</span></div>';
+  }catch(e){box.innerHTML='<div class="no"><span>✗</span><span>No pude conectarme. Revisa la dirección y tu internet.</span></div>'}
+}
+function tiAyuda(){
+  const q=(t,r)=>`<details style="border-top:1px solid var(--line);padding:10px 0"><summary style="cursor:pointer;font-weight:700">${t}</summary><div style="margin-top:6px;line-height:1.5;color:var(--on-var)">${r}</div></details>`;
+  $('#tiBody').innerHTML=`<div class="card" style="margin-top:12px"><h3>Preguntas frecuentes</h3>
+  ${q('¿Por qué un proyecto de Vercel aparte?','Para que tu dominio muestre <b>solo la tienda</b>. Este panel de gestión sigue en su propia dirección y nadie lo ve desde tu dominio.')}
+  ${q('¿Cuánto cuesta?','Vercel y Supabase tienen planes gratis suficientes para empezar. Lo único que se paga es el dominio, una vez al año, en el proveedor donde lo compres.')}
+  ${q('¿Cuánto demora en funcionar?','El DNS puede tardar de unos minutos a 24 horas. El candado de seguridad (https) lo crea Vercel solo cuando el DNS ya apunta bien.')}
+  ${q('¿Cómo cambio algo y se ve en mi dominio?','Con la <b>nube conectada</b>: editas en la pestaña Editor → <b>Guardar cambios</b> y se ve al instante. Sin la nube: <b>Descargar datos.js</b>, reemplázalo en <code>tienda/datos.js</code> del repositorio y Vercel actualiza solo.')}
+  ${q('Usé www y sin www, ¿cuál es el principal?','Los dos funcionan. En Vercel (Settings → Domains) puedes elegir que uno redirija al otro.')}
+  ${q('¿Puedo usar un subdominio?','Sí, por ejemplo <b>tienda.tudominio.com</b>. Solo necesitas un registro CNAME; la pestaña Dominio te lo muestra.')}
+  ${q('¿Quién puede ver el editor?','El editor solo aparece en este panel con tu cuenta. El dominio de la tienda <b>no</b> sirve el editor.')}
+  ${q('Cambié de dominio','Escribe el nuevo en la pestaña Dominio, agrégalo en Vercel y borra el anterior desde Settings → Domains.')}</div>`;
+}
+function renderTienda(){
+  if(!puedeTienda())return;
+  const f=$('#tiendaFrame');if(f&&puedeTienda()&&!f.getAttribute('src'))f.setAttribute('src','tienda/editor.html');
+  if(!ui.tiTab)ui.tiTab='editor';
+  const act=document.activeElement;if(act&&act.closest&&act.closest('#v-tienda')&&act.matches('input,textarea')&&$('#tiHead').innerHTML)return;
+  tiCabecera();
+  $('#tiEditor').hidden=ui.tiTab!=='editor';
+  const v=$('#tiVer');if(v)v.href=tiUrl()||'tienda/index.html';
+  if(ui.tiTab==='editor')$('#tiBody').innerHTML='';
+  else if(ui.tiTab==='dominio')tiDominio();
+  else if(ui.tiTab==='nube')tiNube();
+  else tiAyuda();
+}
+document.addEventListener('click',e=>{
+  const sg=e.target.closest('#v-tienda [data-ti]');if(sg){ui.tiTab=sg.dataset.ti;renderTienda();return}
+  const cp=e.target.closest('#v-tienda [data-copia]');if(cp){tiCopiar(cp.dataset.copia);return}
+  const id=e.target.id;
+  if(id==='tiVerificar')tiVerificar();
+  else if(id==='tnProbar')tiProbarNube();
+  else if(id==='tnCopiar')tiCopiar(tiConfigJs());
+  else if(id==='tnDescargar')download('config.js',tiConfigJs(),'text/javascript');
+});
+document.addEventListener('input',e=>{
+  const id=e.target.id;
+  if(id==='tiDom'){const t=tiCfg();t.dominio=tiNorm(e.target.value);t.verificado=false;saveSoon();tiActDominio();tiCabecera()}
+  else if(id==='tnUrl'||id==='tnClave'||id==='tnTienda'){const n=tiCfg().nube;n.url=$('#tnUrl').value;n.clave=$('#tnClave').value;n.tienda=$('#tnTienda').value;tiGuardarLocal();saveSoon();tiActNube();tiCabecera()}
+});
+document.addEventListener('change',e=>{
+  const id=e.target.id;
+  if(id==='tiWww'){const t=tiCfg();t.www=e.target.checked;save();tiActDominio()}
+  else if(e.target.dataset&&e.target.dataset.paso){const t=tiCfg();t.pasos[e.target.dataset.paso]=e.target.checked;save();const st=e.target.closest('.ti-step');st.classList.toggle('hecho',e.target.checked);st.querySelector('.n').textContent=e.target.checked?'✓':({p1:1,p2:2,p3:3,p4:4,p5:5})[e.target.dataset.paso]}
+});
 function refreshAll(){
   if(!ui.gid||!S.garments.find(g=>g.id===ui.gid))ui.gid=S.garments[0]?.id||null;
   const a=document.activeElement;

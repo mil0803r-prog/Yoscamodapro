@@ -74,3 +74,10 @@ Abre http://localhost:3000
 
 ## Inventario
 Sección **Inventario**: prendas terminadas y materiales con stock, mínimo (alerta de stock bajo), entradas, salidas, conteo físico, historial y valor del inventario. En Pedidos puedes elegir qué producto descontar: al pasar a Enviado o Entregado se descuenta solo, y si el pedido se devuelve o cancela el stock regresa. Se guarda en `users/{uid}/inventory` y entra en los respaldos.
+
+## Tienda con tu propio dominio
+En el panel, la sección **Tienda** (solo con el correo del dueño) tiene cuatro pestañas: **Editor**, **Dominio**, **Nube** y **Ayuda**.
+- La tienda vive en la carpeta `tienda/`. Para que tu dominio muestre **solo la tienda**, crea un segundo proyecto en Vercel con *Root Directory* = `tienda` y agrégale el dominio. Su `tienda/vercel.json` ya trae cabeceras de seguridad y no sirve el editor.
+- Registros DNS: dominio principal → `A @ 76.76.21.21` (y `CNAME www cname.vercel-dns.com`); subdominio → `CNAME nombre cname.vercel-dns.com`.
+- La pestaña Dominio verifica el DNS (vía dns.google) y que la tienda responda con https.
+- Para que los cambios del editor se vean en el dominio sin subir archivos, conecta Supabase en la pestaña Nube y copia el `config.js` generado a `tienda/config.js`.

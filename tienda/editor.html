@@ -148,6 +148,8 @@ const g=r=>String(r).split('.').reduce((a,k)=>a==null?a:a[k],D);
 function s(r,v){const ks=String(r).split('.');let a=D;for(let i=0;i<ks.length-1;i++){const k=ks[i];if(a[k]==null||typeof a[k]!=='object')a[k]=/^\d+$/.test(ks[i+1])?[]:{};a=a[k]}a[ks[ks.length-1]]=v}
 const hexOk=v=>/^#[0-9a-f]{6}$/i.test(v);
 const mon=()=>D.moneda||'S/ ';
+/* datos de la nube: del config.js o, si está vacío, los que guardó el panel de gestión en este navegador */
+function nube(){const N=window.YOSCA_NUBE||{};if(N.url&&N.clave)return N;try{const L=JSON.parse(localStorage.getItem('yosca_tienda_nube'));if(L&&L.url&&L.clave)return L}catch(e){}return N}
 const dinero=n=>mon()+Number(n||0).toFixed(2);
 let uid=0;
 
@@ -253,13 +255,13 @@ const P={
 };
 const NAV=[['TU CATÁLOGO',['prendas','🛍️'],['categorias','🗂️'],['packs','🎁']],['TU PÁGINA',['portada','🏠'],['anuncio','📣'],['comprar','🛒'],['tallas','📏'],['faq','❓']],['AJUSTES',['contacto','💬'],['marca','🎨'],['publicar','💾']]];
 function menu(){
-  $('#menu').innerHTML=NAV.map(([gr,...its])=>`<div class="gr">${gr}</div>`+its.map(([id,e])=>`<button type="button" data-pg="${id}" class="${id===pagina?'on':''}"><span class="e">${e}</span>${esc(P[id].t)}</button>`).join('')).join('')+`<div id="conexion">${(window.YOSCA_NUBE&&window.YOSCA_NUBE.url)?'☁️ Nube conectada':'📁 Sin nube conectada'}</div>`;
+  $('#menu').innerHTML=NAV.map(([gr,...its])=>`<div class="gr">${gr}</div>`+its.map(([id,e])=>`<button type="button" data-pg="${id}" class="${id===pagina?'on':''}"><span class="e">${e}</span>${esc(P[id].t)}</button>`).join('')).join('')+`<div id="conexion">${(nube().url)?'☁️ Nube conectada':'📁 Sin nube conectada'}</div>`;
 }
 function dibujar(){
   uid=0;const pg=P[pagina];
   $('#editor').innerHTML=`<h2>${esc(pg.t)}</h2>`+pg.h();
   menu();
-  if(pagina==='publicar'){const N=window.YOSCA_NUBE||{};if(N.url&&N.clave){$('#nUrl').value=N.url;$('#nClave').value=N.clave;$('#nTienda').value=N.tienda||'yosca'}}
+  if(pagina==='publicar'){const N=nube();if(N.url&&N.clave){$('#nUrl').value=N.url;$('#nClave').value=N.clave;$('#nTienda').value=N.tienda||'yosca'}}
   $('#subm').textContent=((D.marca.logo||'')+' '+(D.marca.logoSub||'')).trim();
 }
 function irPagina(id){pagina=id;dibujar();$('#editor').scrollTop=0;irA(P[id].ir)}
@@ -317,7 +319,7 @@ function toast(t){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeou
 const textoDatos=()=>'/* Datos de la tienda — generados por el Editor de tu tienda. */\nwindow.YOSCA = '+JSON.stringify(D,null,2)+';\n';
 function descargar(){const b=new Blob([textoDatos()],{type:'text/javascript'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='datos.js';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast('Descargado: reemplaza datos.js en tu carpeta web')}
 async function guardarNube(){
-  const N=window.YOSCA_NUBE||{};
+  const N=nube();
   const url=($('#nUrl').value||N.url||'').trim().replace(/\/+$/,''),clave=($('#nClave').value||N.clave||'').trim(),tienda=($('#nTienda').value||N.tienda||'yosca').trim();
   const correo=$('#nCorreo').value.trim(),pass=$('#nPass').value,est=$('#estNube');
   if(!url||!clave||!correo||!pass){est.textContent='Completa la dirección, la clave pública, tu correo y tu contraseña.';return}
