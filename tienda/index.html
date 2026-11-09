@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yosca Moda · Polos básicos para mujer</title>
+<meta name="description" content="Polos básicos para dama de algodón 100%, hechos en Perú. Cuello redondo y cuello V en tallas S, M y L.">
+<!-- Conexión con la nube: si está configurada, la página espera los datos antes de mostrarse -->
+<script src="config.js"></script>
+<script>
+if(window.YOSCA_NUBE && YOSCA_NUBE.url && YOSCA_NUBE.clave && !/[?&]vista=previa/.test(location.search))
+  document.documentElement.classList.add("cargando");
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   1. COLORES Y TIPOGRAFÍAS DE LA MARCA (cámbialos aquí)
+   ========================================================= */
+:root{
+  --crema:#FAF0E8;
+  --arena:#F6E3D6;
+  --terracota:#9C5C40;
+  --cafe:#6E3F2C;
+  --acento:#B9775A;
+  --tinta:#2A2220;
+  --gris:#6E5E56;
+  --borde:#EBD6C9;
+  --blanco:#FFFFFF;
+  --verde-wa:#25D366;
+  --titulos:'Playfair Display', Georgia, serif;
+  --texto:'Jost', system-ui, sans-serif;
+  --ancho:1200px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--texto);color:var(--tinta);background:var(--blanco);line-height:1.6;-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.contenedor{max-width:var(--ancho);margin:0 auto;padding:0 20px}
+.seccion{padding:80px 0}
+.eyebrow{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--acento);font-weight:500}
+.titulo{font-family:var(--titulos);font-weight:500;font-size:clamp(28px,4vw,42px);line-height:1.15;margin:8px 0 14px}
+.subtitulo{color:var(--gris);max-width:560px}
+.centro{text-align:center}.centro .subtitulo{margin:0 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:15px 30px;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;font-weight:500;border-radius:var(--radio-btn,2px);transition:.25s}
+.btn-oscuro{background:var(--tinta);color:#fff}.btn-oscuro:hover{background:var(--terracota)}
+.btn-claro{border:1px solid var(--tinta)}.btn-claro:hover{background:var(--tinta);color:#fff}
+.btn-wa{background:var(--verde-wa);color:#fff;width:100%}.btn-wa:hover{filter:brightness(.93)}
+svg.ico{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- Barra de anuncio ---------- */
+.anuncio{background:var(--cafe);color:#fff;text-align:center;font-size:13px;letter-spacing:1px;padding:9px 16px}
+
+/* ---------- Encabezado ---------- */
+header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--borde)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:74px}
+.logo{font-family:var(--titulos);font-weight:700;font-size:26px;letter-spacing:4px;line-height:1}
+.logo small{display:block;font-family:var(--texto);font-weight:500;font-size:10px;letter-spacing:6px;text-align:center;margin-top:3px}
+.menu{display:flex;gap:34px;font-size:14px;letter-spacing:1px}
+.menu a{position:relative;padding:4px 0}
+.menu a::after{content:"";position:absolute;left:0;bottom:0;width:0;height:1px;background:var(--terracota);transition:.25s}
+.menu a:hover::after{width:100%}
+.acciones{display:flex;gap:10px;align-items:center}
+.icono-btn{position:relative;width:42px;height:42px;display:grid;place-items:center;border-radius:50%}
+.icono-btn:hover{background:var(--crema)}
+.contador{position:absolute;top:3px;right:2px;background:var(--terracota);color:#fff;font-size:11px;min-width:18px;height:18px;border-radius:9px;display:grid;place-items:center;padding:0 4px}
+.hamburguesa{display:none}
+
+/* ---------- Portada (hero) ---------- */
+.hero{background:var(--crema);overflow:hidden}
+.hero .contenedor{display:grid;grid-template-columns:1.05fr 1fr;align-items:center;gap:40px;min-height:620px}
+.hero h1{font-family:var(--titulos);font-weight:500;font-size:clamp(40px,6vw,72px);line-height:1.05;margin:14px 0 20px}
+.hero h1 em{color:var(--terracota)}
+.hero p{font-size:18px;color:var(--gris);max-width:440px;margin-bottom:34px}
+.hero-botones{display:flex;gap:14px;flex-wrap:wrap}
+.hero-foto{position:relative;align-self:end;height:620px}
+.hero-foto .arco{position:absolute;inset:40px 20px 0;border-radius:300px 300px 0 0;background:var(--arena)}
+.hero-foto .marco{position:relative;height:100%;border-radius:300px 300px 0 0;overflow:hidden;background:var(--arena)}
+.hero-foto img{height:100%;width:100%;object-fit:cover;transform:scale(1.5);transform-origin:20% 18%}
+section[id]{scroll-margin-top:74px}
+.sello{position:absolute;left:-10px;bottom:60px;background:#fff;padding:14px 20px;border-radius:2px;box-shadow:0 10px 30px rgba(42,34,32,.08);font-size:13px}
+.sello b{display:block;font-family:var(--titulos);font-size:22px;color:var(--terracota)}
+
+/* ---------- Beneficios ---------- */
+.beneficios{border-bottom:1px solid var(--borde)}
+.beneficios .contenedor{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;padding-top:34px;padding-bottom:34px}
+.beneficio{display:flex;gap:14px;align-items:center;font-size:14px}
+.beneficio svg{width:34px;height:34px;color:var(--terracota);flex-shrink:0}
+.beneficio b{display:block;font-weight:500}
+.beneficio span{color:var(--gris);font-size:13px}
+
+/* ---------- Categorías ---------- */
+.categorias{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:44px}
+.categoria{position:relative;aspect-ratio:3/4;overflow:hidden;background:var(--arena)}
+.categoria img{width:100%;height:100%;object-fit:cover;object-position:30% 25%;transform:scale(1.25);transform-origin:20% 30%;transition:transform .6s}
+.categoria:hover img{transform:scale(1.33)}
+.categoria .etiqueta{position:absolute;left:20px;right:20px;bottom:20px;background:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+.categoria h3{font-family:var(--titulos);font-weight:500;font-size:22px}
+.categoria span{font-size:13px;color:var(--gris)}
+
+/* ---------- Catálogo ---------- */
+.cabecera-catalogo{display:flex;justify-content:space-between;align-items:end;gap:20px;flex-wrap:wrap}
+.filtros{display:flex;gap:8px;flex-wrap:wrap}
+.filtro{padding:9px 18px;border:1px solid var(--borde);border-radius:30px;font-size:13px;letter-spacing:.5px;transition:.2s}
+.filtro:hover{border-color:var(--tinta)}
+.filtro.activo{background:var(--tinta);color:#fff;border-color:var(--tinta)}
+.grilla{display:grid;grid-template-columns:repeat(4,1fr);gap:34px 20px;margin-top:40px}
+.producto{cursor:pointer}
+.producto .foto{position:relative;aspect-ratio:4/5;overflow:hidden;background:var(--crema)}
+.producto .foto img{width:100%;height:100%;object-fit:cover;transform:scale(1.45);transform-origin:15% 30%;transition:transform .6s}
+.producto:hover .foto img{transform:scale(1.55)}
+.producto .rapido{position:absolute;left:12px;right:12px;bottom:12px;background:#fff;text-align:center;padding:12px;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;font-weight:500;opacity:0;transform:translateY(10px);transition:.3s}
+.producto:hover .rapido{opacity:1;transform:none}
+.insignia{position:absolute;top:12px;left:12px;background:var(--terracota);color:#fff;font-size:11px;letter-spacing:1px;padding:4px 10px;text-transform:uppercase}
+.producto h3{font-weight:400;font-size:15px;margin-top:14px}
+.producto .meta{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.precio{font-weight:500}
+.precio s{color:var(--gris);font-weight:400;font-size:13px;margin-left:6px}
+.punto{width:16px;height:16px;border-radius:50%;border:1px solid rgba(0,0,0,.15);display:inline-block}
+
+/* ---------- Packs ---------- */
+.packs-fondo{background:var(--crema)}
+.packs{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:44px}
+.pack{background:#fff;padding:38px 30px;text-align:center;border:1px solid var(--borde);position:relative;transition:.3s}
+.pack:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(110,63,44,.08)}
+.pack.destacado{border:2px solid var(--terracota)}
+.pack .tag{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--terracota);color:#fff;font-size:11px;letter-spacing:2px;padding:4px 14px;text-transform:uppercase}
+.pack h3{font-family:var(--titulos);font-weight:500;font-size:28px}
+.pack .cant{color:var(--gris);font-size:14px;margin-bottom:18px}
+.pack .monto{font-family:var(--titulos);font-size:40px;color:var(--terracota);line-height:1}
+.pack .unidad{font-size:13px;color:var(--gris);margin:8px 0 24px}
+.pack ul{list-style:none;text-align:left;font-size:14px;margin-bottom:28px}
+.pack li{padding:7px 0;border-bottom:1px dashed var(--borde)}
+.pack li::before{content:"✓";color:var(--terracota);margin-right:10px}
+
+/* ---------- Cómo comprar ---------- */
+.pasos{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;margin-top:50px;counter-reset:paso}
+.paso{position:relative;padding-top:20px}
+.paso .num{font-family:var(--titulos);font-size:54px;color:var(--arena);line-height:1;font-weight:700}
+.paso h3{font-weight:500;font-size:17px;margin:6px 0}
+.paso p{color:var(--gris);font-size:14px}
+
+/* ---------- Guía de tallas ---------- */
+.tallas-fondo{background:var(--tinta);color:#fff}
+.tallas-fondo .subtitulo{color:#cdbfb7}
+.tallas-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+table{width:100%;border-collapse:collapse;margin-top:26px;font-size:15px}
+th{font-weight:500;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--acento);padding:14px 10px;border-bottom:1px solid #4a3e3a;text-align:center}
+td{padding:16px 10px;border-bottom:1px solid #3a302d;text-align:center}
+td:first-child{font-family:var(--titulos);font-size:20px}
+.como-medir{display:grid;gap:18px}
+.como-medir div{border-left:2px solid var(--acento);padding-left:16px}
+.como-medir b{font-weight:500;letter-spacing:1px;font-size:13px;text-transform:uppercase}
+.como-medir p{color:#cdbfb7;font-size:14px}
+.nota{font-size:13px;color:#a8988f;margin-top:14px}
+
+/* ---------- Preguntas / Políticas ---------- */
+.faq{max-width:780px;margin:44px auto 0}
+details{border-bottom:1px solid var(--borde);padding:20px 0}
+summary{cursor:pointer;font-size:17px;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:20px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:24px;color:var(--terracota);transition:.2s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{color:var(--gris);margin-top:12px;font-size:15px}
+
+/* ---------- Comunidad / redes ---------- */
+.redes{background:var(--arena);text-align:center}
+.redes .botones{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:28px}
+
+/* ---------- Pie de página ---------- */
+footer{background:var(--cafe);color:#f1e2d8;padding:64px 0 24px;font-size:14px}
+.pie{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.3fr;gap:40px}
+footer h4{font-weight:500;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#fff;margin-bottom:16px}
+footer li{list-style:none;margin-bottom:9px}
+footer a:hover{color:#fff;text-decoration:underline}
+.boletin{display:flex;margin-top:12px}
+.boletin input{flex:1;min-width:0;padding:12px 14px;border:none;font-family:inherit;font-size:14px}
+.boletin button{background:var(--tinta);color:#fff;padding:0 18px;font-size:12px;letter-spacing:1px;text-transform:uppercase}
+.derechos{border-top:1px solid rgba(255,255,255,.15);margin-top:44px;padding-top:20px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:13px;color:#d7c3b6}
+
+/* ---------- Botón flotante WhatsApp ---------- */
+.wa-flotante{position:fixed;right:22px;bottom:22px;z-index:60;width:58px;height:58px;border-radius:50%;background:var(--verde-wa);display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.18);transition:.2s}
+.wa-flotante:hover{transform:scale(1.07)}
+.wa-flotante svg{width:30px;height:30px;fill:#fff}
+
+/* ---------- Ventana de producto ---------- */
+.fondo-oscuro{position:fixed;inset:0;background:rgba(42,34,32,.55);z-index:80;opacity:0;pointer-events:none;transition:.3s}
+.fondo-oscuro.abierto{opacity:1;pointer-events:auto}
+.modal{position:fixed;z-index:90;top:50%;left:50%;width:min(960px,94vw);max-height:92vh;overflow:auto;background:#fff;display:grid;grid-template-columns:1fr 1fr;transform:translate(-50%,-46%);opacity:0;pointer-events:none;transition:.3s}
+.modal.abierto{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+.modal-foto{background:var(--crema)}
+.modal-foto img{width:100%;height:100%;object-fit:contain;max-height:92vh}
+.modal-info{padding:40px 36px;position:relative}
+.cerrar{position:absolute;top:14px;right:14px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center}
+.cerrar:hover{background:var(--crema)}
+.modal-info h2{font-family:var(--titulos);font-weight:500;font-size:30px;line-height:1.2;margin:6px 0 10px}
+.modal-info .precio{font-size:22px}
+.modal-info .desc{color:var(--gris);font-size:15px;margin:18px 0}
+.etiqueta-campo{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;font-weight:500;margin:22px 0 10px;display:flex;justify-content:space-between}
+.etiqueta-campo a{text-transform:none;letter-spacing:0;color:var(--terracota);text-decoration:underline;font-weight:400}
+.opciones{display:flex;gap:10px}
+.talla{width:52px;height:46px;border:1px solid var(--borde);font-size:15px;transition:.2s}
+.talla:hover{border-color:var(--tinta)}
+.talla.activa{background:var(--tinta);color:#fff;border-color:var(--tinta)}
+.cantidad{display:inline-flex;border:1px solid var(--borde)}
+.cantidad button{width:42px;height:46px;font-size:18px}
+.cantidad span{width:40px;display:grid;place-items:center}
+.modal-info .btn{width:100%;margin-top:26px}
+.mini-beneficios{display:grid;gap:8px;margin-top:24px;font-size:13px;color:var(--gris)}
+.aviso{color:#b3261e;font-size:13px;margin-top:8px;min-height:18px}
+
+/* ---------- Carrito lateral ---------- */
+.carrito{position:fixed;top:0;right:0;height:100%;width:min(420px,100vw);background:#fff;z-index:95;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .35s ease}
+.carrito.abierto{transform:none}
+.carrito-cab{display:flex;justify-content:space-between;align-items:center;padding:22px 24px;border-bottom:1px solid var(--borde)}
+.carrito-cab h3{font-family:var(--titulos);font-weight:500;font-size:22px}
+.carrito-items{flex:1;overflow:auto;padding:8px 24px}
+.item{display:grid;grid-template-columns:72px 1fr auto;gap:14px;padding:16px 0;border-bottom:1px solid var(--borde);font-size:14px}
+.item .mini{width:72px;height:90px;overflow:hidden;background:var(--crema)}
+.item .mini img{width:100%;height:100%;object-fit:cover;transform:scale(1.45);transform-origin:15% 30%}
+.item small{color:var(--gris);display:block}
+.item .quitar{font-size:12px;color:var(--gris);text-decoration:underline;margin-top:6px}
+.vacio{text-align:center;color:var(--gris);padding:60px 10px}
+.carrito-pie{padding:20px 24px;border-top:1px solid var(--borde);background:var(--crema)}
+.fila-total{display:flex;justify-content:space-between;font-size:17px;margin-bottom:6px}
+.carrito-pie p{font-size:12px;color:var(--gris);margin-bottom:14px}
+
+/* ---------- Avisito "agregado" ---------- */
+.toast{position:fixed;left:50%;bottom:30px;transform:translate(-50%,20px);background:var(--tinta);color:#fff;padding:13px 22px;font-size:14px;z-index:100;opacity:0;transition:.3s;pointer-events:none}
+.toast.ver{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- Animación al aparecer ---------- */
+.revelar{opacity:0;transform:translateY(24px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1);transition-delay:var(--retraso,0s)}
+.revelar.visible{opacity:1;transform:none}
+
+/* =========================================================
+   ANIMACIONES SUTILES
+   ========================================================= */
+:root{--suave:cubic-bezier(.2,.7,.2,1)}
+@keyframes subir{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@keyframes aparecer{from{opacity:0}to{opacity:1}}
+@keyframes arcoEntra{from{opacity:0;transform:translateY(40px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes flotar{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes respirar{0%,100%{transform:scale(1.5)}50%{transform:scale(1.56)}}
+@keyframes latido{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+@keyframes pulsoWA{0%{box-shadow:0 0 0 0 rgba(37,211,102,.45)}70%{box-shadow:0 0 0 16px rgba(37,211,102,0)}100%{box-shadow:0 0 0 0 rgba(37,211,102,0)}}
+@keyframes desliza{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes subrayar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* Portada: entrada en secuencia */
+.hero .entra{opacity:0;animation:subir 1s var(--suave) forwards}
+.hero .entra:nth-child(1){animation-delay:.15s}
+.hero .entra:nth-child(2){animation-delay:.3s}
+.hero .entra:nth-child(3){animation-delay:.5s}
+.hero .entra:nth-child(4){animation-delay:.7s}
+.hero h1 em{position:relative;display:inline-block}
+.hero h1 em::after{content:"";position:absolute;left:0;right:0;bottom:.08em;height:2px;background:var(--acento);transform-origin:left;transform:scaleX(0);animation:subrayar 1s var(--suave) 1.3s forwards}
+.hero-foto{opacity:0;animation:arcoEntra 1.3s var(--suave) .35s forwards}
+.hero-foto img{animation:respirar 14s ease-in-out infinite}
+.sello{animation:flotar 5s ease-in-out infinite}
+
+/* Barra de anuncio en movimiento */
+.anuncio{overflow:hidden;white-space:nowrap;padding-left:0;padding-right:0}
+.anuncio .cinta{display:inline-flex;animation:desliza 32s linear infinite}
+.anuncio .cinta span{padding:0 36px}
+.anuncio:hover .cinta{animation-play-state:paused}
+
+/* Encabezado que se compacta al bajar */
+header{transition:box-shadow .3s,background .3s}
+header.scrolled{box-shadow:0 6px 24px rgba(42,34,32,.06)}
+.nav{transition:height .3s var(--suave)}
+header.scrolled .nav{height:62px}
+
+/* Botones */
+.btn{transition:background .3s,color .3s,transform .25s var(--suave),box-shadow .3s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(42,34,32,.12)}
+.btn:active{transform:translateY(0)}
+.icono-btn{transition:background .2s,transform .2s}
+.icono-btn:hover{transform:scale(1.06)}
+.contador.latido{animation:latido .5s var(--suave)}
+
+/* Fotos: aparecen suavemente al cargar */
+.producto .foto img,.categoria img{opacity:0;transition:opacity .7s ease,transform .7s var(--suave)}
+.producto .foto img.cargada,.categoria img.cargada{opacity:1}
+.producto h3{transition:color .25s}
+.producto:hover h3{color:var(--terracota)}
+.punto{transition:transform .25s}
+.producto:hover .punto{transform:scale(1.25)}
+.grilla{transition:opacity .25s}
+.grilla.cambiando{opacity:0}
+
+/* Categorías: la etiqueta sube un poco */
+.categoria .etiqueta{transition:transform .4s var(--suave)}
+.categoria:hover .etiqueta{transform:translateY(-6px)}
+.categoria .etiqueta>span{transition:transform .3s}
+.categoria:hover .etiqueta>span{transform:translateX(4px)}
+
+/* Beneficios e iconos */
+.beneficio svg{transition:transform .4s var(--suave)}
+.beneficio:hover svg{transform:translateY(-3px) rotate(-4deg)}
+
+/* Pasos */
+.paso .num{transition:color .4s,transform .4s var(--suave)}
+.paso:hover .num{color:var(--acento);transform:translateX(4px)}
+
+/* Tallas de la tabla */
+tbody tr{transition:background .25s}
+tbody tr:hover{background:rgba(255,255,255,.04)}
+
+/* Preguntas: la respuesta se desliza */
+details[open] p{animation:subir .45s var(--suave)}
+
+/* WhatsApp con pulso suave */
+.wa-flotante{animation:pulsoWA 2.8s ease-out 3s infinite}
+
+/* Ventana de producto */
+.modal-foto img{transition:opacity .4s}
+.modal.abierto .modal-info>*{animation:subir .5s var(--suave) both}
+.modal.abierto .modal-info>*:nth-child(2){animation-delay:.04s}
+.modal.abierto .modal-info>*:nth-child(3){animation-delay:.08s}
+.modal.abierto .modal-info>*:nth-child(4){animation-delay:.12s}
+.modal.abierto .modal-info>*:nth-child(n+5){animation-delay:.16s}
+.talla{transition:background .2s,color .2s,border-color .2s,transform .2s}
+.talla:active{transform:scale(.94)}
+
+/* Carrito: los productos entran deslizándose */
+.carrito.abierto .item{animation:subir .45s var(--suave) both}
+.carrito.abierto .item:nth-child(2){animation-delay:.05s}
+.carrito.abierto .item:nth-child(3){animation-delay:.1s}
+.carrito.abierto .item:nth-child(n+4){animation-delay:.15s}
+
+/* Barra de progreso de lectura */
+.progreso{position:fixed;top:0;left:0;height:2px;width:100%;background:var(--acento);transform-origin:left;transform:scaleX(0);z-index:70}
+
+/* =========================================================
+   2. VERSIÓN CELULAR / TABLET
+   ========================================================= */
+@media (max-width:980px){
+  .grilla{grid-template-columns:repeat(3,1fr)}
+  .beneficios .contenedor{grid-template-columns:repeat(2,1fr)}
+  .pasos{grid-template-columns:repeat(2,1fr)}
+  .pie{grid-template-columns:1fr 1fr}
+}
+@media (max-width:760px){
+  .seccion{padding:56px 0}
+  .menu{display:none;position:absolute;top:74px;left:0;right:0;background:#fff;flex-direction:column;gap:0;border-bottom:1px solid var(--borde)}
+  .menu.abierto{display:flex}
+  .menu a{padding:16px 20px;border-top:1px solid var(--borde)}
+  .hamburguesa{display:grid}
+  .hero .contenedor{grid-template-columns:1fr;min-height:auto;padding-top:40px;gap:20px}
+  .hero-foto{height:440px}
+  .sello{left:10px;bottom:24px}
+  .categorias,.packs{grid-template-columns:1fr}
+  .categoria{aspect-ratio:4/3}
+  .grilla{grid-template-columns:repeat(2,1fr);gap:26px 12px}
+  .producto .rapido{display:none}
+  .tallas-grid{grid-template-columns:1fr;gap:30px}
+  .modal{grid-template-columns:1fr;top:auto;bottom:0;left:0;width:100%;max-height:94vh;transform:translateY(100%)}
+  .modal.abierto{transform:none}
+  .modal-foto img{max-height:46vh}
+  .modal-info{padding:28px 20px 34px}
+  .pie{grid-template-columns:1fr}
+  .beneficio span{display:none}
+}
+/* Títulos grandes: aparecen palabra por palabra */
+.palabra{display:inline-block;opacity:0;transform:translateY(.4em);filter:blur(5px);transition:opacity .9s var(--suave),transform 1s var(--suave),filter .9s var(--suave);transition-delay:calc(var(--base,0s) + var(--i,0) * 70ms)}
+.texto-animado.visible .palabra{opacity:1;transform:none;filter:blur(0)}
+.titulo.texto-animado{--base:.15s}
+.hero h1.texto-animado{--base:.25s}
+.pack .monto{transition:transform .4s var(--suave)}
+.pack:hover .monto{transform:scale(1.06)}
+@media (prefers-reduced-motion:reduce){*,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}.revelar,.hero .entra,.hero-foto,.producto .foto img,.categoria img,.palabra{opacity:1!important;transform:none}.palabra{filter:none!important}.hero h1 em::after{transform:scaleX(1)}}
+/* ---------- Agregados para el Editor ---------- */
+.talla:disabled{opacity:.35;cursor:not-allowed;text-decoration:line-through}
+.agotado{position:absolute;inset:0;background:rgba(255,255,255,.6);display:grid;place-items:center;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:500}
+.sin-foto{width:100%;height:100%;display:grid;place-items:center;color:var(--gris);font-size:13px}
+html.previa .revelar{opacity:1;transform:none}
+html.cargando body{visibility:hidden}
+html.cargando *{animation-play-state:paused!important}
+</style>
+</head>
+<body>
+
+<!-- Todo el contenido de esta página se llena con los datos de la nube (o datos.js de respaldo). Se edita en /editor -->
+
+<!-- ===================== BARRA DE ANUNCIO ===================== -->
+<div class="progreso" id="progreso"></div>
+<div class="anuncio" id="anuncio"><div class="cinta" id="cinta"></div></div>
+
+<!-- ===================== ENCABEZADO ===================== -->
+<header>
+  <div class="contenedor nav">
+    <button class="icono-btn hamburguesa" id="btnMenu" aria-label="Abrir menú">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <a href="#inicio" class="logo" id="logo"></a>
+    <nav class="menu" id="menu">
+      <a href="#tienda">Tienda</a>
+      <a href="#packs" id="menuPacks">Packs</a>
+      <a href="#tallas">Guía de tallas</a>
+      <a href="#comprar">Cómo comprar</a>
+      <a href="#ayuda">Ayuda</a>
+    </nav>
+    <div class="acciones">
+      <a href="#tienda" class="icono-btn" aria-label="Buscar">
+        <svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </a>
+      <button class="icono-btn" id="btnCarrito" aria-label="Ver carrito">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+        <span class="contador" id="contador">0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== PORTADA ===================== -->
+<section class="hero" id="inicio">
+  <div class="contenedor">
+    <div>
+      <span class="eyebrow entra" style="display:block" data-t="portada.eyebrow"></span>
+      <h1 id="heroTitulo"></h1>
+      <p class="entra" data-t="portada.texto"></p>
+      <div class="hero-botones entra">
+        <a href="#tienda" class="btn btn-oscuro" data-t="portada.boton1"></a>
+        <a href="#packs" class="btn btn-claro" id="heroBtnPacks" data-t="portada.boton2"></a>
+      </div>
+    </div>
+    <div class="hero-foto">
+      <div class="arco"></div>
+      <div class="marco"><img id="heroFoto" src="" alt=""></div>
+      <div class="sello"><b data-t="portada.selloNumero"></b><span data-t="portada.selloTexto"></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== BENEFICIOS ===================== -->
+<section class="beneficios">
+  <div class="contenedor">
+    <div class="beneficio">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M12 21v-7"/><circle cx="12" cy="9" r="3"/><circle cx="7.5" cy="8" r="3"/><circle cx="16.5" cy="8" r="3"/><circle cx="12" cy="5" r="3"/></svg>
+      <div><b data-t="beneficios.0.titulo"></b><span data-t="beneficios.0.texto"></span></div>
+    </div>
+    <div class="beneficio">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+      <div><b data-t="beneficios.1.titulo"></b><span data-t="beneficios.1.texto"></span></div>
+    </div>
+    <div class="beneficio">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="m9 12 2 2 4-4"/></svg>
+      <div><b data-t="beneficios.2.titulo"></b><span data-t="beneficios.2.texto"></span></div>
+    </div>
+    <div class="beneficio">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>
+      <div><b data-t="beneficios.3.titulo"></b><span data-t="beneficios.3.texto"></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CATEGORÍAS ===================== -->
+<section class="seccion" id="colecciones">
+  <div class="contenedor">
+    <div class="centro revelar">
+      <span class="eyebrow" data-t="secciones.categorias.eyebrow"></span>
+      <h2 class="titulo" data-t="secciones.categorias.titulo"></h2>
+    </div>
+    <div class="categorias" id="categorias"></div>
+  </div>
+</section>
+
+<!-- ===================== TIENDA / CATÁLOGO ===================== -->
+<section class="seccion" id="tienda" style="padding-top:20px">
+  <div class="contenedor">
+    <div class="cabecera-catalogo revelar">
+      <div>
+        <span class="eyebrow" data-t="secciones.tienda.eyebrow"></span>
+        <h2 class="titulo" data-t="secciones.tienda.titulo"></h2>
+        <p class="subtitulo" data-t="secciones.tienda.subtitulo"></p>
+      </div>
+      <div class="filtros" id="filtros"></div>
+    </div>
+    <div class="grilla" id="grilla"></div>
+  </div>
+</section>
+
+<!-- ===================== PACKS ===================== -->
+<section class="seccion packs-fondo" id="packs">
+  <div class="contenedor">
+    <div class="centro revelar">
+      <span class="eyebrow" data-t="secciones.packs.eyebrow"></span>
+      <h2 class="titulo" data-t="secciones.packs.titulo"></h2>
+      <p class="subtitulo" data-t="secciones.packs.subtitulo"></p>
+    </div>
+    <div class="packs" id="listaPacks"></div>
+  </div>
+</section>
+
+<!-- ===================== CÓMO COMPRAR ===================== -->
+<section class="seccion" id="comprar">
+  <div class="contenedor">
+    <div class="centro revelar">
+      <span class="eyebrow" data-t="secciones.comprar.eyebrow"></span>
+      <h2 class="titulo" data-t="secciones.comprar.titulo"></h2>
+    </div>
+    <div class="pasos" id="listaPasos"></div>
+  </div>
+</section>
+
+<!-- ===================== GUÍA DE TALLAS ===================== -->
+<section class="seccion tallas-fondo" id="tallas">
+  <div class="contenedor tallas-grid">
+    <div class="revelar">
+      <span class="eyebrow" data-t="secciones.tallas.eyebrow"></span>
+      <h2 class="titulo" data-t="secciones.tallas.titulo"></h2>
+      <p class="subtitulo" data-t="secciones.tallas.subtitulo"></p>
+      <table>
+        <thead id="tablaCab"></thead>
+        <tbody id="tablaCuerpo"></tbody>
+      </table>
+      <p class="nota" data-t="guiaTallas.nota"></p>
+    </div>
+    <div class="como-medir revelar" id="comoMedir"></div>
+  </div>
+</section>
+
+<!-- ===================== AYUDA / POLÍTICAS ===================== -->
+<section class="seccion" id="ayuda">
+  <div class="contenedor">
+    <div class="centro revelar">
+      <span class="eyebrow" data-t="secciones.ayuda.eyebrow"></span>
+      <h2 class="titulo" data-t="secciones.ayuda.titulo"></h2>
+    </div>
+    <div class="faq revelar" id="listaFaq"></div>
+  </div>
+</section>
+
+<!-- ===================== REDES ===================== -->
+<section class="seccion redes" id="redes">
+  <div class="contenedor revelar">
+    <span class="eyebrow" data-t="secciones.redes.eyebrow"></span>
+    <h2 class="titulo" data-t="secciones.redes.titulo"></h2>
+    <p class="subtitulo" style="margin:0 auto" data-t="secciones.redes.subtitulo"></p>
+    <div class="botones" id="botonesRedes"></div>
+  </div>
+</section>
+
+<!-- ===================== PIE DE PÁGINA ===================== -->
+<footer>
+  <div class="contenedor">
+    <div class="pie">
+      <div>
+        <div class="logo" id="logoPie" style="color:#fff;display:inline-block"></div>
+        <p style="margin-top:16px;max-width:280px" data-t="textos.pieDescripcion"></p>
+      </div>
+      <div>
+        <h4>Tienda</h4>
+        <ul id="pieTienda"></ul>
+      </div>
+      <div>
+        <h4>Ayuda</h4>
+        <ul><li><a href="#comprar">Cómo comprar</a></li><li><a href="#tallas">Guía de tallas</a></li><li><a href="#ayuda">Envíos y políticas</a></li></ul>
+      </div>
+      <div>
+        <h4>Recibe ofertas</h4>
+        <p>Suscríbete y recibe novedades antes que nadie.</p>
+        <form class="boletin" onsubmit="event.preventDefault();mostrarToast('¡Gracias por suscribirte!');this.reset()">
+          <input type="email" required placeholder="Tu correo" aria-label="Tu correo">
+          <button type="submit">Unirme</button>
+        </form>
+      </div>
+    </div>
+    <div class="derechos">
+      <span data-t="textos.derechos"></span>
+      <span data-t="textos.pagos"></span>
+    </div>
+  </div>
+</footer>
+
+<!-- ===================== BOTÓN WHATSAPP ===================== -->
+<a class="wa-flotante" id="waFlotante" href="#" target="_blank" rel="noopener" aria-label="Escríbenos por WhatsApp">
+  <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.6-.3z"/></svg>
+</a>
+
+<!-- ===================== VENTANA DE PRODUCTO ===================== -->
+<div class="fondo-oscuro" id="fondo"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mNombre">
+  <div class="modal-foto"><img id="mFoto" src="" alt=""></div>
+  <div class="modal-info">
+    <button class="cerrar" id="cerrarModal" aria-label="Cerrar">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <span class="eyebrow" id="mTipo"></span>
+    <h2 id="mNombre"></h2>
+    <div class="precio" id="mPrecio"></div>
+    <p class="desc" id="mDesc"></p>
+    <div class="etiqueta-campo"><span>Color: <span id="mColor" style="font-weight:400;text-transform:none;letter-spacing:0"></span></span></div>
+    <div class="etiqueta-campo"><span>Talla</span><a href="#tallas" id="linkTallas">Guía de tallas</a></div>
+    <div class="opciones" id="mTallas"></div>
+    <div class="aviso" id="mAviso"></div>
+    <div class="etiqueta-campo"><span>Cantidad</span></div>
+    <div class="cantidad">
+      <button id="menos" aria-label="Menos">−</button><span id="mCant">1</span><button id="mas" aria-label="Más">+</button>
+    </div>
+    <button class="btn btn-oscuro" id="agregar">Agregar al carrito</button>
+    <div class="mini-beneficios" id="mMini"></div>
+  </div>
+</div>
+
+<!-- ===================== CARRITO ===================== -->
+<aside class="carrito" id="carrito" aria-label="Carrito de compras">
+  <div class="carrito-cab">
+    <h3>Tu carrito</h3>
+    <button class="cerrar" style="position:static" id="cerrarCarrito" aria-label="Cerrar carrito">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="carrito-items" id="carritoItems"></div>
+  <div class="carrito-pie">
+    <div class="fila-total"><span>Total</span><b id="total">S/ 0.00</b></div>
+    <p data-t="textos.notaEnvio"></p>
+    <button class="btn btn-wa" id="enviarPedido">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#fff"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z"/></svg>
+      Enviar pedido por WhatsApp
+    </button>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<!-- Datos de respaldo de la tienda. Los datos reales vienen de la nube (se editan en /editor) -->
+<script src="datos.js"></script>
+<script>
+/* =========================================================
+   FUNCIONAMIENTO (no necesitas tocar esto)
+   Para cambiar prendas, precios o textos entra al Editor: tutienda.com/editor
+   ========================================================= */
+let D = window.YOSCA;
+if(!D){
+  document.body.innerHTML = '<p style="padding:40px;font-family:sans-serif">No se encontró el archivo <b>datos.js</b> junto a esta página.</p>';
+  throw new Error("Falta datos.js");
+}
+const PREVIA = /[?&]vista=previa/.test(location.search);
+if(PREVIA) document.documentElement.classList.add("previa");
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const negritas = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+const dinero = n => D.moneda + Number(n || 0).toFixed(2);
+const montoCorto = n => Number(n) % 1 === 0 ? D.moneda + Number(n) : dinero(n);
+const linkWA = texto => `https://wa.me/${String(D.contacto.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(texto)}`;
+const ruta = (o, r) => r.split(".").reduce((a, k) => a == null ? a : a[k], o);
+const categoria = id => D.categorias.find(c => c.id === id) || { nombre:"", detalle:"" };
+const visibles = () => D.productos.filter(p => p.activo !== false);
+const packsVisibles = () => (D.packs || []).filter(p => p.activo !== false);
+const buscarProd = id => D.productos.find(p => p.id === id);
+/* stock: vacío = no se controla (siempre disponible) */
+const stockDe = (p, t) => { const v = p.stock ? p.stock[t] : null; return v === "" || v == null ? null : Number(v); };
+const agotado = p => D.tallas.length > 0 && D.tallas.every(t => stockDe(p, t) === 0);
+const tipoTexto = p => { const c = categoria(p.categoria); return c.detalle ? `${c.nombre} · ${c.detalle.toLowerCase()}` : c.nombre; };
+const fotoHTML = (src, alt, extra = "") => src ? `<img src="${esc(src)}" alt="${esc(alt)}" ${extra}>` : `<div class="sin-foto">Sin foto</div>`;
+
+/* --- Pinta toda la página con los datos --- */
+let filtroActual = "todos";
+function pintarTodo(){
+  const raiz = document.documentElement;
+  const col = D.marca.colores || {};
+  Object.keys(col).forEach(k => raiz.style.setProperty("--" + k, col[k]));
+  raiz.style.setProperty("--radio-btn", ({ cuadrado:"2px", redondeado:"10px", pildora:"999px" })[(D.marca.boton || {}).forma] || "2px");
+  document.title = D.marca.tituloPestana || "";
+  const meta = document.querySelector('meta[name="description"]'); if(meta) meta.content = D.marca.descripcionGoogle || "";
+
+  document.querySelectorAll("[data-t]").forEach(el => { const v = ruta(D, el.dataset.t); el.textContent = v == null ? "" : v; });
+  const logo = `${esc(D.marca.logo)}<small>${esc(D.marca.logoSub)}</small>`;
+  $("#logo").innerHTML = logo; $("#logoPie").innerHTML = logo;
+
+  /* Barra de anuncio */
+  const frases = (D.anuncio.frases || []).filter(Boolean);
+  $("#anuncio").style.display = D.anuncio.activo && frases.length ? "" : "none";
+  $("#cinta").innerHTML = frases.map(f => `<span>${esc(f)}</span>`).join("").repeat(4);
+
+  /* Portada */
+  $("#heroTitulo").innerHTML = esc(D.portada.titulo).replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/\n/g, "<br>");
+  $("#heroFoto").src = D.portada.foto || ""; $("#heroFoto").alt = D.marca.logo + " " + D.marca.logoSub;
+
+  /* Categorías */
+  const hayPacks = packsVisibles().length > 0;
+  const tarjetas = D.categorias.filter(c => c.enPortada).map(c => `
+    <a href="#tienda" class="categoria revelar" data-ir="${esc(c.id)}">
+      ${fotoHTML(c.foto, c.nombre, 'loading="lazy"')}
+      <div class="etiqueta"><div><h3>${esc(c.nombre)}</h3><span>${esc(c.detalle)}</span></div><span>Ver →</span></div>
+    </a>`);
+  if(D.tarjetaPacks && D.tarjetaPacks.mostrar && hayPacks) tarjetas.push(`
+    <a href="#packs" class="categoria revelar">
+      ${fotoHTML(D.tarjetaPacks.foto, D.tarjetaPacks.titulo, 'loading="lazy"')}
+      <div class="etiqueta"><div><h3>${esc(D.tarjetaPacks.titulo)}</h3><span>${esc(D.tarjetaPacks.detalle)}</span></div><span>Ver →</span></div>
+    </a>`);
+  $("#categorias").innerHTML = tarjetas.join("");
+  $("#colecciones").style.display = tarjetas.length ? "" : "none";
+
+  /* Filtros del catálogo (solo categorías con prendas visibles) */
+  const conPrendas = D.categorias.filter(c => visibles().some(p => p.categoria === c.id));
+  if(filtroActual !== "todos" && !conPrendas.some(c => c.id === filtroActual)) filtroActual = "todos";
+  $("#filtros").innerHTML = [`<button class="filtro ${filtroActual === "todos" ? "activo" : ""}" data-filtro="todos">Todos</button>`]
+    .concat(conPrendas.map(c => `<button class="filtro ${filtroActual === c.id ? "activo" : ""}" data-filtro="${esc(c.id)}">${esc(c.nombre)}</button>`)).join("");
+
+  /* Packs */
+  $("#packs").style.display = hayPacks ? "" : "none";
+  $("#menuPacks").style.display = hayPacks ? "" : "none";
+  $("#heroBtnPacks").style.display = hayPacks ? "" : "none";
+  $("#listaPacks").innerHTML = packsVisibles().map(k => `
+    <div class="pack ${k.destacado ? "destacado" : ""} revelar">
+      ${k.etiqueta ? `<span class="tag">${esc(k.etiqueta)}</span>` : ""}
+      <h3>${esc(k.nombre)}</h3><div class="cant">${esc(k.subtitulo)}</div>
+      <div class="monto">${montoCorto(k.precio)}</div>
+      <div class="unidad">${k.cantidad > 0 ? dinero(k.precio / k.cantidad) + " c/u" : ""}</div>
+      <ul>${(k.puntos || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      <a class="btn ${k.destacado ? "btn-oscuro" : "btn-claro"}" target="_blank" rel="noopener"
+         href="${linkWA(`${D.contacto.saludo} Quiero armar el ${k.nombre} (${k.subtitulo}). ¿Qué colores tienen disponibles?`)}">Pedir pack</a>
+    </div>`).join("");
+
+  /* Cómo comprar */
+  $("#listaPasos").innerHTML = (D.pasos || []).map((p, i) => `
+    <div class="paso revelar"><div class="num">${String(i + 1).padStart(2, "0")}</div><h3>${esc(p.titulo)}</h3><p>${esc(p.texto)}</p></div>`).join("");
+
+  /* Guía de tallas */
+  const g = D.guiaTallas;
+  $("#tablaCab").innerHTML = `<tr>${g.columnas.map(c => `<th>${esc(c)}</th>`).join("")}</tr>`;
+  $("#tablaCuerpo").innerHTML = g.filas.map(f => `<tr>${g.columnas.map((_, i) => `<td>${esc(f[i])}</td>`).join("")}</tr>`).join("");
+  $("#comoMedir").innerHTML = `<h3 style="font-family:var(--titulos);font-weight:500;font-size:24px">¿Cómo medir?</h3>` +
+    g.comoMedir.map(m => `<div><b>${esc(m.titulo)}</b><p>${esc(m.texto)}</p></div>`).join("");
+
+  /* Preguntas */
+  $("#listaFaq").innerHTML = (D.preguntas || []).map((q, i) =>
+    `<details ${i === 0 ? "open" : ""}><summary>${esc(q.pregunta)}</summary><p>${negritas(q.respuesta)}</p></details>`).join("");
+  $("#ayuda").style.display = (D.preguntas || []).length ? "" : "none";
+
+  /* Redes */
+  const redes = [["tiktok", "TikTok"], ["facebook", "Facebook"], ["instagram", "Instagram"]].filter(([k]) => D.contacto[k]);
+  $("#botonesRedes").innerHTML = redes.map(([k, n], i) =>
+    `<a class="btn ${i === 0 ? "btn-oscuro" : "btn-claro"}" href="${esc(D.contacto[k])}" target="_blank" rel="noopener">${n}</a>`).join("");
+  $("#redes").style.display = redes.length ? "" : "none";
+
+  /* Pie, ventana de producto y WhatsApp */
+  $("#pieTienda").innerHTML = conPrendas.map(c => `<li><a href="#tienda" data-ir="${esc(c.id)}">${esc(c.nombre)}</a></li>`).join("") +
+    (hayPacks ? `<li><a href="#packs">Packs</a></li>` : "");
+  $("#mMini").innerHTML = (D.textos.miniBeneficios || []).map(t => `<span>✓ ${esc(t)}</span>`).join("");
+  $("#waFlotante").href = linkWA(`${D.contacto.saludo} ${D.contacto.consulta}`);
+
+  pintarCatalogo(); pintarCarrito();
+  document.querySelectorAll(".categorias, .packs, .pasos").forEach(gr =>
+    [...gr.children].forEach((el, i) => el.style.setProperty("--retraso", i * 0.12 + "s")));
+  prepararFotos(); observarRevelar();
+  document.querySelectorAll(".hero h1, .titulo").forEach(separarPalabras);
+}
+
+/* --- Títulos grandes: se separan en palabras DESPUÉS de pintar los textos --- */
+const obsTitulos = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => {
+  if(e.isIntersecting){ e.target.classList.add("visible"); obsTitulos.unobserve(e.target); }
+}), { threshold:.3 }) : null;
+function separarPalabras(el){
+  let i = 0;
+  const recorrer = nodo => [...nodo.childNodes].forEach(n => {
+    if(n.nodeType === 3){
+      const frag = document.createDocumentFragment();
+      n.textContent.split(/(\s+)/).forEach(p => {
+        if(!p) return;
+        if(/^\s+$/.test(p)){ frag.appendChild(document.createTextNode(p)); return; }
+        const s = document.createElement("span"); s.className = "palabra"; s.style.setProperty("--i", i++); s.textContent = p;
+        frag.appendChild(s);
+      });
+      n.replaceWith(frag);
+    } else if(n.nodeType === 1 && n.tagName !== "BR" && !n.classList.contains("palabra")) recorrer(n);
+  });
+  recorrer(el);
+  el.classList.add("texto-animado");
+  if(el.classList.contains("visible")) return;
+  if(PREVIA || !obsTitulos) el.classList.add("visible"); else obsTitulos.observe(el);
+}
+
+/* --- Catálogo --- */
+function pintarCatalogo(){
+  const lista = visibles().filter(p => filtroActual === "todos" || p.categoria === filtroActual);
+  $("#grilla").innerHTML = lista.map(p => `
+    <article class="producto revelar" data-id="${p.id}">
+      <div class="foto">
+        ${fotoHTML(p.foto, p.nombre, 'loading="lazy"')}
+        ${p.insignia ? `<span class="insignia">${esc(p.insignia)}</span>` : ""}
+        ${agotado(p) ? `<div class="agotado">Agotado</div>` : ""}
+        <div class="rapido">Ver producto</div>
+      </div>
+      <h3>${esc(p.nombre)}</h3>
+      <div class="meta">
+        <span class="precio">${dinero(p.precio)}${p.antes ? `<s>${dinero(p.antes)}</s>` : ""}</span>
+        <span class="punto" style="background:${esc(p.hex)}" title="${esc(p.color)}"></span>
+      </div>
+    </article>`).join("");
+  document.querySelectorAll("#grilla .producto").forEach((el, i) => el.style.setProperty("--retraso", (i % 4) * 0.08 + "s"));
+  prepararFotos(); observarRevelar();
+}
+$("#filtros").addEventListener("click", e => {
+  const b = e.target.closest(".filtro"); if(!b || b.classList.contains("activo")) return;
+  document.querySelectorAll(".filtro").forEach(x => x.classList.toggle("activo", x === b));
+  filtroActual = b.dataset.filtro;
+  $("#grilla").classList.add("cambiando");
+  setTimeout(() => { pintarCatalogo(); $("#grilla").classList.remove("cambiando"); }, 250);
+});
+
+/* --- Fotos que aparecen suavemente al cargar --- */
+function prepararFotos(){
+  document.querySelectorAll(".producto .foto img, .categoria img").forEach(img => {
+    if(img.complete && img.naturalWidth) img.classList.add("cargada");
+    else img.addEventListener("load", () => img.classList.add("cargada"), { once:true });
+  });
+}
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-ir]"); if(!a) return;
+  const f = document.querySelector(`.filtro[data-filtro="${a.dataset.ir}"]`); if(f) f.click();
+});
+$("#grilla").addEventListener("click", e => {
+  const card = e.target.closest(".producto"); if(card) abrirProducto(+card.dataset.id);
+});
+
+/* --- Ventana de producto --- */
+let actual = null, tallaSel = null, cant = 1;
+const maximo = () => { const s = actual && tallaSel ? stockDe(actual, tallaSel) : null; return s == null ? 20 : Math.min(20, s); };
+function abrirProducto(id){
+  actual = buscarProd(id); if(!actual) return; tallaSel = null; cant = 1;
+  $("#mFoto").src = actual.foto || ""; $("#mFoto").alt = actual.nombre;
+  $("#mTipo").textContent = tipoTexto(actual);
+  $("#mNombre").textContent = actual.nombre;
+  $("#mPrecio").innerHTML = dinero(actual.precio) + (actual.antes ? ` <s>${dinero(actual.antes)}</s>` : "");
+  $("#mDesc").textContent = actual.descripcion || D.descripcionGeneral || "";
+  $("#mColor").textContent = actual.color;
+  $("#mCant").textContent = cant; $("#mAviso").textContent = agotado(actual) ? "Esta prenda está agotada por ahora." : "";
+  $("#mTallas").innerHTML = D.tallas.map(t => `<button class="talla" data-t="${esc(t)}" ${stockDe(actual, t) === 0 ? "disabled title='Agotado'" : ""}>${esc(t)}</button>`).join("");
+  abrir("#modal");
+}
+$("#mTallas").addEventListener("click", e => {
+  const b = e.target.closest(".talla"); if(!b || b.disabled) return;
+  tallaSel = b.dataset.t;
+  const s = stockDe(actual, tallaSel);
+  $("#mAviso").textContent = s != null && s <= 3 ? `¡Últimas ${s} unidades en talla ${tallaSel}!` : "";
+  cant = Math.min(cant, maximo()); $("#mCant").textContent = cant;
+  document.querySelectorAll(".talla").forEach(x => x.classList.toggle("activa", x === b));
+});
+$("#menos").onclick = () => { cant = Math.max(1, cant - 1); $("#mCant").textContent = cant; };
+$("#mas").onclick = () => { cant = Math.min(maximo(), cant + 1); $("#mCant").textContent = cant; };
+$("#agregar").onclick = () => {
+  if(!tallaSel){ $("#mAviso").textContent = "Elige una talla para continuar."; return; }
+  agregarAlCarrito(actual, tallaSel, cant);
+  cerrarTodo(); mostrarToast(`Agregado: ${actual.nombre} · Talla ${tallaSel}`);
+};
+$("#linkTallas").onclick = () => cerrarTodo();
+
+/* --- Carrito --- */
+let carrito = [];
+try { carrito = JSON.parse(localStorage.getItem("yosca-carrito")) || []; } catch(e) { carrito = []; }
+function guardar(){ try { localStorage.setItem("yosca-carrito", JSON.stringify(carrito)); } catch(e) {} }
+function agregarAlCarrito(p, talla, n){
+  const existe = carrito.find(i => i.id === p.id && i.talla === talla);
+  if(existe) existe.cant += n; else carrito.push({ id:p.id, talla, cant:n });
+  guardar(); pintarCarrito();
+}
+const itemsValidos = () => carrito.filter(i => { const p = buscarProd(i.id); return p && p.activo !== false; });
+function pintarCarrito(){
+  let total = 0, piezas = 0;
+  const items = itemsValidos();
+  $("#carritoItems").innerHTML = items.length ? items.map(i => {
+    const p = buscarProd(i.id);
+    total += p.precio * i.cant; piezas += i.cant;
+    return `<div class="item">
+      <div class="mini">${fotoHTML(p.foto, "")}</div>
+      <div>${esc(p.nombre)}<small>Talla ${esc(i.talla)} · Cant. ${i.cant}</small>
+        <button class="quitar" data-quitar="${carrito.indexOf(i)}">Quitar</button></div>
+      <b>${dinero(p.precio * i.cant)}</b>
+    </div>`;
+  }).join("") : `<div class="vacio">Tu carrito está vacío.<br><br><a href="#tienda" class="btn btn-claro" onclick="cerrarTodo()">Ver prendas</a></div>`;
+  $("#total").textContent = dinero(total);
+  const c = $("#contador");
+  if(c.textContent !== String(piezas)){ c.textContent = piezas; c.classList.remove("latido"); void c.offsetWidth; c.classList.add("latido"); }
+}
+$("#carritoItems").addEventListener("click", e => {
+  const b = e.target.closest("[data-quitar]"); if(!b) return;
+  carrito.splice(+b.dataset.quitar, 1); guardar(); pintarCarrito();
+});
+$("#enviarPedido").onclick = () => {
+  const items = itemsValidos();
+  if(!items.length){ mostrarToast("Agrega al menos una prenda a tu carrito"); return; }
+  let total = 0;
+  const lineas = items.map(i => {
+    const p = buscarProd(i.id); total += p.precio * i.cant;
+    return `• ${i.cant} x ${p.nombre} (${categoria(p.categoria).nombre}) - Talla ${i.talla} - ${dinero(p.precio * i.cant)}`;
+  });
+  const msg = `${D.contacto.saludo} Quiero hacer este pedido:\n\n${lineas.join("\n")}\n\nTotal: ${dinero(total)}\n\n${D.contacto.cierrePedido}`;
+  window.open(linkWA(msg), "_blank");
+};
+
+/* --- Abrir / cerrar paneles --- */
+function abrir(sel){ $(sel).classList.add("abierto"); $("#fondo").classList.add("abierto"); document.body.style.overflow = "hidden"; }
+function cerrarTodo(){ ["#modal","#carrito","#fondo"].forEach(s => $(s).classList.remove("abierto")); document.body.style.overflow = ""; }
+$("#btnCarrito").onclick = () => abrir("#carrito");
+$("#cerrarCarrito").onclick = cerrarTodo;
+$("#cerrarModal").onclick = cerrarTodo;
+$("#fondo").onclick = cerrarTodo;
+document.addEventListener("keydown", e => { if(e.key === "Escape") cerrarTodo(); });
+$("#btnMenu").onclick = () => $("#menu").classList.toggle("abierto");
+document.querySelectorAll("#menu a").forEach(a => a.addEventListener("click", () => $("#menu").classList.remove("abierto")));
+
+/* --- Mensajito flotante --- */
+let tToast;
+function mostrarToast(t){ const el = $("#toast"); el.textContent = t; el.classList.add("ver"); clearTimeout(tToast); tToast = setTimeout(() => el.classList.remove("ver"), 2600); }
+
+/* --- Animación al hacer scroll --- */
+const obs = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => {
+  if(e.isIntersecting){ e.target.classList.add("visible"); obs.unobserve(e.target); }
+}), { threshold:.12 }) : null;
+function observarRevelar(){
+  document.querySelectorAll(".revelar:not(.visible)").forEach(el => obs ? obs.observe(el) : el.classList.add("visible"));
+}
+
+/* --- Encabezado y barra de progreso al hacer scroll --- */
+let pendiente = false;
+window.addEventListener("scroll", () => {
+  if(pendiente) return; pendiente = true;
+  requestAnimationFrame(() => {
+    const y = scrollY, max = document.documentElement.scrollHeight - innerHeight;
+    document.querySelector("header").classList.toggle("scrolled", y > 40);
+    $("#progreso").style.transform = `scaleX(${max > 0 ? y / max : 0})`;
+    pendiente = false;
+  });
+}, { passive:true });
+
+/* --- Vista previa en vivo dentro del Editor --- */
+if(PREVIA){
+  window.addEventListener("message", e => {
+    const m = e.data || {};
+    if(m.tipo === "yosca-datos" && m.datos){ D = m.datos; pintarTodo(); }
+    if(m.tipo === "yosca-ir"){ const el = document.getElementById(m.id); if(el) el.scrollIntoView({ behavior:"smooth", block:"start" }); }
+  });
+  try { parent.postMessage({ tipo:"yosca-lista" }, "*"); } catch(e) {}
+}
+
+/* --- Datos desde la nube (Supabase). Si falla, se usa datos.js --- */
+async function cargarDeLaNube(){
+  const N = window.YOSCA_NUBE || {};
+  if(!N.url || !N.clave || PREVIA) return null;
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const r = await fetch(`${N.url.replace(/\/+$/, "")}/rest/v1/tiendas?id=eq.${encodeURIComponent(N.tienda || "yosca")}&select=datos`,
+      { headers:{ apikey:N.clave, Authorization:"Bearer " + N.clave }, signal:ctrl.signal, cache:"no-store" });
+    if(!r.ok) return null;
+    const filas = await r.json();
+    const d = filas && filas[0] && filas[0].datos;
+    return d && Array.isArray(d.productos) ? d : null;
+  } catch(e) { return null; } finally { clearTimeout(t); }
+}
+(async () => {
+  try { const nube = await cargarDeLaNube(); if(nube) D = nube; } catch(e) {}
+  try { pintarTodo(); } finally { document.documentElement.classList.remove("cargando"); }
+})();
+</script>
+</body>
+</html>

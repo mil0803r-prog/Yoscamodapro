@@ -416,6 +416,14 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
     <section id="v-proy" hidden></section>
 
     <!-- AJUSTES -->
+    <!-- TIENDA (solo para la cuenta del dueño) -->
+    <section id="v-tienda" hidden>
+      <div class="card row sb" style="margin-bottom:12px;flex-wrap:wrap">
+        <div><h2>Editor de la tienda</h2><p class="sub">Cambia colores, precios, textos y botones de la tienda de tus clientas. Solo lo ves tú.</p></div>
+        <a class="btn sm" href="tienda/editor.html" target="_blank" rel="noopener">Abrir en pantalla completa</a>
+      </div>
+      <iframe id="tiendaFrame" title="Editor de la tienda" style="width:100%;height:calc(100vh - 250px);min-height:540px;border:1px solid var(--line);border-radius:14px;background:#fff"></iframe>
+    </section>
     <section id="v-set" hidden>
       <div class="card" id="accCard" hidden style="margin-bottom:14px">
         <h2>Mi cuenta</h2>
@@ -507,6 +515,7 @@ const r2=n=>Math.round(n*100)/100;
 const ICONS={
   dash:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
   calc:'<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8.01" y2="11"/><line x1="12" y1="11" x2="12.01" y2="11"/><line x1="16" y1="11" x2="16.01" y2="11"/><line x1="8" y1="15" x2="8.01" y2="15"/><line x1="12" y1="15" x2="12.01" y2="15"/><line x1="16" y1="15" x2="16.01" y2="15"/><line x1="8" y1="18.5" x2="12" y2="18.5"/>',
+  store:'<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M9.5 20v-5h5v5"/>',
   box:'<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><line x1="12" y1="13" x2="12" y2="21"/>',
   bag:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>',
   money:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
@@ -728,10 +737,10 @@ async function connectFirebase(){
     if(!u){
       // Solo se borran los datos del navegador si de verdad se cerró una sesión; al abrir sin sesión se conservan para pasarlos a la cuenta nueva.
       if(FB_USER){detachDb();resetLocal();try{localStorage.removeItem('yosca_owner')}catch(e){}}
-      FB_USER=null;applyTheme();refreshAll();renderAccount();showLogin();return;
+      FB_USER=null;pintarNav();{const f=$('#tiendaFrame');if(f)f.removeAttribute('src')}applyTheme();refreshAll();renderAccount();showLogin();return;
     }
-    if(FB_USER&&FB_USER.uid===u.uid){FB_USER=u;renderAccount();return}
-    FB_USER=u;
+    if(FB_USER&&FB_USER.uid===u.uid){FB_USER=u;pintarNav();renderAccount();return}
+    FB_USER=u;pintarNav();
     let owner='';try{owner=localStorage.getItem('yosca_owner')||''}catch(e){}
     if(owner&&owner!==u.uid)resetLocal();               // datos de otra cuenta en este navegador: no se mezclan
     try{localStorage.setItem('yosca_owner',u.uid)}catch(e){}
@@ -771,24 +780,35 @@ $('#curSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(
 $('#setBtn').innerHTML=icon('gear');$('#setBtn').addEventListener('click',()=>showTab('set'));
 
 const TABS=[['dash','Dashboard','dash'],['calc','Calculadora','calc'],['ped','Pedidos','bag'],['inv','Inventario','box'],['gas','Gastos','money'],['proy','Proyección','trend']];
-$('#nav').innerHTML=TABS.map(([k,n,i])=>`<button data-tab="${k}">${icon(i)}<span>${n}</span></button>`).join('');
+/* Sección extra solo para la cuenta del dueño (se muestra únicamente con ese correo, ya verificado) */
+const TIENDA_EMAIL='mil0803r@gmail.com';
+const puedeTienda=()=>!!(FB_USER&&String(FB_USER.email||'').toLowerCase()===TIENDA_EMAIL&&FB_USER.emailVerified);
+function pintarNav(){
+  const t=puedeTienda()?[...TABS,['tienda','Tienda','store']]:TABS;
+  $('#nav').innerHTML=t.map(([k,n,i])=>`<button data-tab="${k}">${icon(i)}<span>${n}</span></button>`).join('');
+  if(ui.tab==='tienda'&&!puedeTienda())showTab('dash');
+  else document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===ui.tab));
+}
+pintarNav();
 $('#menuBtn').innerHTML='<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>';
 function navOpen(v){$('#mainNav').classList.toggle('open',v);$('#navBack').hidden=!v;$('#menuBtn').setAttribute('aria-expanded',String(v))}
 $('#menuBtn').addEventListener('click',()=>navOpen(!$('#mainNav').classList.contains('open')));
 $('#navBack').addEventListener('click',()=>navOpen(false));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')navOpen(false)});
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b){showTab(b.dataset.tab);navOpen(false)}});
-const HEADS={dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],inv:['box','Inventario','Prendas y materiales: cuánto tienes y qué se acaba'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
+const HEADS={dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],inv:['box','Inventario','Prendas y materiales: cuánto tienes y qué se acaba'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],tienda:['store','Tienda','Edita los colores, precios y textos de tu tienda'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
 function showTab(t){
+  if(t==='tienda'&&!puedeTienda())t='dash';
   ui.tab=t;
   const hd=HEADS[t];$('#pageHead').innerHTML=`<div class="pico">${icon(hd[0])}</div><div><h1>${hd[1]}</h1><p>${hd[2]}</p></div>`;
-  ['dash','calc','ped','inv','gas','proy','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
+  ['dash','calc','ped','inv','gas','proy','tienda','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   scrollTo(0,0);renderTab();
 }
 function renderTab(){
-  ({dash:renderDash,calc:renderCalc,ped:renderPed,inv:renderInv,gas:renderGas,proy:renderProy,set:renderSet})[ui.tab]();
+  ({dash:renderDash,calc:renderCalc,ped:renderPed,inv:renderInv,gas:renderGas,proy:renderProy,tienda:renderTienda,set:renderSet})[ui.tab]();
 }
+function renderTienda(){const f=$('#tiendaFrame');if(puedeTienda()&&f&&!f.getAttribute('src'))f.setAttribute('src','tienda/editor.html')}
 function refreshAll(){
   if(!ui.gid||!S.garments.find(g=>g.id===ui.gid))ui.gid=S.garments[0]?.id||null;
   const a=document.activeElement;

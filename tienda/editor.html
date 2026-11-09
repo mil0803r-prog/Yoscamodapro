@@ -1,0 +1,341 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Editor de tu tienda</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet"><style>
+:root{--crema:#FAF0E8;--arena:#F6E3D6;--terra:#9C5C40;--cafe:#6E3F2C;--tinta:#2A2220;--gris:#7A6A62;--borde:#EADFD6;--ok:#2E7D32;--bg:#F7F2EC}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"Jost",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--tinta);background:var(--bg);display:flex;flex-direction:column;font-size:14.5px}
+button{font-family:inherit}
+/* ---- barra superior ---- */
+header{background:#fff;border-bottom:1px solid var(--borde);padding:9px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.marca{display:flex;align-items:center;gap:8px;flex:1;min-width:190px}
+.marca .lp{font-size:20px}
+.marca b{display:block;font-size:16px;line-height:1.1}.marca small{display:block;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--gris)}
+#estado{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gris);font-weight:500}
+#estado i{width:8px;height:8px;border-radius:50%;background:#2E7D32}
+body.sucio #estado{color:#B45309;font-weight:600}body.sucio #estado i{background:#D97706}
+.bt{border:1px solid var(--borde);background:#fff;border-radius:8px;padding:8px 12px;font-size:13.5px;font-weight:500;cursor:pointer;color:var(--tinta);display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.bt:hover{background:#FBF7F2}
+.bt.pri{background:var(--cafe);border-color:var(--cafe);color:#fff;font-weight:600}.bt.pri:hover{background:#5d3323}
+.bt:disabled{opacity:.45;cursor:default}
+/* ---- 3 columnas ---- */
+#app{flex:1;min-height:0;display:grid;grid-template-columns:190px minmax(300px,430px) minmax(0,1fr)}
+nav{background:#fff;border-right:1px solid var(--borde);overflow-y:auto;padding:12px 8px 8px;display:flex;flex-direction:column;min-width:0}
+nav .gr{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:#A89A91;padding:12px 10px 6px;font-weight:600}
+nav button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:9px 10px;border-radius:8px;font-size:14px;color:var(--tinta);cursor:pointer;text-align:left}
+nav button .e{width:20px;text-align:center;font-size:15px}
+nav button:hover{background:#FBF7F2}
+nav button.on{background:var(--arena);color:var(--terra);font-weight:600}
+#conexion{margin-top:auto;padding:12px 10px;font-size:11.5px;color:var(--gris);border-top:1px solid var(--borde);display:flex;gap:6px;align-items:center}
+#editor{overflow-y:auto;padding:22px 22px 80px;background:#FCF9F5;border-right:1px solid var(--borde);min-width:0}
+#editor h2{font-family:"Playfair Display",Georgia,serif;font-size:25px;font-weight:600;margin-bottom:4px}
+#editor .desc{color:var(--gris);margin-bottom:16px;line-height:1.45}
+#editor .desc b{color:var(--tinta)}
+.barra{display:flex;gap:8px;margin-bottom:12px}
+.barra input{flex:1}
+/* ---- campos ---- */
+.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.f label,.etq{font-size:12.5px;color:var(--gris);font-weight:500}
+.f small,.h{font-size:11.5px;color:var(--gris)}
+input[type=text],input[type=number],input[type=email],input[type=password],input[type=search],textarea,select{width:100%;border:1px solid var(--borde);border-radius:8px;padding:9px 11px;font:inherit;background:#fff;color:var(--tinta);min-width:0}
+textarea{resize:vertical}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--terra);outline-offset:-1px}
+input.mal{border-color:#C62828;background:#FFF5F5}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g1{display:grid;gap:10px}
+.pre{display:flex;align-items:center;border:1px solid var(--borde);border-radius:8px;background:#fff;padding-left:11px}
+.pre span{color:var(--gris)}.pre input{border:0;outline:0!important}
+.selcolor{display:flex;gap:8px}
+.selcolor input[type=color]{width:44px;height:40px;padding:2px;border:1px solid var(--borde);border-radius:8px;background:#fff;cursor:pointer;flex:none}
+.selcolor input[type=text]{text-transform:uppercase}
+.tit{font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--cafe);font-weight:700;margin:16px 0 8px}
+.tit:first-child{margin-top:0}
+/* ---- prendas ---- */
+.fila{background:#fff;border:1px solid var(--borde);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.fila.oculta .cab{opacity:.55}
+.cab{display:flex;align-items:center;gap:11px;padding:9px 12px;cursor:pointer;width:100%;border:0;background:none;text-align:left}
+.th{width:42px;height:50px;border-radius:7px;background-size:cover;background-position:center top;border:1px solid var(--borde);flex:none}
+.nm{flex:1;min-width:0}.nm b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nm small{color:var(--gris);font-size:12px}
+.pr{text-align:right;flex:none}.pr b{display:block;font-size:14.5px}.pr s{color:var(--gris);font-size:12px;display:block}
+.ins{font-size:11.5px;border-radius:99px;padding:3px 9px;font-weight:600;flex:none}
+.ins.ok{background:#E3F1E4;color:#256B2B}.ins.low{background:#FBE3E3;color:#B42323}.ins.nc{background:#EFE9E3;color:var(--gris)}.ins.of{background:#EFE9E3;color:var(--gris)}
+.chev{color:var(--gris);font-size:16px;transition:transform .15s;flex:none}
+.fila.abierta .chev{transform:rotate(180deg)}
+.cuerpo{display:none;padding:4px 14px 16px;background:#FCF9F5;border-top:1px solid var(--borde)}
+.fila.abierta .cuerpo{display:block}
+.sws{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:4px}
+.sw{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:14px}
+.sw input{position:absolute;opacity:0}
+.sw i{width:38px;height:22px;border-radius:99px;background:#CBBFB6;position:relative;transition:.15s;flex:none}
+.sw i::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.sw input:checked+i{background:var(--ok)}.sw input:checked+i::after{left:19px}
+.sw input:focus-visible+i{outline:2px solid var(--terra);outline-offset:2px}
+.tallas{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:8px}
+.tallas .f label{text-align:center;font-weight:700;color:var(--tinta)}.tallas input{text-align:center}
+.todos{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fff;border:1px solid var(--borde);border-radius:10px;padding:10px;margin-bottom:12px}
+.todos label{font-size:13px;flex:1 1 100%;color:var(--gris)}.todos .pre{flex:1;min-width:110px}
+/* ---- tarjetas simples ---- */
+.card{background:#fff;border:1px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:10px}
+.card h4{font-size:14.5px;margin-bottom:10px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.card h4 span{font-weight:400;color:var(--gris);font-size:12.5px}
+.paletas{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;color:var(--gris);margin-bottom:12px}
+.pal{display:flex;align-items:center;gap:5px;border:1px solid var(--borde);background:#fff;border-radius:99px;padding:5px 11px 5px 7px;font:inherit;font-size:12.5px;cursor:pointer;color:var(--tinta)}
+.pal i{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.15)}.pal i+i{margin-left:-9px}
+.formas{display:flex;gap:10px;flex-wrap:wrap}
+.forma input{position:absolute;opacity:0}
+.forma .b{display:inline-block;padding:12px 22px;background:var(--tinta);color:#fff;font-weight:600;font-size:12.5px;letter-spacing:1px;text-transform:uppercase;border:3px solid transparent;cursor:pointer}
+.forma .b.cuadrado{border-radius:2px}.forma .b.redondeado{border-radius:10px}.forma .b.pildora{border-radius:999px}
+.forma input:checked+.b{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--terra)}
+.tabla{display:grid;gap:6px;align-items:center}.tabla b{font-size:12px;color:var(--gris)}
+.aviso{background:#FFF7E6;border:1px solid #F3DFB0;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.45}
+.guardar{display:grid;gap:10px;max-width:420px}
+#estNube{font-size:13.5px;color:var(--gris);min-height:18px}
+/* ---- vista previa ---- */
+#lienzo{min-width:0;min-height:0;display:flex;flex-direction:column;background:#EFE6DE}
+#barraV{display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12.5px;color:var(--gris)}
+#disp{display:flex;gap:4px;margin-left:auto}
+#disp button{border:1px solid var(--borde);background:#fff;border-radius:7px;padding:5px 11px;font-size:12.5px;cursor:pointer}
+#disp button.on{background:var(--tinta);color:#fff;border-color:var(--tinta)}
+#vista{flex:1;min-height:0;display:flex;justify-content:center}
+#vista iframe{border:0;background:#fff;width:100%;height:100%}
+#lienzo[data-disp=cel] #vista{padding:10px 0}
+#lienzo[data-disp=cel] #vista iframe{width:390px;max-width:100%;border-radius:22px;box-shadow:0 8px 30px rgba(0,0,0,.25);border:8px solid #1c1c1c}
+body.soloprevia #app{grid-template-columns:0 0 1fr}body.soloprevia nav,body.soloprevia #editor{display:none}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--tinta);color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;z-index:30}
+#toast[hidden]{display:none}
+@media(max-width:1020px){
+ #app{grid-template-columns:150px minmax(0,1fr)}
+ #lienzo{display:none}
+ body.soloprevia #app{grid-template-columns:1fr}body.soloprevia #lienzo{display:flex}
+}
+@media(max-width:700px){
+ #app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr}
+ nav{flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:6px;border-right:0;border-bottom:1px solid var(--borde);gap:4px}
+ nav .gr,#conexion{display:none}nav button{width:auto;white-space:nowrap;flex:none}
+ #editor{padding:16px 14px 80px}
+ .g2{grid-template-columns:1fr}
+}
+</style><script>window.RUTA_FOTOS="./";</script><script src="./config.js"></script><script src="./datos.js"></script></head><body ><header>
+<div class="marca"><span class="lp">✏️</span><div><b>Editor de tu tienda</b><small id="subm">Tu tienda</small></div></div>
+<div id="estado"><i></i><span id="contador">Sin cambios</span></div>
+<button class="bt" id="btnPrev" type="button">👁 Vista previa</button>
+<a class="bt" id="btnAbrir" href="./index.html" target="_blank" rel="noopener">↗ Abrir tienda</a>
+<button class="bt" id="btnDeshacer" type="button" disabled>↶ Deshacer</button>
+<button class="bt pri" id="btnGuardar" type="button" disabled>💾 Guardar cambios</button>
+</header>
+<div id="app">
+<nav id="menu" aria-label="Secciones"></nav>
+<section id="editor" aria-live="polite"></section>
+<section id="lienzo" data-disp="pc"><div id="barraV"><span id="txtPrev">Así se ve tu tienda</span><div id="disp"><button class="on" data-d="pc" type="button">🖥 Computadora</button><button data-d="cel" type="button">📱 Celular</button></div></div>
+<div id="vista"><iframe id="marco" title="Vista previa de la tienda" src="./index.html?vista=previa"></iframe></div></section>
+</div>
+<div id="toast" hidden></div>
+<script>
+/* Si la nube está configurada, se parte de los datos que ya están publicados; si no, de datos.js */
+async function datosNube(){
+  const N=window.YOSCA_NUBE||{};if(!N.url||!N.clave)return;
+  try{const r=await fetch(N.url.replace(/\/+$/,"")+"/rest/v1/tiendas?id=eq."+encodeURIComponent(N.tienda||"yosca")+"&select=datos",{headers:{apikey:N.clave,Authorization:"Bearer "+N.clave},cache:"no-store"});
+    if(r.ok){const f=await r.json();const d=f&&f[0]&&f[0].datos;if(d&&Array.isArray(d.productos))window.YOSCA=d}}catch(e){}
+}
+</script><script>/* ===== EDITOR DE TU TIENDA (manual): solo cambia lo que YA existe ===== */
+window.__iniciarPanel=function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let D=JSON.parse(JSON.stringify(window.YOSCA));
+let BASE=JSON.stringify(D);
+const FOTOS=window.FOTOS_PREVIA||{};const RUTA=window.RUTA_FOTOS||'';
+const pila=[];let pendiente=null,tSnap=null,tVista=null,pagina='prendas';
+const filasAbiertas=new Set();
+const g=r=>String(r).split('.').reduce((a,k)=>a==null?a:a[k],D);
+function s(r,v){const ks=String(r).split('.');let a=D;for(let i=0;i<ks.length-1;i++){const k=ks[i];if(a[k]==null||typeof a[k]!=='object')a[k]=/^\d+$/.test(ks[i+1])?[]:{};a=a[k]}a[ks[ks.length-1]]=v}
+const hexOk=v=>/^#[0-9a-f]{6}$/i.test(v);
+const mon=()=>D.moneda||'S/ ';
+const dinero=n=>mon()+Number(n||0).toFixed(2);
+let uid=0;
+
+/* ---------- piezas ---------- */
+function campo(label,ruta,o={}){
+  const {tipo='text',hint='',ph='',max=0}=o,id='c'+(++uid),v=g(ruta);
+  if(tipo==='textarea')return `<div class="f"><label for="${id}">${label}</label><textarea id="${id}" data-p="${ruta}" data-k="text" rows="${o.rows||3}" ${max?`maxlength="${max}"`:''}>${esc(v)}</textarea>${hint?`<small>${hint}</small>`:''}</div>`;
+  if(tipo==='number')return `<div class="f"><label for="${id}">${label}</label><div class="pre"><span>${esc(mon())}</span><input id="${id}" type="number" inputmode="decimal" min="0" step="0.1" data-p="${ruta}" data-k="num" value="${v==null?'':esc(v)}" placeholder="${esc(ph)}"></div>${hint?`<small>${hint}</small>`:''}</div>`;
+  if(tipo==='color')return `<div class="f"><label for="${id}">${label}</label><div class="selcolor"><input type="color" data-p="${ruta}" data-k="color" value="${hexOk(v)?esc(v):'#000000'}" aria-label="${esc(label)}"><input id="${id}" type="text" data-p="${ruta}" data-k="hex" value="${esc(v)}" maxlength="7" spellcheck="false"></div>${hint?`<small>${hint}</small>`:''}</div>`;
+  return `<div class="f"><label for="${id}">${label}</label><input id="${id}" type="text" data-p="${ruta}" data-k="text" value="${esc(v)}" ${max?`maxlength="${max}"`:''} placeholder="${esc(ph)}">${hint?`<small>${hint}</small>`:''}</div>`;
+}
+function sw(label,ruta,k){
+  const id='c'+(++uid);let on;
+  if(k==='visible')on=g(ruta)!==false;else if(k==='agotado'){const st=g(ruta);on=!!(st&&Object.keys(st).length&&Object.values(st).every(x=>Number(x)===0))}else on=!!g(ruta);
+  return `<label class="sw" for="${id}"><input id="${id}" type="checkbox" role="switch" data-p="${ruta}" data-k="${k||'bool'}" ${on?'checked':''}><i></i><span>${label}</span></label>`;
+}
+const tarj=(t,c,extra='')=>`<div class="card"><h4>${t}${extra}</h4>${c}</div>`;
+
+/* ---------- prendas ---------- */
+const catDe=p=>(D.categorias||[]).find(c=>c.id===p.categoria)||{nombre:'',detalle:''};
+function infoStock(p){
+  const tl=D.tallas||[],st=p.stock||{},vals=tl.map(t=>st[t]).filter(v=>v!==''&&v!=null).map(Number);
+  if(!vals.length)return {txt:'Sin control',c:'nc'};
+  const sum=vals.reduce((a,b)=>a+b,0);
+  if(sum<=0)return {txt:'Agotado',c:'low'};
+  return {txt:sum+' en stock',c:sum<=5?'low':'ok'};
+}
+function fotoCSS(p){const u=FOTOS[p.foto]||(p.foto?RUTA+p.foto:'');return (u?`background-image:url('${u}');`:'')+`background-color:${esc(p.hex||'#ddd')}`}
+function filaProducto(p,i){
+  const c=catDe(p),st=infoStock(p),ab=filasAbiertas.has(i);
+  const cats=(D.categorias||[]).map(x=>`<option value="${esc(x.id)}" ${x.id===p.categoria?'selected':''}>${esc(x.nombre)}${x.detalle?' · '+esc(x.detalle):''}</option>`).join('');
+  const tallas=(D.tallas||[]).map(t=>`<div class="f"><label for="st${i}${t}">${esc(t)}</label><input id="st${i}${t}" type="number" min="0" step="1" inputmode="numeric" data-p="productos.${i}.stock.${t}" data-k="stockn" value="${p.stock&&p.stock[t]!=null&&p.stock[t]!==''?esc(p.stock[t]):''}" placeholder="—"></div>`).join('');
+  return `<div class="fila ${ab?'abierta':''} ${p.activo===false?'oculta':''}" data-i="${i}" data-q="${esc((p.nombre+' '+p.color+' '+c.nombre).toLowerCase())}">
+  <button type="button" class="cab" data-abrir="${i}"><span class="th" style="${fotoCSS(p)}"></span><span class="nm"><b>${esc(p.nombre)}</b><small>${esc(c.nombre)}${c.detalle?' · '+esc(c.detalle):''}${p.activo===false?' · oculta':''}</small></span><span class="pr"><b>${dinero(p.precio)}</b>${p.antes?`<s>${dinero(p.antes)}</s>`:''}</span><span class="ins ${st.c}">${st.txt}</span><span class="chev">⌃</span></button>
+  <div class="cuerpo"><div class="tit">Datos básicos</div>
+   <div class="g1">${campo('Nombre de la prenda','productos.'+i+'.nombre',{max:60})}
+   <div class="g2"><div class="f"><label for="ca${i}">Categoría</label><select id="ca${i}" data-p="productos.${i}.categoria" data-k="text">${cats}</select></div>${campo('Color (nombre)','productos.'+i+'.color',{max:30})}</div>
+   ${campo('Color (muestra)','productos.'+i+'.hex',{tipo:'color'})}</div>
+   <div class="tit">Precio</div>
+   <div class="g2">${campo('Precio de venta','productos.'+i+'.precio',{tipo:'number'})}${campo('Precio anterior, tachado','productos.'+i+'.antes',{tipo:'number',hint:'Opcional, para ofertas. Vacío = sin oferta.'})}</div>
+   <div class="g1" style="margin-top:10px">${campo('Insignia sobre la foto','productos.'+i+'.insignia',{max:20,ph:'Ej. Nuevo, Oferta, Más vendido'})}</div>
+   <div class="tit">Stock por talla</div><div class="tallas">${tallas}</div><small class="h">Déjalo vacío si no quieres controlar el stock. Con 0 esa talla sale agotada.</small>
+   <div class="tit">En la tienda</div><div class="sws">${sw('Visible en la tienda','productos.'+i+'.activo','visible')}${sw('Agotado en todas las tallas','productos.'+i+'.stock','agotado')}</div>
+  </div></div>`;
+}
+function updFila(i){
+  const p=D.productos[i],f=$('#editor .fila[data-i="'+i+'"]');if(!f)return;
+  const c=catDe(p),st=infoStock(p);
+  f.querySelector('.nm b').textContent=p.nombre;
+  f.querySelector('.nm small').textContent=c.nombre+(c.detalle?' · '+c.detalle:'')+(p.activo===false?' · oculta':'');
+  f.querySelector('.pr').innerHTML=`<b>${dinero(p.precio)}</b>${p.antes?`<s>${dinero(p.antes)}</s>`:''}`;
+  const b=f.querySelector('.ins');b.className='ins '+st.c;b.textContent=st.txt;
+  f.querySelector('.th').setAttribute('style',fotoCSS(p));
+  f.classList.toggle('oculta',p.activo===false);
+  f.dataset.q=(p.nombre+' '+p.color+' '+c.nombre).toLowerCase();
+}
+
+/* ---------- páginas ---------- */
+const COL=[['crema','Fondo de la página','Fondo claro de la portada.'],['arena','Fondo suave','Tarjetas y detalles.'],['terracota','Color principal','Botones al pasar el mouse.'],['cafe','Barra superior y pie','Franja de anuncios y final de la página.'],['acento','Color de detalles','Palabras destacadas y subrayados.'],['tinta','Textos y botones oscuros','Letras y botones principales.']];
+const PAL=[['Tierra','#FAF0E8','#F6E3D6','#9C5C40','#6E3F2C','#B9775A','#2A2220'],['Rosa','#FFF1F4','#FAD9E1','#C2185B','#7B1E3A','#E58FB0','#2A2022'],['Verde','#F1F6EE','#DCE9D3','#2E7D32','#1B4D2E','#6FA36B','#1F2A22'],['Azul','#EEF4FB','#D6E4F5','#1E5AA8','#0B1F44','#4C8FD6','#14202E'],['Negro y dorado','#F7F4EC','#EBE4D2','#C9A227','#161616','#C9A227','#161616']];
+const FORMAS=[['cuadrado','Cuadrado'],['redondeado','Redondeado'],['pildora','Pastilla']];
+const P={
+ prendas:{t:'Prendas',ir:'tienda',h:()=>`<p class="desc">Edita el <b>precio</b>, la oferta, la insignia y si se ve o está agotada. Toca una prenda para abrirla.</p>
+   <div class="todos"><label>Poner el mismo precio a todas las prendas</label><div class="pre"><span>${esc(mon())}</span><input id="precioTodos" type="number" inputmode="decimal" min="0" step="0.1" placeholder="29.90"></div><button class="bt" type="button" id="aplicarTodos">Aplicar a todas</button></div>
+   <div class="barra"><input type="search" id="buscar" placeholder="Buscar prenda…" aria-label="Buscar prenda"></div>
+   <div id="lista">${(D.productos||[]).map(filaProducto).join('')}</div>`},
+ categorias:{t:'Categorías',ir:'colecciones',h:()=>`<p class="desc">Nombres de las categorías y de la sección de compra por categoría.</p>
+   ${tarj('Sección',`<div class="g1">${campo('Frase pequeña','secciones.categorias.eyebrow',{max:60})}${campo('Título','secciones.categorias.titulo',{max:80})}</div>`)}
+   ${(D.categorias||[]).map((x,i)=>tarj(esc(x.nombre),`<div class="g2">${campo('Nombre','categorias.'+i+'.nombre',{max:40})}${campo('Detalle','categorias.'+i+'.detalle',{max:40})}</div><div class="sws" style="margin-top:10px">${sw('Mostrar en la portada','categorias.'+i+'.enPortada')}</div>`)).join('')}
+   ${D.tarjetaPacks?tarj('Tarjeta de packs',`<div class="g2">${campo('Título','tarjetaPacks.titulo',{max:30})}${campo('Detalle','tarjetaPacks.detalle',{max:50})}</div><div class="sws" style="margin-top:10px">${sw('Mostrar en la portada','tarjetaPacks.mostrar')}</div>`):''}`},
+ packs:{t:'Packs y promociones',ir:'packs',h:()=>`<p class="desc">Precios y textos de tus packs. El precio por polo se calcula solo.</p>
+   ${tarj('Sección',`<div class="g1">${campo('Frase pequeña','secciones.packs.eyebrow',{max:60})}${campo('Título','secciones.packs.titulo',{max:80})}${campo('Subtítulo','secciones.packs.subtitulo',{tipo:'textarea',max:200})}</div>`)}
+   ${(D.packs||[]).map((x,i)=>tarj(esc(x.nombre),`<div class="g2">${campo('Nombre','packs.'+i+'.nombre',{max:40})}${campo('Precio del pack','packs.'+i+'.precio',{tipo:'number'})}${campo('Subtítulo','packs.'+i+'.subtitulo',{max:60})}${campo('Etiqueta','packs.'+i+'.etiqueta',{max:20,ph:'Ej. Más vendido'})}</div><div class="sws" style="margin-top:10px">${sw('Visible en la tienda','packs.'+i+'.activo','visible')}${sw('Destacado','packs.'+i+'.destacado')}</div>`,`<span class="cu">${x.cantidad>0?dinero(x.precio/x.cantidad)+' c/u':''}</span>`)).join('')}`},
+ portada:{t:'Portada',ir:'inicio',h:()=>`<p class="desc">Lo primero que ve tu clienta al entrar.</p>
+   ${tarj('Textos',`<div class="g1">${campo('Frase pequeña','portada.eyebrow',{max:60})}${campo('Título grande','portada.titulo',{tipo:'textarea',max:120,hint:'Usa *asteriscos* para resaltar una palabra. Enter = nueva línea.'})}${campo('Texto','portada.texto',{tipo:'textarea',max:240})}</div>`)}
+   ${tarj('Botones y sello',`<div class="g2">${campo('Botón 1','portada.boton1',{max:30})}${campo('Botón 2','portada.boton2',{max:30})}${campo('Sello: número','portada.selloNumero',{max:8})}${campo('Sello: texto','portada.selloTexto',{max:30})}</div>`)}`},
+ anuncio:{t:'Anuncio y beneficios',ir:'inicio',h:()=>`<p class="desc">La barra de arriba y los íconos de beneficios.</p>
+   ${tarj('Barra de anuncios',`<div class="sws" style="margin-bottom:10px">${sw('Mostrar la barra de anuncios','anuncio.activo')}</div><div class="g1">${(D.anuncio.frases||[]).map((x,i)=>campo('Frase '+(i+1),'anuncio.frases.'+i,{max:60})).join('')}</div>`)}
+   ${(D.beneficios||[]).map((x,i)=>tarj('Beneficio '+(i+1),`<div class="g2">${campo('Título','beneficios.'+i+'.titulo',{max:40})}${campo('Texto','beneficios.'+i+'.texto',{max:60})}</div>`)).join('')}`},
+ comprar:{t:'Cómo comprar',ir:'comprar',h:()=>`<p class="desc">Los pasos que se explican a tus clientas.</p>
+   ${tarj('Sección',`<div class="g1">${campo('Frase pequeña','secciones.comprar.eyebrow',{max:60})}${campo('Título','secciones.comprar.titulo',{max:80})}</div>`)}
+   ${(D.pasos||[]).map((x,i)=>tarj('Paso '+(i+1),`<div class="g1">${campo('Título','pasos.'+i+'.titulo',{max:40})}${campo('Texto','pasos.'+i+'.texto',{tipo:'textarea',max:160,rows:2})}</div>`)).join('')}`},
+ tallas:{t:'Guía de tallas',ir:'tallas',h:()=>{const T=D.guiaTallas||{columnas:[],filas:[],comoMedir:[]};return `<p class="desc">Medidas de cada talla y consejos para medirse.</p>
+   ${tarj('Sección',`<div class="g1">${campo('Frase pequeña','secciones.tallas.eyebrow',{max:60})}${campo('Título','secciones.tallas.titulo',{max:80})}${campo('Subtítulo','secciones.tallas.subtitulo',{tipo:'textarea',max:200})}</div>`)}
+   ${tarj('Tabla de medidas',`<div class="tabla" style="grid-template-columns:repeat(${T.columnas.length},1fr)">${T.columnas.map(c=>`<b>${esc(c)}</b>`).join('')}${T.filas.map((f,i)=>f.map((c,j)=>`<input type="text" data-p="guiaTallas.filas.${i}.${j}" data-k="text" value="${esc(c)}" aria-label="${esc(T.columnas[j])}, talla ${esc(f[0])}" maxlength="20">`).join('')).join('')}</div><div class="g1" style="margin-top:10px">${campo('Nota al pie','guiaTallas.nota',{max:160})}</div>`)}
+   ${(T.comoMedir||[]).map((x,i)=>tarj('¿Cómo medir? '+(i+1),`<div class="g1">${campo('Título','guiaTallas.comoMedir.'+i+'.titulo',{max:40})}${campo('Texto','guiaTallas.comoMedir.'+i+'.texto',{tipo:'textarea',max:240,rows:2})}</div>`)).join('')}`}},
+ faq:{t:'Preguntas frecuentes',ir:'ayuda',h:()=>`<p class="desc">Las preguntas que más te hacen. Usa **doble asterisco** para poner negrita.</p>
+   ${tarj('Sección',`<div class="g1">${campo('Frase pequeña','secciones.ayuda.eyebrow',{max:60})}${campo('Título','secciones.ayuda.titulo',{max:80})}</div>`)}
+   ${(D.preguntas||[]).map((x,i)=>tarj('Pregunta '+(i+1),`<div class="g1">${campo('Pregunta','preguntas.'+i+'.pregunta',{max:120})}${campo('Respuesta','preguntas.'+i+'.respuesta',{tipo:'textarea',max:500})}</div>`)).join('')}`},
+ contacto:{t:'WhatsApp y redes',ir:'redes',h:()=>`<p class="desc">Adonde llegan los pedidos de tus clientas.</p>
+   ${tarj('WhatsApp',`<div class="g1">${campo('Número (con código de país)','contacto.whatsapp',{max:15,ph:'51999999999',hint:'Solo números. Ej. 51960614797.'})}${campo('Saludo','contacto.saludo',{max:80})}${campo('Mensaje de consulta','contacto.consulta',{max:120})}${campo('Cierre del pedido','contacto.cierrePedido',{max:120})}</div>`)}
+   ${tarj('Redes sociales',`<div class="g1">${campo('TikTok (enlace)','contacto.tiktok',{ph:'https://…'})}${campo('Facebook (enlace)','contacto.facebook',{ph:'https://…'})}${campo('Instagram (enlace)','contacto.instagram',{ph:'https://…'})}</div>`)}
+   ${tarj('Sección de redes',`<div class="g1">${campo('Frase pequeña','secciones.redes.eyebrow',{max:60})}${campo('Título','secciones.redes.titulo',{max:80})}${campo('Subtítulo','secciones.redes.subtitulo',{tipo:'textarea',max:200})}</div>`)}`},
+ marca:{t:'Marca, colores y pie',ir:'inicio',h:()=>`<p class="desc">La identidad de tu tienda: nombre, colores y botones.</p>
+   ${tarj('Colores',`<div class="paletas"><span>Combinaciones rápidas:</span>${PAL.map(x=>`<button type="button" class="pal" data-pal="${x.slice(1).join(',')}"><i style="background:${x[3]}"></i><i style="background:${x[5]}"></i><i style="background:${x[1]}"></i>${x[0]}</button>`).join('')}</div><div class="g2">${COL.map(([k,l,h])=>campo(l,'marca.colores.'+k,{tipo:'color',hint:h})).join('')}</div>`)}
+   ${tarj('Forma de los botones',`<div class="formas">${FORMAS.map(([v,l])=>`<label class="forma"><input type="radio" name="forma" data-p="marca.boton.forma" data-k="radio" value="${v}" ${(g('marca.boton.forma')||'cuadrado')===v?'checked':''}><span class="b ${v}">${l}</span></label>`).join('')}</div>`)}
+   ${tarj('Nombre y buscadores',`<div class="g2">${campo('Logo','marca.logo',{max:20})}${campo('Palabra bajo el logo','marca.logoSub',{max:20})}</div><div class="g1" style="margin-top:10px">${campo('Título de la pestaña','marca.tituloPestana',{max:70})}${campo('Descripción para Google','marca.descripcionGoogle',{tipo:'textarea',max:160})}</div>`)}
+   ${tarj('Pie de página',`<div class="g1">${campo('Nota de envío','textos.notaEnvio',{max:140})}${campo('Descripción','textos.pieDescripcion',{tipo:'textarea',max:200})}${campo('Derechos','textos.derechos',{max:80})}${campo('Medios de pago','textos.pagos',{max:80})}</div>`)}`},
+ publicar:{t:'Guardar y publicar',ir:'',h:()=>`<p class="desc">Tus cambios solo se ven en la tienda cuando los <b>guardas</b>.</p>
+   <div class="aviso" id="avisoGuardar">${JSON.stringify(D)!==BASE?'Tienes cambios sin guardar.':'No hay cambios pendientes.'}</div>
+   ${tarj('Guardar en la nube',`<div class="guardar"><input id="nUrl" type="text" placeholder="Dirección del proyecto (https://…supabase.co)"><input id="nClave" type="text" placeholder="Clave anon public"><input id="nTienda" type="text" placeholder="Nombre de la tienda" value="yosca"><input id="nCorreo" type="email" placeholder="Tu correo de administrador" autocomplete="username"><input id="nPass" type="password" placeholder="Tu contraseña" autocomplete="current-password"><button class="bt pri" id="btnNube" type="button">☁️ Entrar y guardar</button><div id="estNube"></div></div>`)}
+   ${tarj('Guardar en un archivo',`<p class="desc" style="margin-bottom:10px">Descarga <b>datos.js</b> y reemplaza ese archivo en tu carpeta <code>web</code>.</p><button class="bt" id="btnDescargar" type="button">⬇ Descargar datos.js</button>`)}`}
+};
+const NAV=[['TU CATÁLOGO',['prendas','🛍️'],['categorias','🗂️'],['packs','🎁']],['TU PÁGINA',['portada','🏠'],['anuncio','📣'],['comprar','🛒'],['tallas','📏'],['faq','❓']],['AJUSTES',['contacto','💬'],['marca','🎨'],['publicar','💾']]];
+function menu(){
+  $('#menu').innerHTML=NAV.map(([gr,...its])=>`<div class="gr">${gr}</div>`+its.map(([id,e])=>`<button type="button" data-pg="${id}" class="${id===pagina?'on':''}"><span class="e">${e}</span>${esc(P[id].t)}</button>`).join('')).join('')+`<div id="conexion">${(window.YOSCA_NUBE&&window.YOSCA_NUBE.url)?'☁️ Nube conectada':'📁 Sin nube conectada'}</div>`;
+}
+function dibujar(){
+  uid=0;const pg=P[pagina];
+  $('#editor').innerHTML=`<h2>${esc(pg.t)}</h2>`+pg.h();
+  menu();
+  if(pagina==='publicar'){const N=window.YOSCA_NUBE||{};if(N.url&&N.clave){$('#nUrl').value=N.url;$('#nClave').value=N.clave;$('#nTienda').value=N.tienda||'yosca'}}
+  $('#subm').textContent=((D.marca.logo||'')+' '+(D.marca.logoSub||'')).trim();
+}
+function irPagina(id){pagina=id;dibujar();$('#editor').scrollTop=0;irA(P[id].ir)}
+
+/* ---------- vista previa ---------- */
+const marco=$('#marco');let lista=false;
+function paraPrevia(){const c=JSON.parse(JSON.stringify(D));const f=x=>FOTOS[x]||x;if(c.portada)c.portada.foto=f(c.portada.foto);(c.categorias||[]).forEach(k=>k.foto=f(k.foto));if(c.tarjetaPacks)c.tarjetaPacks.foto=f(c.tarjetaPacks.foto);(c.productos||[]).forEach(p=>p.foto=f(p.foto));return c}
+function previa(){if(marco.contentWindow&&lista)marco.contentWindow.postMessage({tipo:'yosca-datos',datos:paraPrevia()},'*')}
+function irA(id){if(marco.contentWindow&&lista&&id)marco.contentWindow.postMessage({tipo:'yosca-ir',id},'*')}
+window.addEventListener('message',e=>{if(e.data&&e.data.tipo==='yosca-lista'){lista=true;previa()}});
+function estado(){const c=JSON.stringify(D)!==BASE;$('#contador').textContent=c?'Cambios sin guardar':'Sin cambios';$('#btnGuardar').disabled=!c;$('#btnDeshacer').disabled=!pila.length;document.body.classList.toggle('sucio',c);const a=$('#avisoGuardar');if(a)a.textContent=c?'Tienes cambios sin guardar.':'No hay cambios pendientes.'}
+
+/* ---------- cambios ---------- */
+function aplicar(el){
+  const r=el.dataset.p,k=el.dataset.k;if(!r)return;
+  if(pendiente==null)pendiente=JSON.stringify(D);
+  const mf=r.match(/^productos\.(\d+)\./);
+  if(k==='num'){const v=el.value===''?null:Math.max(0,Math.min(99999,parseFloat(el.value)));s(r,Number.isFinite(v)?v:null)}
+  else if(k==='color'){const v=el.value.toUpperCase();s(r,v);const t=el.parentNode.querySelector('input[type=text]');if(t)t.value=v}
+  else if(k==='hex'){let v=el.value.trim();if(v&&v[0]!=='#')v='#'+v;el.value=v;if(!hexOk(v)){el.classList.add('mal');return}el.classList.remove('mal');s(r,v.toUpperCase());const c=el.parentNode.querySelector('input[type=color]');if(c)c.value=v}
+  else if(k==='visible')s(r,!!el.checked);
+  else if(k==='agotado'){s(r,el.checked?Object.fromEntries((D.tallas||[]).map(x=>[x,0])):{});if(mf){(D.tallas||[]).forEach(t=>{const i=document.getElementById('st'+mf[1]+t);if(i)i.value=el.checked?'0':''})}}
+  else if(k==='stockn'){const m=r.match(/^productos\.(\d+)\.stock\.(.+)$/);const p=D.productos[+m[1]];if(!p.stock||typeof p.stock!=='object')p.stock={};if(el.value==='')delete p.stock[m[2]];else p.stock[m[2]]=Math.max(0,Math.floor(parseFloat(el.value)||0));
+    const ag=document.querySelector('.fila[data-i="'+m[1]+'"] [data-k=agotado]');if(ag)ag.checked=infoStock(p).txt==='Agotado'}
+  else if(k==='bool')s(r,!!el.checked);
+  else if(k==='radio'){if(el.checked)s(r,el.value)}
+  else s(r,el.value);
+  clearTimeout(tSnap);tSnap=setTimeout(()=>{if(pendiente!=null&&pendiente!==JSON.stringify(D))pila.push(pendiente);pendiente=null;if(pila.length>60)pila.shift();estado()},700);
+  clearTimeout(tVista);tVista=setTimeout(()=>{if(mf)updFila(+mf[1]);previa();estado();$('#subm').textContent=((D.marca.logo||'')+' '+(D.marca.logoSub||'')).trim();
+    if(/^packs\.\d+\.precio$/.test(r)){const i=+r.split('.')[1],x=D.packs[i],c=document.querySelectorAll('.card h4 .cu')[i];if(c)c.textContent=x.cantidad>0?dinero(x.precio/x.cantidad)+' c/u':''}},120);
+}
+const ed=$('#editor');
+ed.addEventListener('input',e=>{const el=e.target;if(el.dataset&&el.dataset.p&&el.dataset.k!=='radio'&&el.type!=='checkbox'&&el.tagName!=='SELECT')aplicar(el)});
+ed.addEventListener('change',e=>{const el=e.target;if(el.dataset&&el.dataset.p&&(el.type==='checkbox'||el.type==='radio'||el.tagName==='SELECT'))aplicar(el)});
+ed.addEventListener('click',e=>{
+  const ab=e.target.closest('[data-abrir]');
+  if(ab){const i=+ab.dataset.abrir,f=ab.closest('.fila');f.classList.toggle('abierta');f.classList.contains('abierta')?filasAbiertas.add(i):filasAbiertas.delete(i);return}
+  const pal=e.target.closest('.pal');
+  if(pal){const v=pal.dataset.pal.split(',');pila.push(JSON.stringify(D));['crema','arena','terracota','cafe','acento','tinta'].forEach((k,i)=>s('marca.colores.'+k,v[i]));dibujar();previa();estado();return}
+  if(e.target.id==='aplicarTodos'){const v=parseFloat($('#precioTodos').value);if(!(v>=0)){toast('Escribe el precio que quieres poner');return}
+    pila.push(JSON.stringify(D));(D.productos||[]).forEach((_,i)=>s('productos.'+i+'.precio',v));dibujar();previa();estado();toast('Todas las prendas están en '+dinero(v));return}
+  if(e.target.id==='btnDescargar')descargar();
+  if(e.target.id==='btnNube')guardarNube();
+});
+ed.addEventListener('input',e=>{if(e.target.id==='buscar'){const q=e.target.value.trim().toLowerCase();ed.querySelectorAll('.fila').forEach(f=>f.style.display=!q||f.dataset.q.includes(q)?'':'none')}});
+$('#menu').addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(b)irPagina(b.dataset.pg)});
+$('#btnDeshacer').addEventListener('click',()=>{if(!pila.length)return;D=JSON.parse(pila.pop());dibujar();previa();estado()});
+$('#btnGuardar').addEventListener('click',()=>irPagina('publicar'));
+$('#btnPrev').addEventListener('click',()=>{const on=document.body.classList.toggle('soloprevia');$('#btnPrev').textContent=on?'✏️ Volver a editar':'👁 Vista previa';if(on)setTimeout(previa,50)});
+$('#disp').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#disp button').forEach(x=>x.classList.toggle('on',x===b));$('#lienzo').dataset.disp=b.dataset.d});
+if(window.FOTOS_PREVIA){const a=$('#btnAbrir');a.removeAttribute('href');a.addEventListener('click',()=>toast('En tu tienda real, este botón abre tu página.'))}
+function toast(t){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2400)}
+
+/* ---------- guardar ---------- */
+const textoDatos=()=>'/* Datos de la tienda — generados por el Editor de tu tienda. */\nwindow.YOSCA = '+JSON.stringify(D,null,2)+';\n';
+function descargar(){const b=new Blob([textoDatos()],{type:'text/javascript'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='datos.js';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast('Descargado: reemplaza datos.js en tu carpeta web')}
+async function guardarNube(){
+  const N=window.YOSCA_NUBE||{};
+  const url=($('#nUrl').value||N.url||'').trim().replace(/\/+$/,''),clave=($('#nClave').value||N.clave||'').trim(),tienda=($('#nTienda').value||N.tienda||'yosca').trim();
+  const correo=$('#nCorreo').value.trim(),pass=$('#nPass').value,est=$('#estNube');
+  if(!url||!clave||!correo||!pass){est.textContent='Completa la dirección, la clave pública, tu correo y tu contraseña.';return}
+  est.textContent='Entrando…';$('#btnNube').disabled=true;
+  try{
+    const r=await fetch(url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:clave,'Content-Type':'application/json'},body:JSON.stringify({email:correo,password:pass})});
+    if(!r.ok)throw new Error('Correo o contraseña incorrectos');
+    const tk=(await r.json()).access_token;if(!tk)throw new Error('No se pudo iniciar sesión');
+    est.textContent='Guardando…';
+    const w=await fetch(url+'/rest/v1/tiendas?id=eq.'+encodeURIComponent(tienda),{method:'PATCH',headers:{apikey:clave,Authorization:'Bearer '+tk,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({datos:D})});
+    if(!w.ok)throw new Error('No se pudo guardar ('+w.status+')');
+    const filas=await w.json();if(!filas.length)throw new Error('No tienes permiso para esta tienda o no existe "'+tienda+'"');
+    est.textContent='✓ Guardado. Tu tienda ya muestra los cambios.';$('#nPass').value='';BASE=JSON.stringify(D);pila.length=0;estado();
+  }catch(e){est.textContent='✗ '+(e.message||'Error')}finally{const b=$('#btnNube');if(b)b.disabled=false}
+}
+window.addEventListener('beforeunload',e=>{if(JSON.stringify(D)!==BASE){e.preventDefault();e.returnValue=''}});
+
+dibujar();estado();
+window.__panel={get D(){return D},textoDatos};
+};
+</script><script>datosNube().finally(function(){window.__iniciarPanel()});</script></body></html>
