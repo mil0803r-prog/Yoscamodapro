@@ -490,6 +490,7 @@ summary{cursor:pointer}
       <div class="card" id="pedCard" hidden style="margin-top:14px">
         <h2 id="pedTitle">Registrar pedido</h2>
         <form id="pedForm" class="form" autocomplete="off" style="margin-top:10px">
+          <div class="full" id="pedPegar"><label for="p-pegar">📋 Pega aquí los datos del cliente (se reconocen y se llenan solos)</label><textarea id="p-pegar" rows="4" placeholder="Nombre: Ana Pérez&#10;Celular: 999 111 222&#10;Ciudad: Arequipa&#10;Talla: M&#10;Color: Negro&#10;Cantidad: 2" style="min-height:96px"></textarea><div id="pegarRes" class="hint" hidden></div></div>
           <div><label for="p-fecha">Fecha</label><input id="p-fecha" type="date" name="fecha" required></div>
           <div><label for="p-gar">Prenda del catálogo</label><select id="p-gar" name="garmentId"></select></div>
           <div class="full" id="invProdBox" hidden><label>Producto del inventario (toca uno o dos)</label><div class="tchips ichips" id="invProd"></div></div>
@@ -1712,9 +1713,10 @@ document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&
 function waRefrescar(){waCabecera();if(ui.waTab==='chats')waChats();else if(ui.waTab==='tableros')waTableros();}
 const waNrm=x=>String(x||'').toLowerCase().split('').map(c=>c.normalize('NFD')[0]).join('');
 function waParsear(t){
-  const d={},mapa=[[/^(nombres?( y apellidos?)?|cliente|nombre completo|apellidos?|titular)$/,'nombre'],[/^(cel|celular|telefono|telf|tlf|whatsapp|numero|numero de celular|contacto)$/,'tel'],[/^(ciudad|provincia|departamento|distrito|destino|lugar|localidad)$/,'ciudad'],[/^(producto|prenda|modelo|articulo|pedido)$/,'producto'],[/^talla$/,'talla'],[/^color$/,'color'],[/^(cantidad|cant|unidades)$/,'cantidad'],[/^(dni|documento|documento de identidad)$/,'dni'],[/^(direccion|domicilio)$/,'direccion'],[/^(agencia|sede|courier|agencia de envio)$/,'agencia']];
+  const d={},mapa=[[/^(nombres?( y apellidos?)?|cliente|nombre completo|apellidos?|titular)$/,'nombre'],[/^(cel|celular|telefono|telf|tlf|whatsapp|numero|numero de celular|contacto)$/,'tel'],[/^(ciudad|provincia|departamento|distrito|destino|lugar|localidad)$/,'ciudad'],[/^(producto|prenda|modelo|articulo|pedido)$/,'producto'],[/^talla$/,'talla'],[/^color$/,'color'],[/^(cantidad|cant|unidades)$/,'cantidad'],[/^(dni|documento|documento de identidad)$/,'dni'],[/^(direccion|domicilio)$/,'direccion'],[/^(agencia|sede|courier|agencia de envio)$/,'agencia'],[/^(destinatario|recibe|nombre del destinatario|nombre y apellido|persona que recibe)$/,'nombre'],[/^(referencia|referencias|observacion|observaciones|nota|notas)$/,'referencia']];
   String(t||'').split(/\n+/).forEach(l=>{const m=l.match(/^[\s*\-•]*[^\p{L}\d\s]*\s*([^:：\n]{2,40}?)\s*[:：]\s*(.+)$/u);if(!m)return;const k=waNrm(m[1]).replace(/[^a-z\s]/g,'').replace(/\s+/g,' ').trim();for(const [re,f] of mapa){if(re.test(k)){if(!d[f])d[f]=m[2].replace(/^[\s*_~]+|[\s*_~]+$/g,'').slice(0,120);break}}});
   if(!d.tel){const m=String(t||'').match(/(?:\+?51[\s-]?)?9\d{2}[\s-]?\d{3}[\s-]?\d{3}/);if(m)d.tel=m[0]}
+  if(!d.nombre&&d.tel){const l=String(t||'').split(/\n+/).map(x=>x.trim()).find(x=>/^[\p{L}][\p{L}\s.'-]{3,50}$/u.test(x)&&x.split(/\s+/).length>=2&&x.split(/\s+/).length<=5&&!/:/.test(x)&&!/^(hola|buen|gracias|saludos|ok|si |sí )/i.test(x));if(l)d.nombre=l}
   return d;
 }
 function waDlgChat(){dlgOpen(`<h2 style="margin:0 0 4px">Nuevo chat</h2><p class="sub" style="margin-bottom:12px">Agrega a alguien que aún no te compró.</p><form id="waFChat" class="form" autocomplete="off"><div class="full"><label for="wcN">Nombre</label><input id="wcN" name="nombre" required maxlength="40"></div><div class="full"><label for="wcT">Celular</label><input id="wcT" name="tel" inputmode="tel" required placeholder="999 111 222"></div><div class="row full"><button class="btn pri" type="submit">Guardar</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div></form>`)}
@@ -2262,9 +2264,24 @@ function syncPack(){
 pf.precioPack.addEventListener('input',syncPack);pf.cantidad.addEventListener('input',syncPack);
 function syncWaForm(){const w=$('#waForm');if(w)w.innerHTML=waBtn(pf.telefono.value,pf.cliente.value,pf.producto.value)}
 pf.telefono.addEventListener('input',syncWaForm);pf.cliente.addEventListener('input',syncWaForm);pf.producto.addEventListener('input',syncWaForm);
+/* Reconocer datos pegados: llena el formulario solo */
+function pedReconocer(){
+  const t=$('#p-pegar').value,res=$('#pegarRes');if(!t.trim()){res.hidden=true;return}
+  const d=waParsear(t),ok=[];
+  const set=(n,v,et)=>{if(v!=null&&v!==''&&pf[n]){pf[n].value=v;['input','change'].forEach(ev=>pf[n].dispatchEvent(new Event(ev,{bubbles:true})));ok.push(et)}};
+  set('cliente',d.nombre,'Cliente');set('telefono',d.tel,'Celular');set('ciudad',d.ciudad,'Ciudad');
+  if(!pig.value)set('producto',d.producto,'Producto');
+  set('talla',d.talla,'Talla');set('color',d.color,'Color');
+  if(d.cantidad&&!pf.cantidad.readOnly){const q=Math.max(1,parseInt(d.cantidad)||1);set('cantidad',q,'Cantidad')}
+  const nota=[d.dni&&'DNI '+d.dni,d.direccion&&'Dirección: '+d.direccion,d.agencia&&'Agencia: '+d.agencia,d.referencia&&'Ref.: '+d.referencia].filter(Boolean).join(' · ');
+  if(nota){pf.notas.value=nota;ok.push('Notas')}
+  res.hidden=false;
+  res.innerHTML=ok.length?`✅ Reconocí y llené: <b>${ok.join(', ')}</b>.${d.nombre&&d.tel?'':` Falta: <b>${[!d.nombre&&'nombre',!d.tel&&'celular'].filter(Boolean).join(' y ')}</b>.`} Revisa y toca «Guardar pedido».`:'No reconocí datos. Escribe en líneas como <b>Nombre: Ana</b>, <b>Celular: 999 111 222</b>, <b>Ciudad: Lima</b>.';
+}
+{let t;$('#p-pegar').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(pedReconocer,350)})}
 function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
 $('#pedNuevo').addEventListener('click',()=>{if($('#pedCard').hidden){resetPed();pedMostrarForm(true)}else pedMostrarForm(false)});
-function resetPed(){delete pf.costo.dataset.auto;ui.pedQty={};ui.pedProds=[];ui.pedSelX={};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
+function resetPed(){$('#p-pegar').value='';$('#pegarRes').hidden=true;$('#pedPegar').hidden=false;delete pf.costo.dataset.auto;ui.pedQty={};ui.pedProds=[];ui.pedSelX={};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
 pf.addEventListener('submit',e=>{
   e.preventDefault();
   const fd=Object.fromEntries(new FormData(pf));
@@ -2368,7 +2385,7 @@ $('#pedTabla').addEventListener('click',e=>{
        pf.talla.value=u(g1,'talla').join(', ');pf.color.value=u(g1,'color').join(', ');
        ks.slice(1,2).forEach(k=>{const g=its.filter(i=>invKey(i)===k);ui.pedSelX[k]={t:u(g,'talla').map(lowS),c:u(g,'color').map(lowS)}})}
      invRefresh()}
-    $('#pedTitle').textContent='Editar pedido';$('#pedCancel').hidden=false;pedMostrarForm(true)}
+    $('#pedPegar').hidden=true;$('#pedTitle').textContent='Editar pedido';$('#pedCancel').hidden=false;pedMostrarForm(true)}
   if(b.dataset.del)ask('¿Eliminar este pedido?',()=>{const od=S.orders.find(o=>o.id===b.dataset.del);if(od)orderStockRelease(od);S.orders=S.orders.filter(o=>o.id!==b.dataset.del);save();renderPed()});
 });
 
