@@ -2,5 +2,10 @@
   "name": "yosca-moda-pro",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "node dev-server.mjs" }
+  "scripts": {
+    "dev": "node dev-server.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
 }

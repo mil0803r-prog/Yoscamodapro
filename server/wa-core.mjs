@@ -3,6 +3,7 @@
 // Variables: WA_URL, WA_KEY, WA_INSTANCE (por defecto "yosca"), WA_EMAILS (correos con permiso; por defecto el del dueño).
 import { usuarioFirebase } from './asistente-core.mjs';
 import { claveHook } from './wa-hook.mjs';
+import { etiquetasPorChat, dbConfigurada } from './wa-db.mjs';
 
 const LIMITE_POR_MINUTO = 90;
 const MAX_BYTES = 20_000;
@@ -127,7 +128,9 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
             if (id) ag.set(id, k);
           }
         } catch (e) { /* si falla la agenda, se siguen mostrando los chats */ }
-        const conEtq = arr.some((x) => x && Object.prototype.hasOwnProperty.call(x, 'labels'));
+        const delApi = arr.some((x) => x && Object.prototype.hasOwnProperty.call(x, 'labels'));
+        const db = await etiquetasPorChat(c.inst);               // estado real de las etiquetas, leído de la base de datos de Evolution
+        const conEtq = delApi || db.ok, fuente = db.ok ? 'db' : delApi ? 'api' : 'ninguna';
         const salida = [];
         for (const x of arr) {
           let jid = String(x.remoteJid || x.id || '');
@@ -146,12 +149,12 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
             foto: (() => { const f = (ag.get(jid) || {}).profilePicUrl || x.profilePicUrl || ''; return /^https:\/\//.test(f) ? f : ''; })(),
             ultimo: String(textoDe(lm) || '').slice(0, 140),
             fecha: ts(lm && (lm.messageTimestamp || lm.timestamp)) || tsISO(x.updatedAt || x.conversationTimestamp),
-            etiquetas: etiquetasDe(x.labels), conEtq,
+            etiquetas: db.ok ? (db.mapa.get(jid) || []) : etiquetasDe(x.labels), conEtq,
             noLeidos: Number(x.unreadMessages || x.unreadCount || 0) || 0,
           });
         }
         salida.sort((a, z) => z.fecha - a.fecha);
-        return { status: 200, body: { chats: salida.slice(0, 300) } };
+        return { status: 200, body: { chats: salida.slice(0, 300), etqFuente: fuente, dbError: db.ok ? '' : (dbConfigurada() ? db.error : '') } };
       }
       case 'webhook': {
         // Le pide a Evolution que avise a esta app cada vez que se pone o quita una etiqueta en un chat
@@ -161,6 +164,12 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
         try { await evo(c, '/webhook/set/' + I, 'POST', { webhook: { enabled: true, url, webhookByEvents: false, byEvents: false, webhookBase64: false, base64: false, events } }); }
         catch (e) { if (e.estado !== 400 && e.estado !== 422) throw e; await evo(c, '/webhook/set/' + I, 'POST', { enabled: true, url, webhookByEvents: false, webhookBase64: false, events }); }
         return { status: 200, body: { ok: true, cuenta: Boolean(String(process.env.FIREBASE_SERVICE_ACCOUNT || '').trim()) } };
+      }
+      case 'etqChats': {
+        const db = await etiquetasPorChat(c.inst);
+        if (!db.ok) return { status: 200, body: { ok: false, error: dbConfigurada() ? db.error : 'sin_db' } };
+        const mapa = {}; for (const [j, ids] of db.mapa) { const k = j.endsWith('@g.us') ? j : j.split('@')[0].replace(/\D/g, ''); if (k && !j.endsWith('@lid')) mapa[k] = ids; }
+        return { status: 200, body: { ok: true, mapa } };
       }
       case 'webhookEstado': {
         // ¿Evolution ya está avisando a esta app cuando cambian las etiquetas?

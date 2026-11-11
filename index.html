@@ -1305,7 +1305,7 @@ function waEtqRaw(tel,ids){
   if(u.length)r.ts=u;else delete r.ts;
   if(!Object.keys(r).length)delete a[tel];
 }
-function waEtqSet(tel,ids){const antes=waEtqDe(tel);waEtqRaw(tel,ids);save();waPushDiff(tel,antes,waEtqDe(tel))}
+function waEtqSet(tel,ids){(ui.waReciente=ui.waReciente||{})[tel]=Date.now();const antes=waEtqDe(tel);waEtqRaw(tel,ids);save();waPushDiff(tel,antes,waEtqDe(tel))}
 const waEtqAdd=(tel,id)=>{const l=waEtqDe(tel);if(!l.includes(id))waEtqSet(tel,[...l,id])};
 const waEtqDel=(tel,id)=>waEtqSet(tel,waEtqDe(tel).filter(x=>x!==id));
 const waEtqMove=(tel,from,to)=>{let l=waEtqDe(tel);if(from&&from!=='_ninguna')l=l.filter(x=>x!==from);if(to&&to!=='_ninguna'&&!l.includes(to))l.push(to);waEtqSet(tel,l)};
@@ -1344,11 +1344,12 @@ async function waSyncEtq(){
 function waAplicarEtqChats(){
   const tabs=waTabs().filter(t=>t.lid),lid2id=new Map(tabs.map(t=>[t.lid,t.id])),id2lid=new Map(tabs.map(t=>[t.id,t.lid]));
   const cola=[];let ch=false;
-  const live=new Map((ui.waLive||[]).map(x=>[x.tel,x])),hook=ui.waHook||new Map();
-  const tels=new Set([...hook.keys(),...(ui.waLive||[]).filter(x=>x.conEtq).map(x=>x.tel)]);
+  const live=new Map((ui.waLive||[]).map(x=>[x.tel,x])),hook=ui.waHook||new Map(),dbm=ui.waDb||new Map();
+  const tels=new Set([...dbm.keys(),...hook.keys(),...(ui.waLive||[]).filter(x=>x.conEtq).map(x=>x.tel)]);
   tels.forEach(tel=>{
+    if(Date.now()-((ui.waReciente||{})[tel]||0)<25000)return;   // cambio recién hecho aquí: se espera a que WhatsApp lo refleje
     const x=live.get(tel)||{tel,jid:tel.endsWith('@g.us')?tel:tel+'@s.whatsapp.net'};
-    const fuente=hook.has(tel)?hook.get(tel):(x.etiquetas||[]);   // lo que avisa WhatsApp manda; si no, lo que entrega el servidor
+    const fuente=dbm.has(tel)?dbm.get(tel):hook.has(tel)?hook.get(tel):(x.etiquetas||[]);   // manda lo que dice WhatsApp (base de datos > avisos > lista de chats)
     const wa=new Set(fuente.map(l=>lid2id.get(l)).filter(Boolean));
     const reg=waAsig()[tel]||{},sl=new Set((reg.sl||[]).filter(id=>id2lid.has(id))),loc=waEtqDe(tel),locS=new Set(loc);
     const nuevo=new Set(loc);
@@ -1380,6 +1381,16 @@ async function waHookEstado(){
   if(ui.waHookBusy||Date.now()-(ui.waHookTs||0)<45000)return;ui.waHookBusy=true;ui.waHookTs=Date.now();
   try{ui.waHookCfg=await waApi('webhookEstado');if(ui.tab==='wa'&&ui.waTab==='tableros')waTableros()}catch(e){ui.waHookCfg=null}
   finally{ui.waHookBusy=false}
+}
+async function waEtqRapido(){
+  if(ui.waRapB)return;ui.waRapB=true;
+  try{const r=await waApi('etqChats');if(r.ok){ui.waEtqFuente='db';ui.waDb=new Map(Object.entries(r.mapa));waAplicarEtqChats();if(ui.tab==='wa')waRender();else if(ui.tab==='ped')renderPed()}}
+  catch(e){}finally{ui.waRapB=false}
+}
+function waDlgDb(){
+  dlgOpen(`<h2 style="margin:0 0 6px">Sincronizar etiquetas como WhatsApp Web</h2><p class="sub">Tu servidor de WhatsApp guarda las etiquetas de cada chat en su base de datos. Con esa dirección, el panel las lee siempre al día (solo lectura).</p>
+  <ol style="margin:8px 0 6px 18px;font-size:14px;line-height:1.7"><li>Abre <b>railway.com</b> → tu proyecto → toca el cuadro <b>Postgres</b>.</li><li>Entra a la pestaña <b>Variables</b> y busca <code class="ti-code">DATABASE_PUBLIC_URL</code>. Toca el ojito y luego copia el valor (empieza con <b>postgresql://</b>).</li><li>En <b>Vercel → tu proyecto → Settings → Environment Variables</b> crea <code class="ti-code">EVO_DB_URL</code>, pega ese valor, marca <b>Sensitive</b> (sin Development) y guarda.</li><li>En <b>Deployments</b> haz <b>Redeploy</b>.</li><li>Vuelve aquí, recarga con Ctrl + Shift + R y entra a WhatsApp. En unos segundos debe decir <b>“Sincronizado con WhatsApp”</b>.</li></ol>
+  <div class="alert" style="margin:8px 0">Esa dirección da acceso a tu base de datos: no la compartas ni la pegues en chats.</div><div class="row"><button class="btn pri" type="button" data-dlg-x>Entendido</button></div>`);
 }
 async function waActivarHook(){
   try{const r=await waApi('webhook',{origen:location.origin});
@@ -1484,17 +1495,17 @@ function waFicha(c){
   ${c.manual?`<div class="row" style="margin-top:14px"><button class="btn sm del" type="button" data-kdel="${esc(c.id)}">Quitar este chat</button></div>`:''}`;
 }
 function waTableros(){
-  if(puedeTienda())waHookEstado();
+
   const L=waLista(),q=(ui.waQ||'').toLowerCase(),tabs=waTabs();
   const lista=L.filter(c=>!c.grupo&&(!q||(c.nombre+' '+c.tel).toLowerCase().includes(q)));
-  $('#waBody').innerHTML=`<div class="wa-tb"><div class="card" style="margin-top:12px"><div class="row"><button class="btn sm" type="button" id="kbSync">Ordenar según el estado del pedido</button><button class="btn sm wa" type="button" id="kbEtqSync">Traer etiquetas de WhatsApp</button><button class="btn sm" type="button" id="tbNuevo">+ Tablero</button></div><p class="hint" style="margin:0 0 0 auto;flex:1 1 260px">Cada tablero es una etiqueta de WhatsApp Business con el mismo nombre: al mover un chat se etiqueta también en tu WhatsApp. Arrastra o usa «Mover a un tablero…». ◀ ▶ ordena y ✎ renombra.</p>${(()=>{if(!(ui.waConn&&ui.waConn.estado==='conectado'&&ui.waEtqOk))return '';const cf=ui.waHookCfg,P=(t)=>`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">${t}</p>`,B='<button class="btn sm wa" type="button" data-whook="1">Activar sincronización desde WhatsApp</button>';
-  const hk=ui.waHookUlt?P(`🔔 Sincronización en vivo con WhatsApp activa · último aviso hace ${esc(waAgo(ui.waHookUlt.at))}. Lo que cambies en WhatsApp llega solo, como en WhatsApp Web.`)
-   :!puedeTienda()?P('Pídele al administrador que active la sincronización en vivo con WhatsApp.')
-   :!cf?P('Revisando la sincronización con WhatsApp…')
-   :!cf.cuenta?P('⚠️ Falta la variable <b>FIREBASE_SERVICE_ACCOUNT</b> en Vercel (y hacer Redeploy). '+B)
-   :!cf.activo?P('⚠️ La sincronización en vivo está <b>apagada</b>: por eso los cambios de WhatsApp no llegan aquí. '+B)
-   :!cf.conEtiquetas?P('⚠️ Evolution no está avisando de etiquetas. '+B)
-   :P('🟡 Sincronización encendida, pero WhatsApp todavía no mandó ningún aviso. <b>Pon o quita una etiqueta en tu WhatsApp</b> para probar; debe aparecer aquí en segundos. Si no llega, desvincula y vuelve a escanear el QR una vez.');const sin=waTabs().filter(t=>!t.lid).map(t=>t.nombre);
+  $('#waBody').innerHTML=`<div class="wa-tb"><div class="card" style="margin-top:12px"><div class="row"><button class="btn sm" type="button" id="kbSync">Ordenar según el estado del pedido</button><button class="btn sm wa" type="button" id="kbEtqSync">Traer etiquetas de WhatsApp</button><button class="btn sm" type="button" id="tbNuevo">+ Tablero</button></div><p class="hint" style="margin:0 0 0 auto;flex:1 1 260px">Cada tablero es una etiqueta de WhatsApp Business con el mismo nombre: al mover un chat se etiqueta también en tu WhatsApp. Arrastra o usa «Mover a un tablero…». ◀ ▶ ordena y ✎ renombra.</p>${(()=>{if(!(ui.waConn&&ui.waConn.estado==='conectado'&&ui.waEtqOk))return '';const P=(t)=>`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">${t}</p>`,BD='<button class="btn sm wa" type="button" data-wdb="1">Cómo conectarlo</button>';
+  const de=ui.waDbError,hk=ui.waEtqFuente==='db'?P('🔄 Sincronizado con WhatsApp: las etiquetas se actualizan solas cada pocos segundos, en los dos sentidos, como en WhatsApp Web.')
+   :ui.waHookUlt?P(`🔔 Sincronización en vivo con WhatsApp activa · último aviso hace ${esc(waAgo(ui.waHookUlt.at))}.`)
+   :!puedeTienda()?P('Pídele al administrador que conecte la sincronización de etiquetas con WhatsApp.')
+   :de==='conexion'?P('⚠️ No pude conectar con la base de datos de tu servidor. Revisa que <b>EVO_DB_URL</b> sea la dirección <b>pública</b> (DATABASE_PUBLIC_URL). '+BD)
+   :de==='clave'?P('⚠️ La clave de la base de datos no es correcta. Copia otra vez <b>DATABASE_PUBLIC_URL</b>. '+BD)
+   :de==='esquema'?P('⚠️ La base de datos no tiene el formato esperado de Evolution. Avísame para ajustarlo.')
+   :P('⚠️ Las etiquetas aún no se sincronizan solas con WhatsApp. Para que funcione igual que WhatsApp Web falta <b>un solo paso</b>. '+BD);const sin=waTabs().filter(t=>!t.lid).map(t=>t.nombre);
  if(!ui.waEtqN)return hk+`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">⚠️ WhatsApp no devolvió etiquetas${ui.waEtqFallo?' (el servidor respondió '+ui.waEtqFallo+')':''}. Revisa que sea una cuenta de <b>WhatsApp Business</b> con etiquetas creadas (Herramientas → Etiquetas) y toca <b>Traer etiquetas</b>.</p>`;
  return hk+(sin.length?`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">⚠️ Sin etiqueta en WhatsApp todavía: <b>${sin.map(esc).join(', ')}</b>.</p>`:`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">✅ ${ui.waEtqN} etiquetas de WhatsApp Business sincronizadas.</p>`)})()}</div>
   <div class="wa-tbg"><div class="wa2-list" id="waLeft"><b style="padding:2px 4px">💬 Chats <span class="badge">${L.length}</span></b><input id="waQBuscar" type="search" placeholder="Buscar chat…" value="${esc(ui.waQ||'')}" aria-label="Buscar chat"><div class="wa2-rows">${lista.map(c=>waFilaChat(c,false,true)).join('')||'<div class="kb-vacio">Sin chats</div>'}</div></div>
@@ -1547,7 +1558,7 @@ async function waEstadoSrv(){
 }
 async function waSincronizar(manual){
   if(ui.waSync)return;ui.waSync=true;if(ui.tab==='wa')waCabecera();
-  try{await waSyncEtq();const r=await waApi('chats');ui.waLive=(r.chats||[]).filter(x=>!x.lid).slice(0,300);waAplicarEtqChats();try{localStorage.setItem('yosca_wa_live',JSON.stringify(ui.waLive.slice(0,150)))}catch(e){}if(manual)toast(ui.waLive.length+' chats sincronizados')}
+  try{await waSyncEtq();const r=await waApi('chats');ui.waLive=(r.chats||[]).filter(x=>!x.lid).slice(0,300);ui.waEtqFuente=r.etqFuente||'';ui.waDbError=r.dbError||'';waAplicarEtqChats();try{localStorage.setItem('yosca_wa_live',JSON.stringify(ui.waLive.slice(0,150)))}catch(e){}if(manual)toast(ui.waLive.length+' chats sincronizados')}
   catch(e){if(manual)toast('No pude sincronizar: '+(e.detalle||'revisa el servidor'))}
   finally{ui.waSync=false;if(ui.tab==='wa')waRender()}
 }
@@ -1600,6 +1611,7 @@ function waDlgConfig(){
   <div class="alert" style="margin-bottom:10px">Esta conexión no es la oficial de Meta: úsala con calma (sin envíos masivos) para no arriesgar tu número.</div><div class="row"><button class="btn pri" type="button" data-dlg-x>Entendido</button></div>`);
 }
 setInterval(()=>{
+  if((ui.tab==='wa'||ui.tab==='ped')&&!document.hidden&&ui.waEtqFuente==='db'&&ui.waConn&&ui.waConn.estado==='conectado')waEtqRapido();
   if(ui.tab!=='wa'||document.hidden||!(ui.waConn&&ui.waConn.estado==='conectado'))return;
   ui.waTick=(ui.waTick||0)+1;
   if(ui.waTick%4===0)waSincronizar();
@@ -1695,7 +1707,7 @@ document.addEventListener('submit',e=>{
   if(f.id==='waFTab'){e.preventDefault();const t=waTabs()[+f.dataset.i],d=Object.fromEntries(new FormData(f));t.nombre=String(d.nombre).trim().slice(0,30)||t.nombre;t.color=d.color;save();dlgClose();waTableros();return}
 });
 document.addEventListener('focusin',e=>{if(e.target.matches&&e.target.matches('#v-wa textarea'))window.__waUltima=e.target});
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-whook]')){waActivarHook();return}const b=e.target.closest&&e.target.closest('[data-wtog]');if(!b)return;const tel=b.dataset.wtog,id=b.dataset.wid;if(waEtqDe(tel).includes(id))waEtqDel(tel,id);else waEtqAdd(tel,id);waRefrescar()});
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-wdb]')){waDlgDb();return}if(e.target.closest&&e.target.closest('[data-whook]')){waActivarHook();return}const b=e.target.closest&&e.target.closest('[data-wtog]');if(!b)return;const tel=b.dataset.wtog,id=b.dataset.wid;if(waEtqDe(tel).includes(id))waEtqDel(tel,id);else waEtqAdd(tel,id);waRefrescar()});
 document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('[draggable][data-tel]');if(!c||!c.closest('#v-wa'))return;window.__kbTel=c.dataset.tel;const colO=c.closest('.kb-col');window.__kbFrom=colO?colO.dataset.col:'';c.classList.add('drag');try{e.dataTransfer.setData('text/plain',c.dataset.tel);e.dataTransfer.effectAllowed='move'}catch(x){}});
 document.addEventListener('dragend',e=>{document.querySelectorAll('.drag').forEach(c=>c.classList.remove('drag'));document.querySelectorAll('.kb-col.over').forEach(c=>c.classList.remove('over'))});
 document.addEventListener('dragover',e=>{const c=e.target.closest&&e.target.closest('.kb-col');if(!c||!window.__kbTel)return;e.preventDefault();document.querySelectorAll('.kb-col.over').forEach(x=>{if(x!==c)x.classList.remove('over')});c.classList.add('over')});

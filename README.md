@@ -37,6 +37,15 @@ Con esto la app deja de ser abierta: solo entra quien tú apruebes, y cada perso
 
 Las personas aprobadas trabajan sobre los datos del administrador (los mismos pedidos, inventario, etc.). Las reglas de Firestore hacen cumplir los permisos en el servidor, no solo en la pantalla. Tienda, Equipo y los respaldos son solo del administrador. En WhatsApp, quien tenga permiso lo usa sin estar en `WA_EMAILS` (se lee su permiso de Firestore; requiere `FIREBASE_PROJECT_ID`), pero conectar o desvincular el número es solo del administrador.
 
+### Etiquetas como WhatsApp Web (recomendado: un solo paso)
+
+Evolution guarda qué etiquetas tiene cada chat en su base de datos Postgres (tabla `Chat`, columna `labels`), pero su API no las entrega. La app las lee de ahí (solo `SELECT`) cada pocos segundos, así que ve siempre el estado real de WhatsApp, incluidas las etiquetas que los chats ya tenían:
+
+1. Railway → tu proyecto → servicio **Postgres → Variables** → copia `DATABASE_PUBLIC_URL`.
+2. Vercel → Environment Variables → crea `EVO_DB_URL` con ese valor (*Sensitive*, sin Development) y **Redeploy**.
+
+Lo que cambies en el panel se aplica en WhatsApp Business por la API (`/label/handleLabel`), y lo que cambies en WhatsApp llega al panel en segundos. La sección siguiente (avisos/webhook) es una alternativa si no quieres exponer la base de datos.
+
 ### Etiquetas de WhatsApp Business sincronizadas en los dos sentidos
 
 Evolution API **no entrega** qué etiquetas tiene cada chat, así que la app usa los avisos (webhook) de WhatsApp:
