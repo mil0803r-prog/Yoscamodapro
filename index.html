@@ -386,6 +386,12 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .eq-fila{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
 .eq-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 220px}.eq-info small{color:var(--on-var);overflow-wrap:anywhere}
 .eq-perm{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center}.eq-perm label{margin:0}
+.pk-resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+.pk-res{background:var(--s-lowest);border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:1px;min-width:0}
+.pk-m{display:flex;gap:16px}.pk-m span{display:flex;flex-direction:column}.pk-m small{font-size:12px;color:var(--on-var)}.pk-m b{font-size:15px}.pk-card .btn{width:100%}
+.pk-res span{font-size:12px;font-weight:800;overflow-wrap:anywhere}.pk-res b{font-size:22px}.pk-res small{color:var(--on-var);font-size:12px}
+[data-pcol].over{border-color:var(--primary)!important;background:var(--primary-soft)}
+@media (min-width:900px){#v-ped .kb{max-height:calc(100vh - 220px)}}
 /* ===== Optimización móvil y PC ===== */
 .kpi small,.scen small,.ord-money small,.vfhead,th,.wa-m small,.chartcard .tbtn{font-size:max(12px,.75rem)}
 @media (max-width:899px),(pointer:coarse){
@@ -491,7 +497,7 @@ summary{cursor:pointer}
       </div>
       <div class="card" style="margin-top:14px">
         <div class="row sb" style="margin-bottom:12px"><h3>Historial de pedidos</h3><span class="badge" id="pedCount"></span></div>
-        <div class="seg" id="pedViewSeg" style="display:flex;margin-bottom:12px" aria-label="Vista"><button data-v="cards" style="flex:1">Encuadros</button><button data-v="table" style="flex:1">Tabla</button></div>
+        <div class="seg" id="pedViewSeg" style="display:flex;margin-bottom:12px" aria-label="Vista"><button data-v="cards" style="flex:1">Encuadros</button><button data-v="table" style="flex:1">Tabla</button><button data-v="board" style="flex:1">Tablero</button></div>
         <div class="row" style="margin-bottom:14px">
           <input class="grow" id="pedBuscar" placeholder="Buscar cliente, producto, ciudad…" aria-label="Buscar pedidos">
           <select id="pedFiltro" style="width:auto" aria-label="Filtrar por estado"></select>
@@ -730,7 +736,7 @@ const CATS_VAR=['Tela / Gamarra','Hilos y avíos','Confección / maquila','Publi
 const CATS_CIF=['Alquiler del taller','Luz, agua e internet','Sueldos fijos','Marketing fijo','Mantenimiento de máquinas','Movilidad','Otros'];
 
 let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],inventory:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto',pais:'51',waEmpresa:'51960614797'}};
-const ui={pedView:(()=>{try{return localStorage.getItem('yosca_pedview')==='table'?'table':'cards'}catch(e){return'cards'}})(),tab:'dash',desde:'',hasta:'',diaR:'30',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
+const ui={pedView:(()=>{try{const v=localStorage.getItem('yosca_pedview');return v==='table'||v==='board'?v:'cards'}catch(e){return'cards'}})(),tab:'dash',desde:'',hasta:'',diaR:'30',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
 
 /* ---- costos de una prenda (todo en soles) ---- */
 const telaCost=g=>g.modo==='kilos'?num(g.kilos)*num(g.precioKg)*(1+num(g.merma)/100):num(g.metros)*num(g.precioMetro);
@@ -2101,6 +2107,7 @@ function renderPed(){
   document.querySelectorAll('#pedViewSeg button').forEach(b=>b.classList.toggle('on',b.dataset.v===ui.pedView));
   $('#pedCount').textContent=rows.length+(rows.length===1?' pedido':' pedidos');
   if(!rows.length){$('#pedTabla').innerHTML='<div class="empty"><b>Aún no hay pedidos</b>Registra uno arriba o impórtalos de Shopify desde Ajustes.</div>';return}
+  if(ui.pedView==='board'){$('#pedTabla').innerHTML=pedTablero(rows);return}
   if(ui.pedView==='table'){
     $('#pedTabla').innerHTML='<div class="tablewrap"><table class="ordtbl"><thead><tr><th>Fecha</th><th>Cliente</th><th>Producto</th><th class="num">Cant.</th><th class="num">Total</th><th class="num">Utilidad</th><th>Pago</th><th>Estado</th><th></th></tr></thead><tbody>'+rows.map(o=>{
       const q=num(o.cantidad)||1,u=orderProfit(o);
@@ -2124,6 +2131,34 @@ function renderPed(){
         <span class="row" style="gap:8px"><button class="btn sm" data-ed="${esc(o.id)}">Editar</button><button class="btn sm del" data-del="${esc(o.id)}" aria-label="Eliminar pedido">✕</button></span></div>
     </article>`}).join('')+'</div>';
 }
+/* Vista Tablero de Pedidos: las columnas son los tableros (etiquetas) de WhatsApp y se mueven juntos */
+function pedTablero(rows){
+  const tabs=waTabs(),a=waAsig();
+  const cols=[{id:'_ninguna',nombre:'Sin tablero',color:'#94A3B8'},...tabs];
+  const por=new Map(cols.map(c=>[c.id,[]]));
+  rows.forEach(o=>{const n=waNumber(o.telefono),t=n&&a[n]&&a[n].t;por.get(por.has(t)?t:'_ninguna').push(o)});
+  const tot=l=>l.reduce((s,o)=>s+num(o.precio)*(num(o.cantidad)||1),0);
+  const resumen=cols.map(c=>{const l=por.get(c.id);return `<div class="pk-res" style="border-top:3px solid ${esc(c.color)}"><span style="color:${esc(c.color)}">${esc(c.nombre)}</span><b>${l.length}</b><small>${fmt(tot(l))}</small></div>`}).join('');
+  const card=o=>{const n=waNumber(o.telefono),q=num(o.cantidad)||1,u=orderProfit(o);
+    return `<div class="kb-card pk-card" ${n?'draggable="true"':''} data-oid="${esc(o.id)}" data-ptel="${esc(n||'')}">
+      <div class="row sb"><b>${esc(o.producto||'Sin producto')}</b><small>${esc(fechaCorta(o.fecha).replace(/ \d{4}$/,''))}</small></div>
+      <small>${esc([o.cliente,o.ciudad,'x'+q].filter(Boolean).join(' · '))}</small>
+      <div class="pk-m"><span><small>Venta</small><b>${fmt(num(o.precio)*q)}</b></span><span><small>Utilidad</small><b class="${u>0?'pos':u<0?'neg':''}">${u?fmt(u):'—'}</b></span></div>
+      <select data-pmover="${esc(o.id)}" aria-label="Mover a un tablero"${n?'':' disabled title="Este pedido no tiene teléfono"'}><option value="">Mover a…</option>${cols.map(c=>`<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join('')}</select>
+      <button class="btn sm" type="button" data-ed="${esc(o.id)}">Editar</button>
+    </div>`};
+  return `<div class="pk-resumen">${resumen}</div><div class="kb" id="pkb">${cols.map(c=>{const l=por.get(c.id);return `<div class="kb-col" data-pcol="${esc(c.id)}" style="border-top:4px solid ${esc(c.color)}"><div class="kb-h"><b style="flex:1;min-width:0">${esc(c.nombre)}</b><span>${l.length}</span><small style="color:var(--on-var)">${fmt(tot(l))}</small></div>${l.length?l.map(card).join(''):'<div class="kb-vacio">Suelta aquí</div>'}</div>`}).join('')}</div>`;
+}
+function pedMover(oid,col){
+  const o=S.orders.find(x=>x.id===oid),n=o&&waNumber(o.telefono);
+  if(!n){toast('Este pedido no tiene teléfono, no se puede mover de tablero.');return}
+  waSet(n,'t',col);renderPed();
+}
+$('#pedTabla').addEventListener('change',e=>{const id=e.target.dataset&&e.target.dataset.pmover;if(id&&e.target.value)pedMover(id,e.target.value)});
+document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('.pk-card[draggable]');if(!c)return;window.__pkOid=c.dataset.oid;c.classList.add('drag');try{e.dataTransfer.setData('text/plain',c.dataset.oid);e.dataTransfer.effectAllowed='move'}catch(x){}});
+document.addEventListener('dragover',e=>{const c=e.target.closest&&e.target.closest('[data-pcol]');if(!c||!window.__pkOid)return;e.preventDefault();document.querySelectorAll('[data-pcol].over').forEach(x=>{if(x!==c)x.classList.remove('over')});c.classList.add('over')});
+document.addEventListener('drop',e=>{const c=e.target.closest&&e.target.closest('[data-pcol]');if(!c||!window.__pkOid)return;e.preventDefault();const id=window.__pkOid;window.__pkOid=null;pedMover(id,c.dataset.pcol)});
+document.addEventListener('dragend',()=>{window.__pkOid=null;document.querySelectorAll('[data-pcol].over').forEach(c=>c.classList.remove('over'))});
 $('#pedViewSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ui.pedView=b.dataset.v;try{localStorage.setItem('yosca_pedview',ui.pedView)}catch(x){}renderPed()});
 $('#pedBuscar').addEventListener('input',renderPed);
 $('#pedFiltro').addEventListener('change',renderPed);
