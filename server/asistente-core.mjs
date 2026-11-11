@@ -25,7 +25,7 @@ async function certificadosGoogle() {
   return certs;
 }
 const b64 = (t) => Buffer.from(t.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
-async function usuarioFirebase(token) {
+export async function usuarioFirebase(token) {
   const pid = process.env.FIREBASE_PROJECT_ID;
   if (!pid || !token) return null;
   const partes = String(token).split('.');

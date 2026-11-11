@@ -81,3 +81,18 @@ En el panel, la sección **Tienda** (solo con el correo del dueño) tiene cuatro
 - Registros DNS: dominio principal → `A @ 76.76.21.21` (y `CNAME www cname.vercel-dns.com`); subdominio → `CNAME nombre cname.vercel-dns.com`.
 - La pestaña Dominio verifica el DNS (vía dns.google) y que la tienda responda con https.
 - Para que los cambios del editor se vean en el dominio sin subir archivos, conecta Supabase en la pestaña Nube y copia el `config.js` generado a `tienda/config.js`.
+
+## WhatsApp conectado con QR (Evolution API)
+La sección **WhatsApp** del panel puede conectarse a tu WhatsApp Business escaneando un QR. Usa un servidor tuyo con **Evolution API** en Railway; el panel habla con él a través de `/api/wa` (Vercel o Netlify), así la clave nunca llega al navegador.
+
+Variables en Vercel (Settings → Environment Variables):
+| Variable | Qué es |
+|---|---|
+| `WA_URL` | Dirección pública del servidor en Railway, sin `/` al final |
+| `WA_KEY` | La clave `AUTHENTICATION_API_KEY` del servidor (márcala como Sensitive) |
+| `WA_INSTANCE` | Nombre de la instancia (por defecto `yosca`) |
+| `WA_EMAILS` | Opcional: correos con permiso, separados por coma (por defecto `mil0803r@gmail.com`) |
+| `FIREBASE_PROJECT_ID` | Ya existe: se usa para verificar la sesión |
+
+Después de guardar las variables, haz **Redeploy**. Luego en el panel: WhatsApp → **Conectar con QR**.
+Esta conexión no es la oficial de Meta: úsala sin envíos masivos para cuidar tu número.

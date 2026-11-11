@@ -1,0 +1,137 @@
+// Puente seguro entre la app y tu servidor de WhatsApp (Evolution API en Railway).
+// La clave del servidor (WA_KEY) vive solo aquí: nunca llega al navegador.
+// Variables: WA_URL, WA_KEY, WA_INSTANCE (por defecto "yosca"), WA_EMAILS (correos con permiso; por defecto el del dueño).
+import { usuarioFirebase } from './asistente-core.mjs';
+
+const LIMITE_POR_MINUTO = 90;
+const MAX_BYTES = 20_000;
+const golpes = new Map();
+
+const cfg = () => ({
+  url: String(process.env.WA_URL || '').trim().replace(/\/+$/, ''),
+  key: String(process.env.WA_KEY || '').trim(),
+  inst: String(process.env.WA_INSTANCE || 'yosca').trim() || 'yosca',
+  correos: String(process.env.WA_EMAILS || 'mil0803r@gmail.com').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean),
+});
+const digitos = (s) => String(s || '').replace(/\D/g, '');
+const jidValido = (s) => /^[0-9]{8,15}@s\.whatsapp\.net$|^[0-9-]{10,40}@g\.us$/.test(String(s || ''));
+
+function superaLimite(quien) {
+  const ahora = Date.now();
+  const l = (golpes.get(quien) || []).filter((t) => ahora - t < 60_000);
+  l.push(ahora); golpes.set(quien, l);
+  return l.length > LIMITE_POR_MINUTO;
+}
+
+async function evo(c, ruta, metodo = 'GET', cuerpo) {
+  const ctl = new AbortController();
+  const to = setTimeout(() => ctl.abort(), 20_000);
+  try {
+    const r = await fetch(c.url + ruta, {
+      method: metodo,
+      headers: { apikey: c.key, 'content-type': 'application/json' },
+      body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+      signal: ctl.signal,
+    });
+    const txt = await r.text();
+    let j = null;
+    try { j = txt ? JSON.parse(txt) : null; } catch { j = { raw: txt.slice(0, 300) }; }
+    if (!r.ok) { const e = new Error('servidor'); e.estado = r.status; e.j = j; throw e; }
+    return j;
+  } finally { clearTimeout(to); }
+}
+
+const estadoTexto = (j) => {
+  const s = String((j && ((j.instance && j.instance.state) || j.state)) || '').toLowerCase();
+  return s === 'open' ? 'conectado' : s === 'connecting' ? 'conectando' : s === 'close' || s === 'closed' ? 'desconectado' : s || 'desconocido';
+};
+const textoDe = (m) => {
+  if (!m) return '';
+  const x = m.message || m;
+  return x.conversation || (x.extendedTextMessage && x.extendedTextMessage.text) || (x.imageMessage && (x.imageMessage.caption || '📷 Foto')) || (x.videoMessage && (x.videoMessage.caption || '🎥 Video')) || (x.audioMessage && '🎤 Audio') || (x.documentMessage && ('📄 ' + (x.documentMessage.fileName || 'Documento'))) || (x.stickerMessage && 'Sticker') || (x.reactionMessage && '') || '';
+};
+const ts = (v) => { const n = Number(v && v.low !== undefined ? v.low : v) || 0; return n > 1e12 ? n : n * 1000; };
+const tsISO = (v) => { if (!v) return 0; if (typeof v === 'string' && /\D/.test(v)) { const d = Date.parse(v); return Number.isFinite(d) ? d : 0; } return ts(v); };
+
+export async function handle({ method, rawBody, authorization, ip, verificar = usuarioFirebase }) {
+  const c = cfg();
+  const b = /^Bearer\s+(.+)$/i.exec(authorization || '');
+  if (!b) return { status: 401, body: { error: 'sesion' } };
+  const u = await verificar(b[1]);
+  if (!u) return { status: 401, body: { error: 'sesion' } };
+  if (!u.verificado || !c.correos.includes(String(u.email || '').toLowerCase())) return { status: 403, body: { error: 'sin_permiso' } };
+  if (superaLimite('u:' + u.uid)) return { status: 429, body: { error: 'limite' } };
+  const configurado = Boolean(c.url && c.key);
+  if (method === 'GET') return { status: 200, body: { disponible: configurado, instancia: c.inst } };
+  if (method !== 'POST') return { status: 405, body: { error: 'metodo' } };
+  if (!configurado) return { status: 503, body: { error: 'no_configurado' } };
+  if (!rawBody || rawBody.length > MAX_BYTES) return { status: 413, body: { error: 'grande' } };
+  let p; try { p = JSON.parse(rawBody); } catch { return { status: 400, body: { error: 'json' } }; }
+  const I = encodeURIComponent(c.inst);
+  try {
+    switch (p.accion) {
+      case 'estado': {
+        try { return { status: 200, body: { estado: estadoTexto(await evo(c, '/instance/connectionState/' + I)) } }; }
+        catch (e) { if (e.estado === 404) return { status: 200, body: { estado: 'sin_instancia' } }; throw e; }
+      }
+      case 'conectar': {
+        let est = 'sin_instancia';
+        try { est = estadoTexto(await evo(c, '/instance/connectionState/' + I)); } catch (e) { if (e.estado !== 404) throw e; }
+        if (est === 'conectado') return { status: 200, body: { estado: 'conectado' } };
+        if (est === 'sin_instancia') await evo(c, '/instance/create', 'POST', { instanceName: c.inst, qrcode: true, integration: 'WHATSAPP-BAILEYS' });
+        const q = await evo(c, '/instance/connect/' + I);
+        let qr = (q && (q.base64 || (q.qrcode && q.qrcode.base64))) || '';
+        if (qr && !/^data:image/.test(qr)) qr = 'data:image/png;base64,' + qr;
+        return { status: 200, body: { estado: 'conectando', qr, codigo: (q && (q.pairingCode || '')) || '' } };
+      }
+      case 'desvincular': {
+        try { await evo(c, '/instance/logout/' + I, 'DELETE'); } catch (e) { if (e.estado !== 404 && e.estado !== 400) throw e; }
+        return { status: 200, body: { estado: 'desconectado' } };
+      }
+      case 'chats': {
+        const j = await evo(c, '/chat/findChats/' + I, 'POST', {});
+        const arr = Array.isArray(j) ? j : (j && (j.chats || j.records)) || [];
+        const salida = [];
+        for (const x of arr) {
+          const jid = String(x.remoteJid || x.id || '');
+          if (!jid || jid === 'status@broadcast' || jid.endsWith('@broadcast') || jid.endsWith('@newsletter')) continue;
+          const grupo = jid.endsWith('@g.us');
+          const lm = x.lastMessage || (x.messages && x.messages[0]) || null;
+          salida.push({
+            jid, grupo,
+            tel: grupo ? jid : digitos(jid.split('@')[0]),
+            lid: jid.endsWith('@lid'),
+            nombre: String(x.name || x.pushName || (x.contact && x.contact.pushName) || '').slice(0, 60),
+            foto: /^https:\/\//.test(x.profilePicUrl || '') ? x.profilePicUrl : '',
+            ultimo: String(textoDe(lm) || '').slice(0, 140),
+            fecha: ts(lm && (lm.messageTimestamp || lm.timestamp)) || tsISO(x.updatedAt || x.conversationTimestamp),
+            noLeidos: Number(x.unreadMessages || x.unreadCount || 0) || 0,
+          });
+        }
+        salida.sort((a, z) => z.fecha - a.fecha);
+        return { status: 200, body: { chats: salida.slice(0, 300) } };
+      }
+      case 'mensajes': {
+        const jid = String(p.jid || '');
+        if (!jidValido(jid)) return { status: 400, body: { error: 'jid' } };
+        const j = await evo(c, '/chat/findMessages/' + I, 'POST', { where: { key: { remoteJid: jid } }, limit: 60, offset: 60, page: 1 });
+        const arr = Array.isArray(j) ? j : (j && j.messages && (j.messages.records || j.messages)) || (j && j.records) || [];
+        const ms = arr.map((m) => ({ id: String((m.key && m.key.id) || m.id || ''), mio: !!(m.key && m.key.fromMe), texto: String(textoDe(m) || '').slice(0, 1500), fecha: ts(m.messageTimestamp || m.timestamp) })).filter((m) => m.texto).sort((a, z) => a.fecha - z.fecha).slice(-50);
+        return { status: 200, body: { mensajes: ms } };
+      }
+      case 'enviar': {
+        const jid = String(p.jid || ''), texto = String(p.texto || '').trim();
+        const num = jidValido(jid) ? (jid.endsWith('@g.us') ? jid : jid.split('@')[0]) : digitos(p.tel);
+        if (!(jidValido(jid) || (num.length >= 8 && num.length <= 15))) return { status: 400, body: { error: 'numero' } };
+        if (!texto || texto.length > 4000) return { status: 400, body: { error: 'texto' } };
+        await evo(c, '/message/sendText/' + I, 'POST', { number: num, text: texto });
+        return { status: 200, body: { ok: true } };
+      }
+      default: return { status: 400, body: { error: 'accion' } };
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return { status: 504, body: { error: 'tiempo' } };
+    const st = e && e.estado;
+    return { status: 502, body: { error: 'servidor', detalle: st ? 'El servidor de WhatsApp respondió ' + st : 'No pude comunicarme con el servidor de WhatsApp' } };
+  }
+}
