@@ -399,6 +399,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .iq-msg{width:100%;line-height:1.5}.iq-res{list-style:none;margin:6px 0;padding:0;display:flex;flex-direction:column;gap:4px}
 .iq-res li{display:flex;justify-content:space-between;gap:12px;background:rgba(255,255,255,.55);border-radius:8px;padding:6px 10px}.iq-res li b{flex:none}
 .iq-tot{font-size:15px;margin-top:2px}.iq-nota{font-size:13px;opacity:.85;margin-top:4px}.iq-ojo{margin-top:6px;font-weight:800;color:var(--error)}
+.inv2{border-top:2px dashed var(--line);padding-top:12px}
 /* ===== Optimización móvil y PC ===== */
 .kpi small,.scen small,.ord-money small,.vfhead,th,.wa-m small,.chartcard .tbtn{font-size:max(12px,.75rem)}
 @media (max-width:899px),(pointer:coarse){
@@ -504,6 +505,8 @@ summary{cursor:pointer}
           <div id="fTalla"><label for="p-talla">Talla</label><input id="p-talla" name="talla" list="dl-ptalla" placeholder="Elige o escribe"><datalist id="dl-ptalla"></datalist></div>
           <div id="fColor"><label for="p-color">Color</label><input id="p-color" name="color" list="dl-pcolor" placeholder="Elige o escribe"><datalist id="dl-pcolor"></datalist></div>
           <div class="full hint" id="invNota" style="margin:0">📝 <b>Varios colores o tallas:</b> sepáralos con coma, por ejemplo <b>Azul, Blanco, Verde</b> o <b>S, M, L</b>. Al elegir varios aparece una lista para poner la <b>cantidad de cada uno</b> (por ejemplo Azul 2, Blanco 1, Verde 3). La Cantidad de arriba pasa a ser la suma. Escríbelos igual que en el inventario y usa «Por unidad».</div>
+          <div class="full inv2" id="invSec2" hidden><label for="p-invg2">➕ Polos redondos (otro producto del inventario)</label><select id="p-invg2"></select>
+            <div id="inv2Chips" hidden><label style="margin-top:10px">Talla (toca las que quieras)</label><div class="tchips ichips" id="ic2T"></div><label style="margin-top:10px">Color (toca los que quieras)</label><div class="tchips ichips" id="ic2C"></div></div></div>
           <div class="full alert" id="invHint" style="background:var(--primary-soft)" hidden></div>
           <div><label for="p-cant" id="lblCant">Cantidad</label><input id="p-cant" type="number" name="cantidad" min="1" value="1" required></div>
           <div><label for="p-precio">Precio de venta (unidad, S/)</label><input id="p-precio" type="number" name="precio" min="0" step="any" required></div>
@@ -2218,7 +2221,7 @@ function syncWaForm(){const w=$('#waForm');if(w)w.innerHTML=waBtn(pf.telefono.va
 pf.telefono.addEventListener('input',syncWaForm);pf.cliente.addEventListener('input',syncWaForm);pf.producto.addEventListener('input',syncWaForm);
 function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
 $('#pedNuevo').addEventListener('click',()=>{if($('#pedCard').hidden){resetPed();pedMostrarForm(true)}else pedMostrarForm(false)});
-function resetPed(){ui.pedQty={};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
+function resetPed(){ui.pedQty={};ui.pedG2='';ui.pedSel2={t:[],c:[]};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
 pf.addEventListener('submit',e=>{
   e.preventDefault();
   const fd=Object.fromEntries(new FormData(pf));
@@ -2232,7 +2235,7 @@ pf.addEventListener('submit',e=>{
     if(!(fd.precioPack>0)){toast(`Escribe el precio del pack de ${fd.pack}`);return}
     fd.packs=fd.cantidad;fd.cantidad=fd.packs*fd.pack;fd.precio=r2(fd.precioPack/fd.pack);
   }else{fd.pack=1;delete fd.precioPack;fd.packs=0;fd.lote=undefined}
-  if(ui.pedMulti&&ui.pedMulti.length>1){   // varios colores o tallas
+  if(ui.pedMulti&&ui.pedMulti.length){   // varios colores o tallas (o varios productos)
     if(lote||fd.pack>1){toast('Para varios colores o tallas usa «Por unidad».');return}
     const its=ui.pedMulti.map(id=>invFind(id)).filter(Boolean);
     fd.multi=its.map(i=>({id:i.id,q:Math.max(1,num((ui.pedQty||{})[i.id])||1)}));fd.invId='';fd.cantidad=fd.multi.reduce((a,m)=>a+m.q,0);
@@ -2316,7 +2319,11 @@ $('#pedTabla').addEventListener('click',e=>{
   if(b.dataset.ed){const o=S.orders.find(x=>x.id===b.dataset.ed);ui.editOrder=o.id;fillGarmentSelect();
     Object.keys(o).forEach(k=>{if(pf[k]&&k!=='id')pf[k].value=o[k]});
     pf.pack.value=o.lote?'custom':String(o.pack>1?o.pack:1);if(o.pack>1)pf.cantidad.value=o.packs||1;if(o.lote)pf.precioPack.value=o.lote;syncPack();syncWaForm();
-    {const it=o.invId&&invFind(o.invId),m0=Array.isArray(o.multi)&&o.multi.length?invFind(o.multi[0].id):null;pig.value=it?invKey(it):m0?invKey(m0):'';pf.invId.value=it?it.id:'';ui.pedQty={};if(m0)o.multi.forEach(m=>{ui.pedQty[m.id]=m.q});invRefresh()}
+    {const it=o.invId&&invFind(o.invId),m0=Array.isArray(o.multi)&&o.multi.length?invFind(o.multi[0].id):null;pig.value=it?invKey(it):m0?invKey(m0):'';pf.invId.value=it?it.id:'';ui.pedQty={};ui.pedG2='';ui.pedSel2={t:[],c:[]};
+     if(m0){o.multi.forEach(m=>{ui.pedQty[m.id]=m.q});const its=o.multi.map(m=>invFind(m.id)).filter(Boolean),k1=invKey(m0),g1=its.filter(i=>invKey(i)===k1),g2=its.filter(i=>invKey(i)!==k1),u=(a,f)=>[...new Set(a.map(i=>i[f]).filter(Boolean))];
+       pf.talla.value=u(g1,'talla').join(', ');pf.color.value=u(g1,'color').join(', ');
+       if(g2.length){ui.pedG2=invKey(g2[0]);ui.pedSel2={t:u(g2,'talla').map(lowS),c:u(g2,'color').map(lowS)}}}
+     invRefresh()}
     $('#pedTitle').textContent='Editar pedido';$('#pedCancel').hidden=false;pedMostrarForm(true)}
   if(b.dataset.del)ask('¿Eliminar este pedido?',()=>{const od=S.orders.find(o=>o.id===b.dataset.del);if(od)orderStockRelease(od);S.orders=S.orders.filter(o=>o.id!==b.dataset.del);save();renderPed()});
 });
@@ -2395,6 +2402,32 @@ function invRefresh(op){
      $('#icT').innerHTML=tallas.length?tallas.map(x=>bt('talla',x,tl.includes(lowS(x.v)))).join(''):'<span class="sub">Este producto no tiene tallas en el inventario.</span>';
      $('#icC').innerHTML=colores.length?colores.map(x=>bt('color',x,cl.includes(lowS(x.v)))).join(''):'<span class="sub">Este producto no tiene colores en el inventario.</span>';
    }}
+  // sección 2: polos redondos (otro producto del inventario) con sus propios cuadritos
+  const g2k=ui.pedG2||'',sel2=ui.pedSel2=ui.pedSel2||{t:[],c:[]};ui.pedExtra=[];ui.pedExtraMsg='';
+  {const todos=[...invGroups().entries()].filter(([k])=>k!==pig.value);
+   const box=$('#invSec2'),sl=$('#p-invg2');box.hidden=!todos.length;
+   if(todos.length){
+     todos.sort((a,b)=>(/redond/i.test(b[0])-/redond/i.test(a[0]))||a[0].localeCompare(b[0]));
+     const prev=sl.value;sl.innerHTML='<option value="">— No agregar —</option>'+todos.map(([k,v])=>`<option value="${esc(k)}">${esc(v[0].nombre+(v[0].cuello?' · '+v[0].cuello:''))} (${r2(v.reduce((a,i)=>a+num(i.stock),0))} en stock)</option>`).join('');
+     sl.value=todos.some(([k])=>k===g2k)?g2k:'';if(sl.value!==g2k){ui.pedG2=sl.value;sel2.t=[];sel2.c=[]}
+   }
+   const vs2=ui.pedG2?(invGroups().get(ui.pedG2)||[]):[];
+   $('#inv2Chips').hidden=!vs2.length;
+   if(vs2.length){
+     const t2=sel2.t,c2=sel2.c;
+     const ok2C=i=>!c2.length||c2.includes(lowS(i.color))||!vs2.some(x=>c2.includes(lowS(x.color))),ok2T=i=>!t2.length||t2.includes(lowS(i.talla))||!vs2.some(x=>t2.includes(lowS(x.talla)));
+     const ta=agg(vs2.filter(ok2C),'talla').sort((x,y)=>cmpSz(x.v,y.v)),co=agg(vs2.filter(ok2T),'color').sort((x,y)=>x.v.localeCompare(y.v));
+     const bt2=(k,x,on)=>`<button type="button" class="tchip${on?' on':''}${x.st<=0?' zero':''}" data-k2="${k}" data-v="${esc(x.v)}" aria-pressed="${on}">${esc(x.v)} <small>· ${r2(x.st)}</small></button>`;
+     $('#ic2T').innerHTML=ta.length?ta.map(x=>bt2('t',x,t2.includes(lowS(x.v)))).join(''):'<span class="sub">Sin tallas en el inventario.</span>';
+     $('#ic2C').innerHTML=co.length?co.map(x=>bt2('c',x,c2.includes(lowS(x.v)))).join(''):'<span class="sub">Sin colores en el inventario.</span>';
+     const nT=new Set(vs2.map(i=>lowS(i.talla)).filter(Boolean)).size,nC=new Set(vs2.map(i=>lowS(i.color)).filter(Boolean)).size;
+     if((t2.length||c2.length)){
+       if(nT>1&&!t2.length)ui.pedExtraMsg='En los polos redondos falta elegir la talla.';
+       else if(nC>1&&!c2.length)ui.pedExtraMsg='En los polos redondos falta elegir el color.';
+       else ui.pedExtra=vs2.filter(i=>(!t2.length||t2.includes(lowS(i.talla)))&&(!c2.length||c2.includes(lowS(i.color)))).map(i=>i.id);
+     }
+   }
+  }
   // variante(s) a descontar
   const hasTC=!!(tl.length||cl.length),multiple=tl.length>1||cl.length>1;
   const cand=vs.filter(i=>(!tl.length||tl.includes(lowS(i.talla)))&&(!cl.length||cl.includes(lowS(i.color))));
@@ -2405,7 +2438,8 @@ function invRefresh(op){
     if(!faltan.length)ui.pedMulti=cand.map(i=>i.id);
   }else if(hasTC&&cand.length===1)match=cand[0];
   else if(!hasTC&&vs.length===1&&pig.value)match=vs[0];
-  if(match)pf.invId.value=match.id;else if(pig.value||hasTC)pf.invId.value='';
+  if(ui.pedExtra.length){const base=ui.pedMulti||(match?[match.id]:[]);ui.pedMulti=[...new Set([...base,...ui.pedExtra])];pf.invId.value='';match=null}
+  else if(match)pf.invId.value=match.id;else if(pig.value||hasTC)pf.invId.value='';
   const h=$('#invHint'),q=num(pf.cantidad.value)||1;
   let msg='',cls='';
   const sel=pf.invId.value&&invFind(pf.invId.value);
@@ -2413,7 +2447,7 @@ function invRefresh(op){
   const qb=$('#invQty');
   if(ui.pedMulti){
     ui.pedQty=ui.pedQty||{};
-    const its=ui.pedMulti.map(id=>invFind(id)).filter(Boolean),nm=i=>[i.talla,i.color].filter(Boolean).join(' · ');
+    const its=ui.pedMulti.map(id=>invFind(id)).filter(Boolean),dosG=new Set(its.map(invKey)).size>1,nm=i=>[dosG?i.cuello:'',i.talla,i.color].filter(Boolean).join(' · ');
     its.forEach(i=>{if(!(ui.pedQty[i.id]>0))ui.pedQty[i.id]=1});
     const total=its.reduce((a,i)=>a+num(ui.pedQty[i.id]),0);
     if(!(op&&op.sinFilas)){
@@ -2430,6 +2464,7 @@ function invRefresh(op){
   else if(pig.value&&hasTC&&cand.length){msg=`Falta elegir ${tl.length?'el color':'la talla'} para saber de cuál variante descontar.`}
   else if(pig.value&&hasTC){msg='Esa talla o color no está en el inventario de este producto. Elige uno de los cuadritos.';cls='warn'}
   else if(pig.value){msg='Elige la talla y el color para descontar del inventario.'}
+  if(ui.pedExtraMsg)msg+=`<div class="iq-ojo">${esc(ui.pedExtraMsg)}</div>`;
   h.hidden=!msg;h.innerHTML=msg?`<div class="iq-msg">${msg}</div>`:'';h.className='full alert'+(cls?' err':'');h.style.background=cls?'':'var(--primary-soft)';
 }
 function invFromGroup(){
@@ -2445,6 +2480,8 @@ function invFromGroup(){
   invRefresh();
 }
 pig.addEventListener('change',()=>{ui.pedQty={};invFromGroup()});
+$('#p-invg2').addEventListener('change',e=>{ui.pedG2=e.target.value;ui.pedSel2={t:[],c:[]};invRefresh()});
+$('#invSec2').addEventListener('click',e=>{const b=e.target.closest('[data-k2]');if(!b)return;const l=(ui.pedSel2=ui.pedSel2||{t:[],c:[]})[b.dataset.k2],v=lowS(b.dataset.v),i=l.indexOf(v);if(i>=0)l.splice(i,1);else l.push(v);invRefresh()});
 $('#invQty').addEventListener('input',e=>{const id=e.target.dataset&&e.target.dataset.iq;if(!id)return;(ui.pedQty=ui.pedQty||{})[id]=Math.max(1,Math.floor(num(e.target.value))||1);invRefresh({sinFilas:true})});
 $('#invChips').addEventListener('click',e=>{const b=e.target.closest('.tchip');if(!b)return;const f=pf[b.dataset.k],v=b.dataset.v,l=listaCSV(f.value),i=l.findIndex(x=>lowS(x)===lowS(v));if(i>=0)l.splice(i,1);else l.push(v);f.value=l.join(', ');invRefresh()});
 ['talla','color'].forEach(n=>{pf[n].addEventListener('input',invRefresh);pf[n].addEventListener('change',invRefresh)});
