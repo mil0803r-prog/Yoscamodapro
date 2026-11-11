@@ -1317,10 +1317,14 @@ async function waSyncEtq(){
 }
 /* Lo que ya tiene cada chat en WhatsApp manda: se refleja en su tablero */
 function waAplicarEtqChats(){
-  const tabs=waTabs(),a=waAsig();let ch=false;
-  (ui.waLive||[]).forEach(x=>{if(!(x.etiquetas&&x.etiquetas.length))return;const t=tabs.find(z=>z.lid&&x.etiquetas.includes(z.lid));if(!t)return;
-    if((a[x.tel]||{}).t!==t.id){a[x.tel]=a[x.tel]||{};a[x.tel].t=t.id;ch=true}});
+  const tabs=waTabs(),a=waAsig();let ch=false;const subir=[];
+  (ui.waLive||[]).forEach(x=>{
+    const t=x.etiquetas&&x.etiquetas.length?tabs.find(z=>z.lid&&x.etiquetas.includes(z.lid)):null;
+    if(t){if((a[x.tel]||{}).t!==t.id){a[x.tel]=a[x.tel]||{};a[x.tel].t=t.id;ch=true}}
+    else{const loc=tabs.find(z=>z.id===(a[x.tel]||{}).t);if(loc&&loc.lid&&!(x.etiquetas||[]).length)subir.push({jid:x.jid||(x.tel+'@s.whatsapp.net'),labelId:loc.lid})}});
   if(ch)save();
+  // Lo que solo estaba en el panel se pone también en WhatsApp (de a poco para no saturar)
+  (async()=>{for(const q of subir.slice(0,40)){try{await waApi('etiquetar',q)}catch(e){break}}})();
 }
 function waContactos(){
   const m=new Map();
