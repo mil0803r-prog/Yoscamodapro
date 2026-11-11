@@ -486,7 +486,8 @@ summary{cursor:pointer}
           <div><label for="p-gar">Prenda del catálogo</label><select id="p-gar" name="garmentId"></select></div>
           <div class="full"><label for="p-invg">Producto del inventario (jala tallas y colores)</label><select id="p-invg"></select></div>
           <div class="full"><label for="p-inv">Variante que se descuenta (se llena sola)</label><select id="p-inv" name="invId"></select></div>
-          <div><label for="p-pack">Venta por</label><select id="p-pack" name="pack"><option value="1">Por unidad</option><option value="3">Pack por 3</option><option value="6">Pack por 6</option><option value="12">Pack por 12</option></select></div>
+          <div><label for="p-pack">Venta por</label><select id="p-pack" name="pack"><option value="1">Por unidad</option><option value="3">Pack por 3</option><option value="6">Pack por 6</option><option value="12">Pack por 12</option><option value="custom">Pack personalizado…</option></select></div>
+          <div id="packNBox" hidden><label for="p-packn">Prendas por pack</label><input id="p-packn" type="number" name="packN" min="2" step="1" inputmode="numeric" placeholder="Ej. 4"></div>
           <div id="packBox" hidden><label for="p-pp">Precio del pack completo (S/)</label><input id="p-pp" type="number" name="precioPack" min="0" step="any"></div>
           <div class="full alert" id="packHint" style="background:var(--primary-soft)" hidden></div>
           <div><label for="p-cliente">Cliente</label><input id="p-cliente" name="cliente" required></div>
@@ -2166,6 +2167,7 @@ function newGarment(o={}){return {id:uid(),sku:'',name:'Nueva prenda',coleccion:
 
 /* ================= PEDIDOS ================= */
 const pf=$('#pedForm');
+const packN=()=>pf.pack.value==='custom'?Math.max(0,Math.floor(num(pf.packN.value)))||0:(num(pf.pack.value)||1);   // prendas por pack (1 = por unidad)
 pf.estado.innerHTML=ESTADOS.map(e=>`<option>${e}</option>`).join('');
 pf.pago.innerHTML=PAGOS.map(e=>`<option>${e}</option>`).join('');
 $('#pedFiltro').innerHTML='<option value="">Todos los estados</option>'+ESTADOS.map(e=>`<option>${e}</option>`).join('');
@@ -2175,24 +2177,28 @@ function fillGarmentSelect(){
 }
 pf.garmentId.addEventListener('change',()=>{
   const g=S.garments.find(x=>x.id===pf.garmentId.value);if(!g)return;
-  const c=gCalc(g),n=num(pf.pack.value)||1;pf.producto.value=g.name;pf.costo.value=r2(c.direct);
+  const c=gCalc(g),n=packN()||1;pf.producto.value=g.name;pf.costo.value=r2(c.direct);
   if(n>1)pf.precioPack.value=r2(c.pvp*n)||'';else pf.precio.value=c.pvp||'';
   syncPack();
 });
 function syncPack(){
-  const n=num(pf.pack.value)||1,packs=num(pf.cantidad.value)||1;
-  $('#packBox').hidden=n===1;$('#lblCant').textContent=n===1?'Cantidad':'Cantidad de packs';
-  pf.precio.readOnly=n>1;
+  const cust=pf.pack.value==='custom',n=packN(),packs=num(pf.cantidad.value)||1;
+  $('#packNBox').hidden=!cust;
+  const esPack=cust||n>1;
+  $('#packBox').hidden=!esPack||n<2;$('#lblCant').textContent=esPack?'Cantidad de packs':'Cantidad';
+  pf.precio.readOnly=esPack&&n>1;
   const hint=$('#packHint');
-  if(n>1){
+  if(cust&&n<2){hint.hidden=false;hint.textContent='Escribe cuántas prendas trae el pack (mínimo 2).'}
+  else if(n>1){
     const pp=num(pf.precioPack.value),unit=r2(pp/n);
     pf.precio.value=pp>0?unit:'';
     hint.hidden=false;
     hint.textContent=pp>0?`Cada prenda sale a ${fmt(unit)}. ${packs} ${packs===1?'pack':'packs'} de ${n} = ${packs*n} prendas por ${fmt(pp*packs)}.`:`Escribe el precio del pack de ${n} y calculo lo que vale cada prenda.`;
   }else hint.hidden=true;
 }
+pf.packN.addEventListener('input',()=>{const g=S.garments.find(x=>x.id===pf.garmentId.value),n=packN();if(n>1&&g&&!num(pf.precioPack.value))pf.precioPack.value=r2(gCalc(g).pvp*n)||'';syncPack()});
 pf.pack.addEventListener('change',()=>{
-  const g=S.garments.find(x=>x.id===pf.garmentId.value),n=num(pf.pack.value)||1;
+  const g=S.garments.find(x=>x.id===pf.garmentId.value),n=packN()||1;
   if(n>1&&g&&!num(pf.precioPack.value))pf.precioPack.value=r2(gCalc(g).pvp*n)||'';
   syncPack();
 });
@@ -2205,7 +2211,9 @@ function resetPed(){$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm()
 pf.addEventListener('submit',e=>{
   e.preventDefault();
   const fd=Object.fromEntries(new FormData(pf));
-  ['cantidad','precio','costo','pack','precioPack'].forEach(k=>fd[k]=num(fd[k]));
+  ['cantidad','precio','costo','precioPack'].forEach(k=>fd[k]=num(fd[k]));
+  if(fd.pack==='custom'&&packN()<2){toast('Escribe cuántas prendas trae el pack (mínimo 2).');pf.packN.focus();return}
+  fd.pack=packN()||1;delete fd.packN;
   if(fd.pack>1){
     if(!(fd.precioPack>0)){toast(`Escribe el precio del pack de ${fd.pack}`);return}
     fd.packs=fd.cantidad;fd.cantidad=fd.packs*fd.pack;fd.precio=r2(fd.precioPack/fd.pack);
@@ -2287,7 +2295,7 @@ $('#pedTabla').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.ed){const o=S.orders.find(x=>x.id===b.dataset.ed);ui.editOrder=o.id;fillGarmentSelect();
     Object.keys(o).forEach(k=>{if(pf[k]&&k!=='id')pf[k].value=o[k]});
-    pf.pack.value=String(o.pack>1?o.pack:1);if(o.pack>1)pf.cantidad.value=o.packs||1;syncPack();syncWaForm();
+    {const pk=o.pack>1?o.pack:1,std=['1','3','6','12'].includes(String(pk));pf.pack.value=std?String(pk):'custom';pf.packN.value=std?'':pk}if(o.pack>1)pf.cantidad.value=o.packs||1;syncPack();syncWaForm();
     {const it=o.invId&&invFind(o.invId);pig.value=it?invKey(it):'';pf.invId.value=it?it.id:'';invRefresh()}
     $('#pedTitle').textContent='Editar pedido';$('#pedCancel').hidden=false;pedMostrarForm(true)}
   if(b.dataset.del)ask('¿Eliminar este pedido?',()=>{const od=S.orders.find(o=>o.id===b.dataset.del);if(od)orderStockRelease(od);S.orders=S.orders.filter(o=>o.id!==b.dataset.del);save();renderPed()});
@@ -2367,7 +2375,7 @@ function invFromGroup(){
   if(!pf.producto.value.trim()||lowS(pf.producto.value)===lowS(pf.producto.dataset.auto))pf.producto.value=f.nombre+(f.cuello?' '+f.cuello:'');
   pf.producto.dataset.auto=pf.producto.value;
   if(f.garmentId)pf.garmentId.value=f.garmentId;
-  const n=num(pf.pack.value)||1;
+  const n=packN()||1;
   if(n===1){if(!num(pf.precio.value)&&num(f.precio))pf.precio.value=f.precio}
   if(!num(pf.costo.value)&&num(f.costo))pf.costo.value=f.costo;
   pf.talla.value='';pf.color.value='';pf.invId.value='';
