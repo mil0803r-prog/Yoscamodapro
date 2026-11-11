@@ -453,7 +453,7 @@ summary{cursor:pointer}
       <div id="charts" style="display:flex;flex-direction:column;gap:14px;margin-top:14px"></div>
       <div class="card" id="alertas" style="margin-top:14px"></div>
       <div class="card" style="margin-top:14px"><h3>Pedidos por estado</h3><div id="porEstado"></div></div>
-      <div class="card" style="margin-top:14px"><h3>Más vendidas (entregadas)</h3><div id="topProd"></div></div>
+      <div class="card" style="margin-top:14px"><h3>Más vendidas (Ya pagó / entregadas)</h3><div id="topProd"></div></div>
       <div class="card" style="margin-top:14px"><h3>Gastos por categoría</h3><div id="gastoCat"></div></div>
     </section>
 
@@ -751,13 +751,21 @@ function gCalc(g){
   const total=direct+cif,pvp=num(g.pvp),ganancia=pvp-total;
   return {tela,extras,direct,cif,total,pvp,ganancia,margen:pvp>0?ganancia/pvp*100:0,markup:total>0?pvp/total:0};
 }
+/* Un pedido "cuenta" como venta (análisis, utilidad e inventario) cuando el cliente está en el tablero «Ya pagó» o el pedido está Entregado */
+const esTabPagado=t=>!!t&&(t.id==='pagado'||/\bya\s*pag/i.test(String(t.nombre||'')));
+function pedPagado(o){
+  const n=waNumber(o.telefono);if(!n)return false;
+  const ids=waEtqDe(n);if(!ids.length)return false;
+  return waTabs().some(t=>ids.includes(t.id)&&esTabPagado(t));
+}
+const pedCuenta=o=>o.estado!=='Cancelado'&&o.estado!=='Devuelto'&&(o.estado==='Entregado'||pedPagado(o));
 function orderProfit(o){
   const q=num(o.cantidad)||1;
-  if(o.estado==='Entregado')return (num(o.precio)-num(o.costo))*q-num(o.flete);
+  if(pedCuenta(o))return (num(o.precio)-num(o.costo))*q-num(o.flete);
   if(o.estado==='Devuelto')return -num(o.flete)*num(S.settings.factor);
   return 0;
 }
-const orderRevenue=o=>o.estado==='Entregado'?num(o.precio)*(num(o.cantidad)||1):0;
+const orderRevenue=o=>pedCuenta(o)?num(o.precio)*(num(o.cantidad)||1):0;
 
 /* ---- formato de dinero ---- */
 function fmt(n){
@@ -1315,7 +1323,8 @@ function waEtqRaw(tel,ids){
   if(u.length)r.ts=u;else delete r.ts;
   if(!Object.keys(r).length)delete a[tel];
 }
-function waEtqSet(tel,ids){(ui.waReciente=ui.waReciente||{})[tel]=Date.now();const antes=waEtqDe(tel);waEtqRaw(tel,ids);save();waPushDiff(tel,antes,waEtqDe(tel))}
+function pedResync(tel){let ch=false;S.orders.forEach(o=>{if(waNumber(o.telefono)===tel){const a=o.stockDesc;orderStockSync(o);if(o.stockDesc!==a)ch=true}});return ch}
+function waEtqSet(tel,ids){(ui.waReciente=ui.waReciente||{})[tel]=Date.now();const antes=waEtqDe(tel);waEtqRaw(tel,ids);pedResync(tel);save();waPushDiff(tel,antes,waEtqDe(tel))}
 const waEtqAdd=(tel,id)=>{const l=waEtqDe(tel);if(!l.includes(id))waEtqSet(tel,[...l,id])};
 const waEtqDel=(tel,id)=>waEtqSet(tel,waEtqDe(tel).filter(x=>x!==id));
 const waEtqMove=(tel,from,to)=>{let l=waEtqDe(tel);if(from&&from!=='_ninguna')l=l.filter(x=>x!==from);if(to&&to!=='_ninguna'&&!l.includes(to))l.push(to);waEtqSet(tel,l)};
@@ -1368,7 +1377,7 @@ function waAplicarEtqChats(){
     const jid=x.jid||(tel+'@s.whatsapp.net');
     loc.forEach(id=>{if(id2lid.has(id)&&!sl.has(id)&&!wa.has(id))cola.push({tel,id,jid,labelId:id2lid.get(id),quitar:false})});   // puesta en el panel -> WhatsApp
     sl.forEach(id=>{if(!locS.has(id)&&wa.has(id))cola.push({tel,id,jid,labelId:id2lid.get(id),quitar:true})});                       // quitada en el panel -> WhatsApp
-    if([...nuevo].sort().join()!==[...loc].sort().join()){waEtqRaw(tel,[...nuevo]);ch=true}
+    if([...nuevo].sort().join()!==[...loc].sort().join()){waEtqRaw(tel,[...nuevo]);pedResync(tel);ch=true}
     const r=(waAsig()[tel]=waAsig()[tel]||{});const nsl=[...wa];if(JSON.stringify(nsl)!==JSON.stringify(r.sl||[])){if(nsl.length)r.sl=nsl;else delete r.sl;ch=true}
     if(!Object.keys(r).length)delete waAsig()[tel];
   });
@@ -1823,14 +1832,14 @@ function renderDash(){
   const os=S.orders.filter(o=>inPeriod(o.fecha,p)),gs=S.expenses.filter(g=>inPeriod(g.fecha,p));
   const ventas=os.reduce((a,o)=>a+orderRevenue(o),0),bruta=os.reduce((a,o)=>a+orderProfit(o),0);
   const vars=gs.reduce((a,g)=>a+num(g.monto),0),fijos=cifFor(p),neta=bruta-vars-fijos;
-  const ent=os.filter(o=>o.estado==='Entregado').length,dev=os.filter(o=>o.estado==='Devuelto').length;
+  const ent=os.filter(pedCuenta).length,dev=os.filter(o=>o.estado==='Devuelto').length;
   const tasa=ent+dev?ent/(ent+dev)*100:NaN;
-  const porCobrar=os.filter(o=>['Pendiente','Confirmado','Enviado'].includes(o.estado)).reduce((a,o)=>a+num(o.precio)*(num(o.cantidad)||1),0);
+  const porCobrar=os.filter(o=>['Pendiente','Confirmado','Enviado'].includes(o.estado)&&!pedCuenta(o)).reduce((a,o)=>a+num(o.precio)*(num(o.cantidad)||1),0);
   const k=(l,v,c='',s='',cls='')=>`<div class="kpi ${cls}"><span class="caps">${l}</span><b class="${c}">${v}</b>${s?`<small>${s}</small>`:''}</div>`;
   $('#hola').textContent='Hola, '+((S.settings.marca||'Yosca').split(' ')[0]);
   $('#kpis').innerHTML=
     k('Utilidad neta real',fmt(neta),'','después de gastos fijos y variables','hero'+(neta<0?' neg':''))+
-    k('Ventas entregadas',fmt(ventas))+
+    k('Ventas (Ya pagó / entregado)',fmt(ventas))+
     k('Utilidad de pedidos',fmt(bruta),bruta>=0?'pos':'neg')+
     k('Gastos variables',fmt(vars))+
     k('Gastos fijos (CIF)',fmt(fijos),'',['mes','mesant','todo'].includes(p)?'':'prorrateado al periodo')+
@@ -1851,7 +1860,7 @@ function renderDash(){
   $('#alertas').innerHTML=`<div class="row sb"><h3>Atención inmediata</h3><span class="badge">${al.length} ${al.length===1?'pendiente':'pendientes'}</span></div>`+
     (al.length?`<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">${al.map(([c,m])=>`<div class="alert ${c}">${m}</div>`).join('')}</div>`:'<div class="empty"><b>Todo al día</b>No hay alertas pendientes.</div>');
   $('#porEstado').innerHTML=bars(ESTADOS.map(e=>[e,os.filter(o=>o.estado===e).length]).filter(r=>r[1]>0),v=>v);
-  const prod={};os.filter(o=>o.estado==='Entregado').forEach(o=>{prod[o.producto]=(prod[o.producto]||0)+(num(o.cantidad)||1)});
+  const prod={};os.filter(pedCuenta).forEach(o=>{prod[o.producto]=(prod[o.producto]||0)+(num(o.cantidad)||1)});
   $('#topProd').innerHTML=bars(Object.entries(prod).sort((a,b)=>b[1]-a[1]).slice(0,6),v=>v+' uds');
   const cat={};gs.forEach(g=>{cat[g.categoria]=(cat[g.categoria]||0)+num(g.monto)});
   $('#gastoCat').innerHTML=bars(Object.entries(cat).sort((a,b)=>b[1]-a[1]),fmt);
@@ -1862,7 +1871,7 @@ $('#periodo').addEventListener('change',e=>{ui.periodo=e.target.value;if(ui.peri
 ['perDesde','perHasta'].forEach(id=>$('#'+id).addEventListener('change',e=>{ui[id==='perDesde'?'desde':'hasta']=e.target.value||'';renderDash()}));
 
 /* ---- gráficos: por mes, por día y por ciudad ---- */
-const METRICS={ventas:{label:'Ventas entregadas',money:true,f:orderRevenue},utilidad:{label:'Utilidad de pedidos (antes de gastos)',money:true,f:orderProfit},pedidos:{label:'Pedidos (sin cancelados)',money:false,f:o=>o.estado==='Cancelado'?0:1}};
+const METRICS={ventas:{label:'Ventas (Ya pagó / entregado)',money:true,f:orderRevenue},utilidad:{label:'Utilidad de pedidos (antes de gastos)',money:true,f:orderProfit},pedidos:{label:'Pedidos (sin cancelados)',money:false,f:o=>o.estado==='Cancelado'?0:1}};
 const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const isoDate=d=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
 const dispVal=(v,m)=>m.money&&S.settings.moneda==='USD'?v/(num(S.settings.tc)||3.75):v;
@@ -2303,7 +2312,7 @@ function orderStockRelease(o){
 }
 function orderStockSync(o){
   const it=o.invId?invFind(o.invId):null,q=num(o.cantidad)||1;
-  const want=!!it&&o.estado!=='Cancelado'&&o.estado!=='Devuelto';
+  const want=!!it&&pedCuenta(o);   // el stock se descuenta cuando el pedido está en «Ya pagó» (o Entregado)
   if(o.stockDesc&&!(want&&o.stockInv===o.invId&&num(o.stockDesc)===q))orderStockRelease(o);
   if(want&&!o.stockDesc){
     invMove(it,-q,'salida','Venta','Pedido de '+(o.cliente||''),o.fecha,o.id);o.stockDesc=q;o.stockInv=it.id;
@@ -2344,7 +2353,7 @@ function invRefresh(){
   const h=$('#invHint'),q=num(pf.cantidad.value)||1;
   let msg='',cls='';
   const sel=pf.invId.value&&invFind(pf.invId.value);
-  if(sel){const dispo=num(sel.stock);msg=`Stock disponible de ${esc(invName(sel))}: <b>${dispo} ${esc(sel.unidad||'unid')}</b>. Se descuenta al guardar el pedido (si se cancela o se devuelve, el stock regresa).`+(q>dispo?` <b>Ojo: pides ${q} y solo hay ${dispo}.</b>`:'');cls=q>dispo?'warn':''}
+  if(sel){const dispo=num(sel.stock);msg=`Stock disponible de ${esc(invName(sel))}: <b>${dispo} ${esc(sel.unidad||'unid')}</b>. Se descuenta cuando el cliente pasa al tablero «Ya pagó» (o el pedido se marca Entregado). Si lo quitas de ahí, se cancela o se devuelve, el stock regresa.`+(q>dispo?` <b>Ojo: pides ${q} y solo hay ${dispo}.</b>`:'');cls=q>dispo?'warn':''}
   else if(pig.value&&(t||c)){msg='Esa talla o color no está en el inventario de este producto. Elige una de la lista.';cls='warn'}
   else if(pig.value){msg='Elige la talla y el color para descontar del inventario.'}
   h.hidden=!msg;h.innerHTML=msg;h.className='full alert'+(cls?' err':'');h.style.background=cls?'':'var(--primary-soft)';
@@ -2812,7 +2821,7 @@ const AI_CHIPS=['¿Cómo voy este mes?','¿Qué stock tengo bajo?','¿Qué prend
 function periodStats(p,r){
   const os=S.orders.filter(o=>inPeriod(o.fecha,p,r)),gs=S.expenses.filter(g=>inPeriod(g.fecha,p,r));
   const ventas=os.reduce((a,o)=>a+orderRevenue(o),0),bruta=os.reduce((a,o)=>a+orderProfit(o),0),vars=gs.reduce((a,g)=>a+num(g.monto),0),fijos=cifFor(p,r);
-  const ent=os.filter(o=>o.estado==='Entregado').length,dev=os.filter(o=>o.estado==='Devuelto').length;
+  const ent=os.filter(pedCuenta).length,dev=os.filter(o=>o.estado==='Devuelto').length;
   const por={};ESTADOS.forEach(e=>{const n=os.filter(o=>o.estado===e).length;if(n)por[e]=n});
   return {periodo:p,pedidos:os.length,por_estado:por,ventas_entregadas:r2(ventas),utilidad_pedidos:r2(bruta),gastos_variables:r2(vars),gastos_fijos_cif:r2(fijos),utilidad_neta:r2(bruta-vars-fijos),tasa_entrega_pct:ent+dev?r2(ent/(ent+dev)*100):null};
 }
