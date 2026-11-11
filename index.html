@@ -577,6 +577,10 @@ summary{cursor:pointer}
 
     <section id="v-inv" hidden>
       <button class="btn pri" id="invAdd" type="button" style="width:100%;min-height:50px;font-size:16px;margin-bottom:12px">+ Registrar producto</button>
+      <div class="card" id="invFix" style="margin-bottom:14px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+        <div style="flex:1 1 240px"><b>🔧 Corregir descuentos del inventario</b><div class="sub">Si el stock quedó desordenado, recalcula todo: deja el stock como estaba antes de las ventas y descuenta solo los pedidos que están en «Ya pagó».</div></div>
+        <button class="btn pri" type="button" id="invFixBtn">Revisar y corregir</button>
+      </div>
       <div class="grid" id="invKpis"></div>
       <div class="card" id="invAlertas" style="margin-top:14px"></div>
       <div class="card" style="margin-top:14px">
@@ -2583,6 +2587,40 @@ function renderInv(){
       <div class="inv-acts"><button class="btn sm pri" data-inv-var="${esc(f.id)}">+ Agregar talla o color</button></div>
     </article>`}).join('')+'</div>';
 }
+/* Corregir descuentos: stock = stock antes de las ventas − lo de los pedidos que están en «Ya pagó» */
+const esMovPed=m=>!!m.ref&&/^(Venta|Pedido anulado o editado)$/.test(m.motivo||'');
+function invReconstruir(){
+  const base=new Map(),trunc=new Set(),desc=new Map();
+  S.inventory.forEach(i=>{const mv=i.mov||[];base.set(i.id,r2(num(i.stock)-mv.filter(esMovPed).reduce((a,m)=>a+num(m.cant),0)));if(mv.length>=80)trunc.add(i.id)});
+  let nPag=0;
+  S.orders.forEach(o=>{if(!pedCuenta(o))return;nPag++;
+    const items=Array.isArray(o.multi)&&o.multi.length?o.multi.map(m=>({id:m.id,q:num(m.q)||1})):(o.invId?[{id:o.invId,q:num(o.cantidad)||1}]:[]);
+    items.forEach(x=>{if(base.has(x.id))desc.set(x.id,(desc.get(x.id)||0)+x.q)})});
+  const filas=S.inventory.map(i=>({i,antes:num(i.stock),despues:r2(base.get(i.id)-(desc.get(i.id)||0))})).filter(f=>f.antes!==f.despues);
+  return {filas,base,desc,trunc,nPag};
+}
+function invFixDlg(){
+  const R=invReconstruir();
+  dlgOpen(`<h2 style="margin:0 0 6px">Corregir descuentos del inventario</h2>
+  <p class="sub">Se recalcula con los <b>${R.nPag}</b> pedido(s) que están en «Ya pagó». Los pedidos fuera de «Ya pagó» no descuentan nada. Las entradas, conteos y salidas manuales no se tocan.</p>
+  ${R.filas.length?`<div class="tablewrap" style="max-height:44vh;overflow:auto"><table class="ordtbl"><thead><tr><th>Producto</th><th class="num">Ahora</th><th class="num">Quedaría</th><th class="num">Cambio</th></tr></thead><tbody>${R.filas.map(f=>{const d=r2(f.despues-f.antes);return `<tr><td>${esc(invName(f.i))}${R.trunc.has(f.i.id)?' <span class="badge" title="Su historial es muy largo (80 movimientos); revisa este valor">revisar</span>':''}</td><td class="num">${f.antes}</td><td class="num"><b>${f.despues}</b></td><td class="num"><b class="${d>0?'pos':'neg'}">${d>0?'+':''}${d}</b></td></tr>`}).join('')}</tbody></table></div>
+  <p class="hint">Antes de aplicar se guarda una copia de seguridad (Ajustes → Copias de seguridad) por si quieres volver atrás.</p>
+  <div class="row" style="margin-top:10px"><button class="btn pri" type="button" id="invFixOk">Aplicar corrección (${R.filas.length} productos)</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>`
+  :`<div class="alert" style="margin:10px 0">✅ Tu inventario ya está correcto: coincide con los pedidos en «Ya pagó».</div><div class="row"><button class="btn pri" type="button" data-dlg-x>Cerrar</button></div>`}`);
+}
+function invFixAplicar(){
+  const R=invReconstruir();
+  try{bkWrite(today()+'-antes-correccion','Antes de corregir el inventario')}catch(e){}
+  const antes=new Map(S.inventory.map(i=>[i.id,num(i.stock)]));
+  S.inventory.forEach(i=>{i.mov=(i.mov||[]).filter(m=>!esMovPed(m));i.stock=R.base.get(i.id)});
+  S.orders.forEach(o=>{o.stockDesc=0;o.stockInv='';if(Array.isArray(o.multi))o.multi.forEach(m=>{m.desc=0})});
+  S.orders.forEach(o=>orderStockSync(o));   // descuenta de nuevo solo los pedidos de «Ya pagó»
+  let n=0;
+  S.inventory.forEach(i=>{const a=antes.get(i.id),d=r2(num(i.stock)-a);if(d!==0){n++;(i.mov=i.mov||[]).unshift({id:uid(),ts:Date.now(),fecha:today(),tipo:'ajuste',cant:d,motivo:'Corrección de descuentos',nota:'Recalculado con los pedidos en «Ya pagó»',saldo:i.stock,ref:''})}});
+  save();dlgClose();renderInv();toast(n?`Inventario corregido: ${n} producto(s) ajustados.`:'Inventario ya estaba correcto.');
+}
+document.addEventListener('click',e=>{if(e.target.id==='invFixBtn')invFixDlg();else if(e.target.id==='invFixOk')invFixAplicar()});
+
 /* Historial de salidas por talla: todo lo que se restó del inventario */
 function ihMovs(){
   const out=[];
