@@ -94,7 +94,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
   if (!rawBody || rawBody.length > MAX_BYTES) return { status: 413, body: { error: 'grande' } };
   let p; try { p = JSON.parse(rawBody); } catch { return { status: 400, body: { error: 'json' } }; }
   const I = encodeURIComponent(c.inst);
-  const soloAdmin = ['conectar', 'desvincular', 'webhook', 'webhookEstado'].includes(p.accion), escribe = p.accion === 'enviar' || p.accion === 'etiquetar';
+  const soloAdmin = ['conectar', 'desvincular', 'webhook', 'webhookEstado', 'diagnostico'].includes(p.accion), escribe = p.accion === 'enviar' || p.accion === 'etiquetar';
   if ((soloAdmin && nivelWa !== 'admin') || (escribe && nivelWa === 'ver')) return { status: 403, body: { error: 'sin_permiso' } };
   try {
     switch (p.accion) {
@@ -164,6 +164,16 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
         try { await evo(c, '/webhook/set/' + I, 'POST', { webhook: { enabled: true, url, webhookByEvents: false, byEvents: false, webhookBase64: false, base64: false, events } }); }
         catch (e) { if (e.estado !== 400 && e.estado !== 422) throw e; await evo(c, '/webhook/set/' + I, 'POST', { enabled: true, url, webhookByEvents: false, webhookBase64: false, events }); }
         return { status: 200, body: { ok: true, cuenta: Boolean(String(process.env.FIREBASE_SERVICE_ACCOUNT || '').trim()) } };
+      }
+      case 'diagnostico': {
+        // Revisión completa de la sincronización de etiquetas (no devuelve claves ni direcciones)
+        const d = { servidor: 'ok', conexion: '', etiquetas: 0, chatsApi: 0, chatsConEtiquetaApi: 0, dbConfigurada: dbConfigurada(), db: '', dbChats: 0, dbChatsConEtiqueta: 0, cuentaServicio: Boolean(String(process.env.FIREBASE_SERVICE_ACCOUNT || '').trim()), firebaseProjectId: Boolean(String(process.env.FIREBASE_PROJECT_ID || '').trim()) };
+        try { d.conexion = estadoTexto(await evo(c, '/instance/connectionState/' + I)); } catch (e) { d.conexion = 'error ' + (e.estado || ''); }
+        try { const j = await evo(c, '/label/findLabels/' + I, 'POST', {}); d.etiquetas = (Array.isArray(j) ? j : (j && (j.labels || j.records)) || []).length; } catch (e) { d.etiquetas = 'error ' + (e.estado || ''); }
+        try { const j = await evo(c, '/chat/findChats/' + I, 'POST', {}); const a = Array.isArray(j) ? j : (j && (j.chats || j.records)) || []; d.chatsApi = a.length; d.chatsConEtiquetaApi = a.filter((x) => etiquetasDe(x && x.labels).length).length; } catch (e) { d.chatsApi = 'error ' + (e.estado || ''); }
+        const r = await etiquetasPorChat(c.inst);
+        if (r.ok) { d.db = 'ok'; d.dbChats = r.mapa.size; d.dbChatsConEtiqueta = [...r.mapa.values()].filter((v) => v.length).length; } else d.db = r.error;
+        return { status: 200, body: d };
       }
       case 'etqChats': {
         const db = await etiquetasPorChat(c.inst);

@@ -1392,6 +1392,23 @@ function waDlgDb(){
   <ol style="margin:8px 0 6px 18px;font-size:14px;line-height:1.7"><li>Abre <b>railway.com</b> → tu proyecto → toca el cuadro <b>Postgres</b>.</li><li>Entra a la pestaña <b>Variables</b> y busca <code class="ti-code">DATABASE_PUBLIC_URL</code>. Toca el ojito y luego copia el valor (empieza con <b>postgresql://</b>).</li><li>En <b>Vercel → tu proyecto → Settings → Environment Variables</b> crea <code class="ti-code">EVO_DB_URL</code>, pega ese valor, marca <b>Sensitive</b> (sin Development) y guarda.</li><li>En <b>Deployments</b> haz <b>Redeploy</b>.</li><li>Vuelve aquí, recarga con Ctrl + Shift + R y entra a WhatsApp. En unos segundos debe decir <b>“Sincronizado con WhatsApp”</b>.</li></ol>
   <div class="alert" style="margin:8px 0">Esa dirección da acceso a tu base de datos: no la compartas ni la pegues en chats.</div><div class="row"><button class="btn pri" type="button" data-dlg-x>Entendido</button></div>`);
 }
+async function waDiagnostico(){
+  dlgOpen('<h2 style="margin:0 0 6px">Revisando…</h2><p class="sub">Un momento.</p>');
+  let d;try{d=await waApi('diagnostico')}catch(e){dlgOpen(`<h2 style="margin:0 0 6px">No pude revisar</h2><p class="sub">${esc(e.detalle||e.codigo||'Sin respuesta del servidor')}</p><div class="row"><button class="btn pri" type="button" data-dlg-x>Cerrar</button></div>`);return}
+  const f=(ok,t)=>`<li>${ok?'✅':'❌'} ${t}</li>`;
+  const dbT={ok:'conectada y leída',sin_db:'falta la variable EVO_DB_URL en Vercel',conexion:'no pude conectar (usa DATABASE_PUBLIC_URL, la pública)',clave:'clave incorrecta',esquema:'la base no tiene la tabla esperada'}[d.db]||d.db;
+  const lig=waTabs().filter(t=>t.lid).length;
+  dlgOpen(`<h2 style="margin:0 0 6px">Diagnóstico de etiquetas</h2><ul style="list-style:none;padding:0;margin:8px 0;font-size:14px;line-height:1.8">
+   ${f(d.conexion==='conectado',`WhatsApp: <b>${esc(d.conexion)}</b>`)}
+   ${f(typeof d.etiquetas==='number'&&d.etiquetas>0,`Etiquetas en WhatsApp Business: <b>${esc(d.etiquetas)}</b>`)}
+   ${f(lig>0,`Tableros vinculados a una etiqueta: <b>${lig}</b> de ${waTabs().length}`)}
+   ${f(d.db==='ok',`Base de datos de Evolution: <b>${esc(dbT)}</b>`)}
+   ${d.db==='ok'?f(d.dbChatsConEtiqueta>0,'Chats con etiquetas en la base: <b>'+d.dbChatsConEtiqueta+'</b> de '+d.dbChats):''}
+   <li>ℹ️ Chats que entrega la API: ${esc(d.chatsApi)} (con etiquetas: ${esc(d.chatsConEtiquetaApi)})</li>
+   <li>ℹ️ Cuenta de servicio de Firebase (avisos): ${d.cuentaServicio?'sí':'no'}</li></ul>
+  <p class="hint">${d.db!=='ok'?'Falta conectar la base de datos de Evolution: es el paso de <b>EVO_DB_URL</b>.':d.dbChatsConEtiqueta===0?'La base se lee bien, pero ningún chat tiene etiquetas guardadas ahí. Pon una etiqueta a un chat en WhatsApp Business y vuelve a revisar; si sigue en 0, tu versión de Evolution no las guarda y hay que usar los avisos.':lig===0?'Toca «Traer etiquetas de WhatsApp» para vincular los tableros.':'Todo está bien. Si algo no cambia, espera unos segundos.'}</p>
+  <div class="row" style="margin-top:8px"><button class="btn" type="button" data-wdiag="1">Volver a revisar</button><button class="btn pri" type="button" data-dlg-x>Cerrar</button></div>`);
+}
 async function waActivarHook(){
   try{const r=await waApi('webhook',{origen:location.origin});
     if(!r.cuenta){waDlgHook();return}
@@ -1498,7 +1515,7 @@ function waTableros(){
 
   const L=waLista(),q=(ui.waQ||'').toLowerCase(),tabs=waTabs();
   const lista=L.filter(c=>!c.grupo&&(!q||(c.nombre+' '+c.tel).toLowerCase().includes(q)));
-  $('#waBody').innerHTML=`<div class="wa-tb"><div class="card" style="margin-top:12px"><div class="row"><button class="btn sm" type="button" id="kbSync">Ordenar según el estado del pedido</button><button class="btn sm wa" type="button" id="kbEtqSync">Traer etiquetas de WhatsApp</button><button class="btn sm" type="button" id="tbNuevo">+ Tablero</button></div><p class="hint" style="margin:0 0 0 auto;flex:1 1 260px">Cada tablero es una etiqueta de WhatsApp Business con el mismo nombre: al mover un chat se etiqueta también en tu WhatsApp. Arrastra o usa «Mover a un tablero…». ◀ ▶ ordena y ✎ renombra.</p>${(()=>{if(!(ui.waConn&&ui.waConn.estado==='conectado'&&ui.waEtqOk))return '';const P=(t)=>`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">${t}</p>`,BD='<button class="btn sm wa" type="button" data-wdb="1">Cómo conectarlo</button>';
+  $('#waBody').innerHTML=`<div class="wa-tb"><div class="card" style="margin-top:12px"><div class="row"><button class="btn sm" type="button" id="kbSync">Ordenar según el estado del pedido</button><button class="btn sm wa" type="button" id="kbEtqSync">Traer etiquetas de WhatsApp</button><button class="btn sm" type="button" data-wdiag="1">Revisar sincronización</button><button class="btn sm" type="button" id="tbNuevo">+ Tablero</button></div><p class="hint" style="margin:0 0 0 auto;flex:1 1 260px">Cada tablero es una etiqueta de WhatsApp Business con el mismo nombre: al mover un chat se etiqueta también en tu WhatsApp. Arrastra o usa «Mover a un tablero…». ◀ ▶ ordena y ✎ renombra.</p>${(()=>{if(!(ui.waConn&&ui.waConn.estado==='conectado'&&ui.waEtqOk))return '';const P=(t)=>`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">${t}</p>`,BD='<button class="btn sm wa" type="button" data-wdb="1">Cómo conectarlo</button>';
   const de=ui.waDbError,hk=ui.waEtqFuente==='db'?P('🔄 Sincronizado con WhatsApp: las etiquetas se actualizan solas cada pocos segundos, en los dos sentidos, como en WhatsApp Web.')
    :ui.waHookUlt?P(`🔔 Sincronización en vivo con WhatsApp activa · último aviso hace ${esc(waAgo(ui.waHookUlt.at))}.`)
    :!puedeTienda()?P('Pídele al administrador que conecte la sincronización de etiquetas con WhatsApp.')
@@ -1707,7 +1724,7 @@ document.addEventListener('submit',e=>{
   if(f.id==='waFTab'){e.preventDefault();const t=waTabs()[+f.dataset.i],d=Object.fromEntries(new FormData(f));t.nombre=String(d.nombre).trim().slice(0,30)||t.nombre;t.color=d.color;save();dlgClose();waTableros();return}
 });
 document.addEventListener('focusin',e=>{if(e.target.matches&&e.target.matches('#v-wa textarea'))window.__waUltima=e.target});
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-wdb]')){waDlgDb();return}if(e.target.closest&&e.target.closest('[data-whook]')){waActivarHook();return}const b=e.target.closest&&e.target.closest('[data-wtog]');if(!b)return;const tel=b.dataset.wtog,id=b.dataset.wid;if(waEtqDe(tel).includes(id))waEtqDel(tel,id);else waEtqAdd(tel,id);waRefrescar()});
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-wdiag]')){waDiagnostico();return}if(e.target.closest&&e.target.closest('[data-wdb]')){waDlgDb();return}if(e.target.closest&&e.target.closest('[data-whook]')){waActivarHook();return}const b=e.target.closest&&e.target.closest('[data-wtog]');if(!b)return;const tel=b.dataset.wtog,id=b.dataset.wid;if(waEtqDe(tel).includes(id))waEtqDel(tel,id);else waEtqAdd(tel,id);waRefrescar()});
 document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('[draggable][data-tel]');if(!c||!c.closest('#v-wa'))return;window.__kbTel=c.dataset.tel;const colO=c.closest('.kb-col');window.__kbFrom=colO?colO.dataset.col:'';c.classList.add('drag');try{e.dataTransfer.setData('text/plain',c.dataset.tel);e.dataTransfer.effectAllowed='move'}catch(x){}});
 document.addEventListener('dragend',e=>{document.querySelectorAll('.drag').forEach(c=>c.classList.remove('drag'));document.querySelectorAll('.kb-col.over').forEach(c=>c.classList.remove('over'))});
 document.addEventListener('dragover',e=>{const c=e.target.closest&&e.target.closest('.kb-col');if(!c||!window.__kbTel)return;e.preventDefault();document.querySelectorAll('.kb-col.over').forEach(x=>{if(x!==c)x.classList.remove('over')});c.classList.add('over')});
