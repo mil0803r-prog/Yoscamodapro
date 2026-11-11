@@ -87,7 +87,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
   if (!rawBody || rawBody.length > MAX_BYTES) return { status: 413, body: { error: 'grande' } };
   let p; try { p = JSON.parse(rawBody); } catch { return { status: 400, body: { error: 'json' } }; }
   const I = encodeURIComponent(c.inst);
-  const soloAdmin = ['conectar', 'desvincular'].includes(p.accion), escribe = p.accion === 'enviar';
+  const soloAdmin = ['conectar', 'desvincular'].includes(p.accion), escribe = p.accion === 'enviar' || p.accion === 'etiquetar';
   if ((soloAdmin && nivelWa !== 'admin') || (escribe && nivelWa === 'ver')) return { status: 403, body: { error: 'sin_permiso' } };
   try {
     switch (p.accion) {
@@ -139,11 +139,24 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
             foto: (() => { const f = (ag.get(jid) || {}).profilePicUrl || x.profilePicUrl || ''; return /^https:\/\//.test(f) ? f : ''; })(),
             ultimo: String(textoDe(lm) || '').slice(0, 140),
             fecha: ts(lm && (lm.messageTimestamp || lm.timestamp)) || tsISO(x.updatedAt || x.conversationTimestamp),
+            etiquetas: (Array.isArray(x.labels) ? x.labels : []).map((l) => String((l && (l.id || l.labelId)) || l)).slice(0, 10),
             noLeidos: Number(x.unreadMessages || x.unreadCount || 0) || 0,
           });
         }
         salida.sort((a, z) => z.fecha - a.fecha);
         return { status: 200, body: { chats: salida.slice(0, 300) } };
+      }
+      case 'etiquetas': {
+        let j = [];
+        try { j = await evo(c, '/label/findLabels/' + I, 'POST', {}); } catch (e) { if (e.estado !== 404 && e.estado !== 400 && e.estado !== 500) throw e; }
+        const arr = Array.isArray(j) ? j : (j && (j.labels || j.records)) || [];
+        return { status: 200, body: { etiquetas: arr.map((l) => ({ id: String(l.id || l.labelId || ''), nombre: String(l.name || l.nombre || '').slice(0, 40), color: Number(l.color) || 0 })).filter((l) => l.id && l.nombre).slice(0, 60) } };
+      }
+      case 'etiquetar': {
+        const jid = String(p.jid || ''), lid = String(p.labelId || '');
+        if (!jidValido(jid) || !/^[A-Za-z0-9_.-]{1,40}$/.test(lid)) return { status: 400, body: { error: 'datos' } };
+        await evo(c, '/label/handleLabel/' + I, 'POST', { number: jid.endsWith('@g.us') ? jid : jid.split('@')[0], labelId: lid, action: p.quitar ? 'remove' : 'add' });
+        return { status: 200, body: { ok: true } };
       }
       case 'mensajes': {
         const jid = String(p.jid || '');

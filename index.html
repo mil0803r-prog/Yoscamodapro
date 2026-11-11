@@ -1285,10 +1285,37 @@ const WA_TAB=[{id:'datos',nombre:'Datos completados',color:'#64748B'},{id:'esper
 const WA_MAPA_T={Pendiente:'datos',Confirmado:'espera',Enviado:'ruta',Entregado:'entregado',Devuelto:'devuelto'};
 const WA_ETQ=[{id:'nuevo',nombre:'Cliente nuevo',color:'#25D366'},{id:'pedido',nombre:'Nuevo pedido',color:'#34B7F1'},{id:'pagopend',nombre:'Pago pendiente',color:'#FFB300'},{id:'pagado',nombre:'Pagado',color:'#7E57C2'},{id:'fin',nombre:'Pedido finalizado',color:'#2E7D32'}];
 function waTabs(){const st=S.settings;if(!Array.isArray(st.waTableros)||!st.waTableros.length)st.waTableros=JSON.parse(JSON.stringify(WA_TAB));return st.waTableros}
-function waEtq(){const st=S.settings;if(!Array.isArray(st.waEtiquetas)||!st.waEtiquetas.length)st.waEtiquetas=JSON.parse(JSON.stringify(WA_ETQ));return st.waEtiquetas}
+/* Las etiquetas y los tableros son la misma lista: cada tablero es una etiqueta de WhatsApp Business con su mismo nombre. */
+function waEtq(){return waTabs()}
+const WA_COL=['#25D366','#34B7F1','#FFB300','#7E57C2','#2E7D32','#F06292','#FF7043','#26A69A','#8D6E63','#5C6BC0','#EC407A','#9CCC65','#29B6F6','#AB47BC','#FFA726','#66BB6A','#78909C','#D4E157','#EF5350','#BDBDBD'];
 function waAsig(){const st=S.settings;if(!st.waAsig||typeof st.waAsig!=='object')st.waAsig={};return st.waAsig}
 function waDatos(){const st=S.settings;if(!st.waDatos||typeof st.waDatos!=='object')st.waDatos={};return st.waDatos}
-function waSet(tel,k,v){const a=waAsig();a[tel]=a[tel]||{};if(v===''||v==null||v==='_ninguna')delete a[tel][k];else a[tel][k]=v;if(!Object.keys(a[tel]).length)delete a[tel];save()}
+function waSet(tel,k,v){if(k==='e')k='t';const a=waAsig(),prev=(a[tel]||{}).t;a[tel]=a[tel]||{};delete a[tel].e;if(v===''||v==null||v==='_ninguna')delete a[tel][k];else a[tel][k]=v;if(!Object.keys(a[tel]).length)delete a[tel];save();if(k==='t')waPushEtq(tel,prev,(a[tel]||{}).t)}
+/* Pone o quita la etiqueta real en WhatsApp Business cuando el tablero está vinculado a una etiqueta */
+async function waPushEtq(tel,prev,nuevo){
+  if(prev===nuevo||!(ui.waConn&&ui.waConn.estado==='conectado'))return;
+  const tb=id=>waTabs().find(x=>x.id===id),c=waLista().find(x=>x.tel===tel);if(!c)return;
+  const jid=waJid(c),a=tb(prev),b=tb(nuevo);
+  try{if(a&&a.lid)await waApi('etiquetar',{jid,labelId:a.lid,quitar:true});if(b&&b.lid)await waApi('etiquetar',{jid,labelId:b.lid})}
+  catch(e){toast('Se guardó aquí, pero no pude etiquetar en WhatsApp: '+(e.detalle||'revisa la conexión'))}
+}
+/* Trae las etiquetas de WhatsApp Business: crea los tableros que falten y vincula por nombre */
+async function waSyncEtq(){
+  try{
+    const r=await waApi('etiquetas'),L=r.etiquetas||[],tabs=waTabs(),nm=x=>String(x||'').trim().toLowerCase();let ch=false;
+    L.forEach(l=>{let t=tabs.find(x=>x.lid===l.id)||tabs.find(x=>!x.lid&&nm(x.nombre)===nm(l.nombre));
+      if(!t){tabs.push({id:uid(),nombre:l.nombre,color:WA_COL[l.color]||'#64748B',lid:l.id});ch=true}else if(t.lid!==l.id){t.lid=l.id;ch=true}});
+    ui.waEtqOk=true;ui.waEtqN=L.length;
+    if(ch)save();
+  }catch(e){ui.waEtqOk=false}
+}
+/* Lo que ya tiene cada chat en WhatsApp manda: se refleja en su tablero */
+function waAplicarEtqChats(){
+  const tabs=waTabs(),a=waAsig();let ch=false;
+  (ui.waLive||[]).forEach(x=>{if(!(x.etiquetas&&x.etiquetas.length))return;const t=tabs.find(z=>z.lid&&x.etiquetas.includes(z.lid));if(!t)return;
+    if((a[x.tel]||{}).t!==t.id){a[x.tel]=a[x.tel]||{};a[x.tel].t=t.id;ch=true}});
+  if(ch)save();
+}
 function waContactos(){
   const m=new Map();
   S.orders.forEach(o=>{const n=waNumber(o.telefono);if(!n)return;let c=m.get(n);if(!c){c={tel:n,nombre:o.cliente||'Sin nombre',ped:0,total:0,ult:null,manual:false};m.set(n,c)}
@@ -1311,7 +1338,7 @@ function waHora(t){if(!t)return '';const d=new Date(t),h=new Date();return d.toD
 }
 function waOrden(c){return c.ult||{cliente:c.nombre,producto:(c.datos&&c.datos.producto)||'',talla:(c.datos&&c.datos.talla)||'',color:(c.datos&&c.datos.color)||'',cantidad:num(c.datos&&c.datos.cantidad)||1,precio:0,pago:'',ciudad:(c.datos&&c.datos.ciudad)||'',fecha:today(),estado:''}}
 const WA_FIL=[['todos','Todos'],['grupos','Grupos'],['nuevo','Nuevos'],['pedido','Con pedido'],['espera','Esperando pago'],['sinctc','Sin contactar']];
-const waCumple=(c,f)=>f==='todos'||(f==='grupos'&&c.grupo)||(!c.grupo&&((f==='nuevo'&&!c.ped)||(f==='pedido'&&c.ped>0)||(f==='espera'&&(c.t==='espera'||c.e==='pagopend'))||(f==='sinctc'&&!c.at)));
+const waCumple=(c,f)=>f==='todos'||(f==='grupos'&&c.grupo)||(!c.grupo&&((f==='nuevo'&&!c.ped)||(f==='pedido'&&c.ped>0)||(f==='espera'&&c.t==='espera')||(f==='sinctc'&&!c.at)));
 const waColorT=id=>(waTabs().find(x=>x.id===id)||{}).color||'#9AA5B1';
 const waNomT=id=>(waTabs().find(x=>x.id===id)||{}).nombre||'';
 const waIni=c=>String(c.nombre||'?').trim().charAt(0).toUpperCase()||'?';
@@ -1385,7 +1412,7 @@ function waFicha(c){
 function waTableros(){
   const L=waLista(),q=(ui.waQ||'').toLowerCase(),tabs=waTabs();
   const lista=L.filter(c=>!c.grupo&&(!q||(c.nombre+' '+c.tel).toLowerCase().includes(q)));
-  $('#waBody').innerHTML=`<div class="wa-tb"><div class="card" style="margin-top:12px"><div class="row"><button class="btn sm" type="button" id="kbSync">Ordenar según el estado del pedido</button><button class="btn sm" type="button" id="tbNuevo">+ Tablero</button></div><p class="hint" style="margin:0 0 0 auto;flex:1 1 260px">Arrastra cada chat a su tablero (en el celular usa «Mover a un tablero…»). ◀ ▶ ordena y ✎ renombra.</p></div>
+  $('#waBody').innerHTML=`<div class="wa-tb"><div class="card" style="margin-top:12px"><div class="row"><button class="btn sm" type="button" id="kbSync">Ordenar según el estado del pedido</button><button class="btn sm" type="button" id="tbNuevo">+ Tablero</button></div><p class="hint" style="margin:0 0 0 auto;flex:1 1 260px">Cada tablero es una etiqueta de WhatsApp Business con el mismo nombre: al mover un chat se etiqueta también en tu WhatsApp. Arrastra o usa «Mover a un tablero…». ◀ ▶ ordena y ✎ renombra.</p>${(()=>{const sin=waTabs().filter(t=>!t.lid).map(t=>t.nombre);return ui.waConn&&ui.waConn.estado==='conectado'&&ui.waEtqOk&&sin.length?`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">⚠️ Sin etiqueta en WhatsApp todavía: <b>${sin.map(esc).join(', ')}</b>. Créalas con ese mismo nombre en WhatsApp Business (Herramientas → Etiquetas) y toca <b>Sincronizar</b>.</p>`:''})()}</div>
   <div class="wa-tbg"><div class="wa2-list" id="waLeft"><b style="padding:2px 4px">💬 Chats <span class="badge">${L.length}</span></b><input id="waQBuscar" type="search" placeholder="Buscar chat…" value="${esc(ui.waQ||'')}" aria-label="Buscar chat"><div class="wa2-rows">${lista.map(c=>waFilaChat(c,false,true)).join('')||'<div class="kb-vacio">Sin chats</div>'}</div></div>
   <div class="kb" id="kb">${tabs.map((t,i)=>{const l=lista.filter(c=>c.t===t.id);return `<div class="kb-col" data-col="${esc(t.id)}" style="border-top:4px solid ${esc(t.color)}"><div class="kb-h" style="padding-bottom:6px"><b style="flex:1;min-width:0">${esc(t.nombre)}</b><span>${l.length}</span></div><div class="row" style="gap:4px;margin:0 0 8px"><button class="btn sm" type="button" data-tbmv="${i}:-1" ${i===0?'disabled':''} aria-label="Mover tablero a la izquierda">◀</button><button class="btn sm" type="button" data-tbmv="${i}:1" ${i===tabs.length-1?'disabled':''} aria-label="Mover tablero a la derecha">▶</button><button class="btn sm" type="button" data-tbed="${i}" aria-label="Editar tablero">✎</button></div>${l.length?l.map(c=>`<div class="kb-card" draggable="true" data-tel="${esc(c.tel)}"><div class="nm"><span class="av">${esc(waIni(c))}</span><div style="min-width:0"><b>${esc(c.nombre)}</b><br><small>+${esc(c.tel)}</small></div></div>${c.ult?`<small>Pedido: <span class="badge b-${esc(c.ult.estado)}">${esc(c.ult.estado)}</span></small>`:''}<div class="wa-btns"><a class="btn wa" href="${esc(waLink(c.tel,''))}" target="_blank" rel="noopener" data-wabrir="${esc(c.tel)}">💬 Chat</a><button class="btn" type="button" data-wsel="${esc(c.tel)}" data-ir="chats">Ficha</button></div></div>`).join(''):'<div class="kb-vacio">Suelta aquí</div>'}</div>`}).join('')}</div></div></div>`;
 }
@@ -1436,7 +1463,7 @@ async function waEstadoSrv(){
 }
 async function waSincronizar(manual){
   if(ui.waSync)return;ui.waSync=true;if(ui.tab==='wa')waCabecera();
-  try{const r=await waApi('chats');ui.waLive=(r.chats||[]).filter(x=>!x.lid).slice(0,300);try{localStorage.setItem('yosca_wa_live',JSON.stringify(ui.waLive.slice(0,150)))}catch(e){}if(manual)toast(ui.waLive.length+' chats sincronizados')}
+  try{await waSyncEtq();const r=await waApi('chats');ui.waLive=(r.chats||[]).filter(x=>!x.lid).slice(0,300);waAplicarEtqChats();try{localStorage.setItem('yosca_wa_live',JSON.stringify(ui.waLive.slice(0,150)))}catch(e){}if(manual)toast(ui.waLive.length+' chats sincronizados')}
   catch(e){if(manual)toast('No pude sincronizar: '+(e.detalle||'revisa el servidor'))}
   finally{ui.waSync=false;if(ui.tab==='wa')waRender()}
 }
