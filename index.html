@@ -2477,6 +2477,9 @@ function invRefresh(op){
   else if(pig.value&&hasTC){msg='Esa talla o color no está en el inventario de este producto. Elige uno de los cuadritos.';cls='warn'}
   else if(pig.value){msg='Elige la talla y el color para descontar del inventario.'}
   if(ui.pedExtraMsg)msg+=`<div class="iq-ojo">${esc(ui.pedExtraMsg)}</div>`;
+  // con varios colores/tallas/productos la venta es siempre por unidad: se fija sola
+  {const fijo=!!ui.pedMulti;if(fijo&&pf.pack.value!=='1'){pf.pack.value='1';syncPack()}
+   pf.pack.disabled=fijo;const lb=document.querySelector('label[for=p-pack]');if(lb)lb.textContent=fijo?'Venta por (solo unidad con varios)':'Venta por'}
   h.hidden=!msg;h.innerHTML=msg?`<div class="iq-msg">${msg}</div>`:'';h.className='full alert'+(cls?' err':'');h.style.background=cls?'':'var(--primary-soft)';
 }
 function invFromGroup(){
