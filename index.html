@@ -497,7 +497,7 @@ summary{cursor:pointer}
           <div class="full" id="invChips" hidden><label id="lblT1">Talla (toca las que quieras)</label><div class="tchips ichips" id="icT"></div><label id="lblC1" style="margin-top:10px">Color (toca los que quieras)</label><div class="tchips ichips" id="icC"></div></div>
           <div class="full" id="invQty" hidden></div>
           <div class="full" style="display:none"><label for="p-inv">Variante que se descuenta (se llena sola)</label><select id="p-inv" name="invId"></select></div>
-          <div><label for="p-pack">Venta por</label><select id="p-pack" name="pack"><option value="1">Por unidad</option><option value="3">Pack por 3</option><option value="6">Pack por 6</option><option value="12">Pack por 12</option><option value="custom">Personalizado (polos sueltos)</option></select></div>
+          <div><label for="p-pack">Venta por</label><select id="p-pack" name="pack"><option value="1">Por unidad</option><option value="custom">Personalizado (polos sueltos)</option></select></div>
           <div id="packBox" hidden><label for="p-pp" id="lblPP">Precio del pack completo (S/)</label><input id="p-pp" type="number" name="precioPack" min="0" step="any"></div>
           <div class="full alert" id="packHint" style="background:var(--primary-soft)" hidden></div>
           <div><label for="p-cliente">Cliente</label><input id="p-cliente" name="cliente" required></div>
@@ -2193,7 +2193,7 @@ function newGarment(o={}){return {id:uid(),sku:'',name:'Nueva prenda',coleccion:
 /* ================= PEDIDOS ================= */
 const pf=$('#pedForm');
 const esLote=()=>pf.pack.value==='custom';   // personalizado: N polos sueltos por un precio total (no es pack)
-const packN=()=>esLote()?1:(num(pf.pack.value)||1);   // prendas por pack (1 = por unidad)
+const packN=()=>1;   // ya no hay packs: siempre se vende por unidad
 pf.estado.innerHTML=ESTADOS.map(e=>`<option>${e}</option>`).join('');
 pf.pago.innerHTML=PAGOS.map(e=>`<option>${e}</option>`).join('');
 $('#pedFiltro').innerHTML='<option value="">Todos los estados</option>'+ESTADOS.map(e=>`<option>${e}</option>`).join('');
@@ -2332,7 +2332,7 @@ $('#pedTabla').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.ed){const o=S.orders.find(x=>x.id===b.dataset.ed);ui.editOrder=o.id;fillGarmentSelect();
     Object.keys(o).forEach(k=>{if(pf[k]&&k!=='id')pf[k].value=o[k]});
-    pf.pack.value=o.lote?'custom':String(o.pack>1?o.pack:1);if(o.pack>1)pf.cantidad.value=o.packs||1;if(o.lote)pf.precioPack.value=o.lote;syncPack();syncWaForm();
+    pf.pack.value=o.lote?'custom':'1';if(o.lote)pf.precioPack.value=o.lote;syncPack();syncWaForm();
     {const it=o.invId&&invFind(o.invId),m0=Array.isArray(o.multi)&&o.multi.length?invFind(o.multi[0].id):null;pig.value=it?invKey(it):m0?invKey(m0):'';pf.invId.value=it?it.id:'';ui.pedQty={};ui.pedProds=[];ui.pedSelX={};
      if(m0){o.multi.forEach(m=>{ui.pedQty[m.id]=m.q});const its=o.multi.map(m=>invFind(m.id)).filter(Boolean),ks=[...new Set(its.map(invKey))],u=(a,f)=>[...new Set(a.map(i=>i[f]).filter(Boolean))];
        pig.value=ks[0];ui.pedProds=ks.slice(0,2);const g1=its.filter(i=>invKey(i)===ks[0]);
