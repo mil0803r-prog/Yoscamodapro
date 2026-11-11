@@ -822,14 +822,16 @@ function save(){
     if(!seenDb[name]||!puedeEscribir(name))continue; // aún no llegó lo que hay en la nube: no se escribe encima
     const seen=new Set();
     for(const x of S[name]){seen.add(x.id);const j=JSON.stringify(x);
-      if(remote[name].get(x.id)!==j){remote[name].set(x.id,j);ops.push(DB.collection(name).doc(x.id).set(x))}}
+      if(remote[name].get(x.id)!==j){const prev=remote[name].get(x.id);remote[name].set(x.id,j);ops.push(Promise.resolve(DB.collection(name).doc(x.id).set(x)).catch(e=>{if(prev===undefined)remote[name].delete(x.id);else remote[name].set(x.id,prev);throw e}))}}
     for(const id of [...remote[name].keys()])if(!seen.has(id)){remote[name].delete(id);ops.push(DB.collection(name).doc(id).delete())}
   }
   const sj=JSON.stringify(S.settings);
   if(seenDb.settings&&puedeEscribir('settings')&&sj!==remote.settings){remote.settings=sj;ops.push(DB.doc('config/settings').set(S.settings))}
-  Promise.all(ops).catch(()=>toast('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.'));
+  Promise.all(ops).catch(e=>toast(e&&e.code==='permission-denied'?'Firebase no te deja guardar: faltan publicar las reglas o el acceso.':'No se pudo guardar en la nube ('+((e&&(e.code||e.message))||'error')+'). Se reintentará al próximo cambio.'));
 }
+let LOCAL_BOOT=null;
 function load(){
+  try{LOCAL_BOOT=JSON.parse(localStorage.getItem(KEY))}catch(e){}
   try{const s=JSON.parse(localStorage.getItem(KEY));
     if(s&&typeof s==='object'){COLS.forEach(c=>{if(Array.isArray(s[c]))S[c]=s[c]});S.settings={...S.settings,...(s.settings||{})}}}catch(e){}
 }
@@ -843,12 +845,34 @@ function pushCol(name){
   for(const x of S[name]){remote[name].set(x.id,JSON.stringify(x));ops.push(DB.collection(name).doc(x.id).set(x))}
   Promise.all(ops).catch(()=>toast('No se pudieron subir tus datos. Revisa tu conexión.'));
 }
+/* Recuperar pedidos que quedaron solo en este dispositivo (no llegaron a la nube por un error de guardado) */
+function recuperarLocal(rem){
+  const lo=LOCAL_BOOT&&Array.isArray(LOCAL_BOOT.orders)?LOCAL_BOOT.orders:[];
+  if(!lo.length||ui.recHecho||!FB_MODE)return;ui.recHecho=true;
+  const canon=o=>JSON.stringify(Object.keys(o).filter(k=>o[k]!==undefined).sort().map(k=>[k,o[k]])),rm=new Map(rem.map(o=>[o.id,canon(o)]));
+  const nuevos=lo.filter(o=>o&&o.id&&!rm.has(o.id)),editados=lo.filter(o=>o&&o.id&&rm.has(o.id)&&rm.get(o.id)!==canon(o));
+  if(!nuevos.length&&!editados.length)return;
+  const firma=[...nuevos,...editados].map(o=>o.id).sort().join(',');
+  try{if(localStorage.getItem('yosca_rec_skip')===firma)return}catch(e){}
+  ui.recCambios={nuevos,editados,firma};
+  const fila=(o,t)=>`<div class="mvrow"><div><b>${esc(o.cliente||'Sin nombre')}</b><div class="sub">${esc(o.producto||'')} · ${esc(fechaCorta(o.fecha))} · costo ${fmt(num(o.costo))} c/u</div></div><span class="badge">${t}</span></div>`;
+  dlgOpen(`<h2 style="margin:0 0 6px">Cambios de este celular sin guardar</h2><p class="sub">Encontré <b>${nuevos.length}</b> pedido(s) nuevo(s) y <b>${editados.length}</b> editado(s) en este dispositivo que no llegaron a tu cuenta (fue un error de guardado que ya corregí). ¿Los subo a tu cuenta?</p>
+  <div style="max-height:40vh;overflow:auto;margin:8px 0">${nuevos.slice(0,12).map(o=>fila(o,'Nuevo')).join('')}${editados.slice(0,12).map(o=>fila(o,'Editado')).join('')}</div>
+  <div class="row"><button class="btn pri" type="button" id="recSi">Sí, subirlos a mi cuenta</button><button class="btn" type="button" id="recNo">No, descartarlos</button></div>`);
+}
+document.addEventListener('click',e=>{
+  if(e.target.id==='recSi'&&ui.recCambios){const {nuevos,editados}=ui.recCambios;ui.recCambios=null;
+    [...editados,...nuevos].forEach(o=>{const i=S.orders.findIndex(x=>x.id===o.id);if(i>=0)S.orders[i]=o;else S.orders.unshift(o)});
+    save();dlgClose();refreshAll();toast('Listo: '+(nuevos.length+editados.length)+' pedido(s) subidos a tu cuenta.')}
+  else if(e.target.id==='recNo'&&ui.recCambios){try{localStorage.setItem('yosca_rec_skip',ui.recCambios.firma)}catch(x){}ui.recCambios=null;dlgClose()}
+});
 function attachDb(db,opts={}){
   DB=db;MIGRATE=!!opts.migrate;COLS.forEach(c=>seenDb[c]=false);seenDb.settings=false;
   for(const name of COLS){
     unsubs.push(db.collection(name).onSnapshot(snap=>{
       const first=!seenDb[name];seenDb[name]=true;
       const list=snap.docs.map(d=>({...d.data()}));
+      if(first&&name==='orders'&&list.length)setTimeout(()=>recuperarLocal(list),900);
       // Primera vez en esta cuenta: lo que había en este navegador se sube a la nube.
       if(first&&MIGRATE&&!list.length&&S[name].length){pushCol(name);return}
       const m=new Map(list.map(x=>[x.id,JSON.stringify(x)]));
@@ -1075,13 +1099,14 @@ document.addEventListener('click',async e=>{
 });
 
 // Adaptador: hace que Firestore se use igual que la base de datos de Claude.
+const limpio=d=>JSON.parse(JSON.stringify(d));   // quita undefined y valores no válidos antes de escribir en Firestore
 function fsAdapter(st){
   return {
     collection:name=>({
-      doc:id=>({set:d=>st.set(name,id,d),delete:()=>st.del(name,id)}),
+      doc:id=>({set:d=>st.set(name,id,limpio(d)),delete:()=>st.del(name,id)}),
       onSnapshot:(next,err)=>st.colSnap(name,list=>next({docs:list.map(d=>({data:()=>d}))}),err)
     }),
-    doc:path=>({set:d=>st.setDoc(path,d),onSnapshot:(next,err)=>st.docSnap(path,d=>next({exists:!!d,data:()=>d}),err)})
+    doc:path=>({set:d=>st.setDoc(path,limpio(d)),onSnapshot:(next,err)=>st.docSnap(path,d=>next({exists:!!d,data:()=>d}),err)})
   };
 }
 
@@ -2245,18 +2270,18 @@ pf.addEventListener('submit',e=>{
     if(!(fd.precioPack>0)||!(fd.cantidad>0)){toast('Escribe cuántos polos son y el precio total.');return}
     fd.lote=fd.precioPack;fd.precio=r2(fd.precioPack/fd.cantidad);fd.pack=1;fd.packs=0;delete fd.precioPack;
   }else if(fd.pack>1){
-    fd.lote=undefined;
     if(!(fd.precioPack>0)){toast(`Escribe el precio del pack de ${fd.pack}`);return}
     fd.packs=fd.cantidad;fd.cantidad=fd.packs*fd.pack;fd.precio=r2(fd.precioPack/fd.pack);
-  }else{fd.pack=1;delete fd.precioPack;fd.packs=0;fd.lote=undefined}
+  }else{fd.pack=1;delete fd.precioPack;fd.packs=0}
   if(ui.pedMulti&&ui.pedMulti.length){   // varios colores o tallas (o varios productos)
     if(lote||fd.pack>1){toast('Para varios colores o tallas usa «Por unidad».');return}
     const its=ui.pedMulti.map(id=>invFind(id)).filter(Boolean);
     fd.multi=its.map(i=>({id:i.id,q:Math.max(1,num((ui.pedQty||{})[i.id])||1)}));fd.invId='';fd.cantidad=fd.multi.reduce((a,m)=>a+m.q,0);
     fd.talla=[...new Set(its.map(i=>i.talla).filter(Boolean))].join(', ');fd.color=[...new Set(its.map(i=>i.color).filter(Boolean))].join(', ');
-  }else fd.multi=undefined;
+  }
   let ord;
   if(ui.editOrder){ord=S.orders.find(o=>o.id===ui.editOrder);if(Array.isArray(ord.multi))orderStockRelease(ord);Object.assign(ord,fd)}else{ord={id:uid(),...fd};S.orders.unshift(ord)}
+  if(!fd.multi)delete ord.multi;if(!fd.lote)delete ord.lote;   // Firestore no acepta valores «undefined»
   orderStockSync(ord);
   save();resetPed();renderPed();toast('Pedido guardado');
 });
@@ -2286,7 +2311,7 @@ function renderPed(){
       <div class="ord-prod"><b>${esc(o.producto)}</b><div class="ord-meta">${detalle}</div></div>
       <div class="ord-money">
         <div><small>Total</small><b>${fmt(num(o.precio)*q)}</b></div>
-        <div><small>Utilidad</small><b class="${u>0?'pos':u<0?'neg':''}">${u?fmt(u):'—'}</b></div>
+        <div><small>Utilidad</small><b class="${u>0?'pos':u<0?'neg':''}">${u?fmt(u):'—'}</b>${u>0||u<0?`<small>${fmt(num(o.precio)-num(o.costo))} por unidad</small>`:''}</div>
         <div><small>Pago</small><b style="font-size:13px">${esc(o.pago||'—')}</b></div>
       </div>
       <div class="ord-foot"><span>${fechaCorta(o.fecha)}${o.pack>1?' · '+fmt(o.precio)+' c/u':''}</span>
@@ -2305,7 +2330,7 @@ function pedTablero(rows){
     return `<div class="kb-card pk-card" draggable="true" data-oid="${esc(o.id)}" data-from="${esc(col)}" data-ptel="${esc(n||'')}">
       <div class="row sb"><b>${esc(o.producto||'Sin producto')}</b><small>${esc(fechaCorta(o.fecha).replace(/ \d{4}$/,''))}</small></div>
       <small>${esc([o.cliente,o.ciudad,'x'+q].filter(Boolean).join(' · '))}</small>
-      <div class="pk-m"><span><small>Venta</small><b>${fmt(num(o.precio)*q)}</b></span><span><small>Utilidad</small><b class="${u>0?'pos':u<0?'neg':''}">${u?fmt(u):'—'}</b></span></div>
+      <div class="pk-m"><span><small>Venta</small><b>${fmt(num(o.precio)*q)}</b></span><span><small>Utilidad</small><b class="${u>0?'pos':u<0?'neg':''}">${u?fmt(u):'—'}</b>${u?`<small>${fmt(num(o.precio)-num(o.costo))} c/u</small>`:''}</span></div>
       <select data-pmover="${esc(o.id)}" data-from="${esc(col)}" aria-label="Mover a un tablero"><option value="">Mover a…</option>${cols.map(c=>`<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join('')}</select>
       <button class="btn sm" type="button" data-ed="${esc(o.id)}">Editar</button>
     </div>`};
