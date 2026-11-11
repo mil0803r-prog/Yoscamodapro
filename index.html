@@ -511,7 +511,7 @@ summary{cursor:pointer}
           <div class="full alert" id="invHint" style="background:var(--primary-soft)" hidden></div>
           <div><label for="p-cant" id="lblCant">Cantidad</label><input id="p-cant" type="number" name="cantidad" min="1" value="1" required></div>
           <div><label for="p-precio">Precio de venta (unidad, S/)</label><input id="p-precio" type="number" name="precio" min="0" step="any" required></div>
-          <div><label for="p-costo">Costo directo (unidad, S/)</label><input id="p-costo" type="number" name="costo" min="0" step="any" value="0"></div>
+          <div><label for="p-costo">Costo directo (unidad, S/) <small style="font-weight:600;opacity:.8">· viene del inventario</small></label><input id="p-costo" type="number" name="costo" min="0" step="any" value="0"></div>
           <div><label for="p-modelo">Modelo</label><input id="p-modelo" name="modelo" placeholder="Ej. Cuello redondo, Cuello V"></div>
           <div><label for="p-estado">Estado</label><select id="p-estado" name="estado"></select></div>
           <div><label for="p-pago">Pago</label><select id="p-pago" name="pago"></select></div>
@@ -2235,7 +2235,7 @@ function syncWaForm(){const w=$('#waForm');if(w)w.innerHTML=waBtn(pf.telefono.va
 pf.telefono.addEventListener('input',syncWaForm);pf.cliente.addEventListener('input',syncWaForm);pf.producto.addEventListener('input',syncWaForm);
 function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
 $('#pedNuevo').addEventListener('click',()=>{if($('#pedCard').hidden){resetPed();pedMostrarForm(true)}else pedMostrarForm(false)});
-function resetPed(){ui.pedQty={};ui.pedProds=[];ui.pedSelX={};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
+function resetPed(){delete pf.costo.dataset.auto;ui.pedQty={};ui.pedProds=[];ui.pedSelX={};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
 pf.addEventListener('submit',e=>{
   e.preventDefault();
   const fd=Object.fromEntries(new FormData(pf));
@@ -2470,6 +2470,12 @@ function invRefresh(op){
     const sinStock=its.filter(i=>num(ui.pedQty[i.id])>num(i.stock));
     msg=`<b>Se descontará del inventario:</b><ul class="iq-res">${its.map(i=>`<li><span>${esc(nm(i))}</span><b>×${num(ui.pedQty[i.id])}</b></li>`).join('')}</ul><div class="iq-tot">Total: <b>${total} unidades</b></div><div class="iq-nota">Se descuenta cuando el cliente pasa al tablero «Ya pagó».</div>`+(sinStock.length?`<div class="iq-ojo">Ojo: no alcanza el stock en ${sinStock.map(i=>esc(nm(i))).join(', ')}.</div>`:'');cls=sinStock.length?'warn':'';
   }else{qb.hidden=true;qb.innerHTML='';pf.cantidad.readOnly=false}
+  // costo directo por unidad: se pasa solo desde el inventario (promedio ponderado si son varias variantes)
+  {let cu=0;
+   if(ui.pedMulti){const its=ui.pedMulti.map(id=>invFind(id)).filter(Boolean),tq=its.reduce((a,i)=>a+num((ui.pedQty||{})[i.id]||1),0);cu=tq?its.reduce((a,i)=>a+num(i.costo)*num((ui.pedQty||{})[i.id]||1),0)/tq:0}
+   else if(sel)cu=num(sel.costo);
+   else if(pig.value&&vs.length)cu=num(vs[0].costo);
+   if(cu>0){const cur=pf.costo.value,auto=pf.costo.dataset.auto;if(!num(cur)||String(cur)===auto){pf.costo.value=r2(cu);pf.costo.dataset.auto=String(r2(cu))}}}
   if(ui.pedMulti){}
   else if(multiple&&faltan.length){msg=`No está en el inventario de este producto: <b>${faltan.map(esc).join(', ')}</b>. Elige de los cuadritos.`;cls='warn'}
   else if(sel){const dispo=num(sel.stock);msg=`Stock disponible de ${esc(invName(sel))}: <b>${dispo} ${esc(sel.unidad||'unid')}</b>. Se descuenta cuando el cliente pasa al tablero «Ya pagó». Si lo quitas de ahí, se cancela o se devuelve, el stock regresa.`+(q>dispo?` <b>Ojo: pides ${q} y solo hay ${dispo}.</b>`:'');cls=q>dispo?'warn':''}
@@ -2490,7 +2496,6 @@ function invFromGroup(){
   if(f.garmentId)pf.garmentId.value=f.garmentId;
   const n=packN()||1;
   if(n===1){if(!num(pf.precio.value)&&num(f.precio))pf.precio.value=f.precio}
-  if(!num(pf.costo.value)&&num(f.costo))pf.costo.value=f.costo;
   pf.talla.value='';pf.color.value='';pf.invId.value='';
   invRefresh();
 }
