@@ -1303,12 +1303,15 @@ async function waPushEtq(tel,prev,nuevo){
 async function waSyncEtq(){
   try{
     const r=await waApi('etiquetas'),L=r.etiquetas||[],tabs=waTabs(),nm=x=>String(x||'').trim().toLowerCase();
-    const antes=JSON.stringify(tabs),usados=new Set(),orden=[];
-    // Nombre, color y orden salen de WhatsApp Business; los tableros que no existen allá quedan al final
-    L.forEach(l=>{let t=tabs.find(x=>x.lid===l.id)||tabs.find(x=>!x.lid&&nm(x.nombre)===nm(l.nombre)&&!usados.has(x));
-      if(!t)t={id:uid()};t.lid=l.id;t.nombre=l.nombre;t.color=WA_COL[l.color%WA_COL.length]||'#64748B';usados.add(t);orden.push(t)});
-    if(L.length){const resto=tabs.filter(t=>!usados.has(t));tabs.splice(0,tabs.length,...orden,...resto)}
-    ui.waEtqOk=true;ui.waEtqN=L.length;
+    ui.waEtqOk=true;ui.waEtqN=L.length;ui.waEtqFallo=r.fallo||0;
+    if(!L.length)return;
+    // Los tableros pasan a ser exactamente las etiquetas de WhatsApp Business (nombre, color y orden)
+    const antes=JSON.stringify(tabs),usados=new Set(),nuevos=[];
+    L.forEach(l=>{const t=tabs.find(x=>x.lid===l.id&&!usados.has(x))||tabs.find(x=>!x.lid&&nm(x.nombre)===nm(l.nombre)&&!usados.has(x))||{id:uid()};
+      t.lid=l.id;t.nombre=l.nombre;t.color=WA_COL[l.color%WA_COL.length]||'#64748B';usados.add(t);nuevos.push(t)});
+    const quedan=new Set(nuevos.map(t=>t.id));
+    Object.values(waAsig()).forEach(a=>{if(a.t&&!quedan.has(a.t))delete a.t});
+    tabs.splice(0,tabs.length,...nuevos);
     if(JSON.stringify(tabs)!==antes)save();
   }catch(e){ui.waEtqOk=false}
 }
@@ -1415,7 +1418,9 @@ function waFicha(c){
 function waTableros(){
   const L=waLista(),q=(ui.waQ||'').toLowerCase(),tabs=waTabs();
   const lista=L.filter(c=>!c.grupo&&(!q||(c.nombre+' '+c.tel).toLowerCase().includes(q)));
-  $('#waBody').innerHTML=`<div class="wa-tb"><div class="card" style="margin-top:12px"><div class="row"><button class="btn sm" type="button" id="kbSync">Ordenar según el estado del pedido</button><button class="btn sm" type="button" id="tbNuevo">+ Tablero</button></div><p class="hint" style="margin:0 0 0 auto;flex:1 1 260px">Cada tablero es una etiqueta de WhatsApp Business con el mismo nombre: al mover un chat se etiqueta también en tu WhatsApp. Arrastra o usa «Mover a un tablero…». ◀ ▶ ordena y ✎ renombra.</p>${(()=>{const sin=waTabs().filter(t=>!t.lid).map(t=>t.nombre);return ui.waConn&&ui.waConn.estado==='conectado'&&ui.waEtqOk&&sin.length?`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">⚠️ Sin etiqueta en WhatsApp todavía: <b>${sin.map(esc).join(', ')}</b>. Créalas con ese mismo nombre en WhatsApp Business (Herramientas → Etiquetas) y toca <b>Sincronizar</b>.</p>`:''})()}</div>
+  $('#waBody').innerHTML=`<div class="wa-tb"><div class="card" style="margin-top:12px"><div class="row"><button class="btn sm" type="button" id="kbSync">Ordenar según el estado del pedido</button><button class="btn sm wa" type="button" id="kbEtqSync">Traer etiquetas de WhatsApp</button><button class="btn sm" type="button" id="tbNuevo">+ Tablero</button></div><p class="hint" style="margin:0 0 0 auto;flex:1 1 260px">Cada tablero es una etiqueta de WhatsApp Business con el mismo nombre: al mover un chat se etiqueta también en tu WhatsApp. Arrastra o usa «Mover a un tablero…». ◀ ▶ ordena y ✎ renombra.</p>${(()=>{if(!(ui.waConn&&ui.waConn.estado==='conectado'&&ui.waEtqOk))return '';const sin=waTabs().filter(t=>!t.lid).map(t=>t.nombre);
+ if(!ui.waEtqN)return `<p class="hint" style="flex:1 1 100%;margin:4px 0 0">⚠️ WhatsApp no devolvió etiquetas${ui.waEtqFallo?' (el servidor respondió '+ui.waEtqFallo+')':''}. Revisa que sea una cuenta de <b>WhatsApp Business</b> con etiquetas creadas (Herramientas → Etiquetas) y toca <b>Traer etiquetas</b>.</p>`;
+ return sin.length?`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">⚠️ Sin etiqueta en WhatsApp todavía: <b>${sin.map(esc).join(', ')}</b>.</p>`:`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">✅ ${ui.waEtqN} etiquetas de WhatsApp Business sincronizadas.</p>`})()}</div>
   <div class="wa-tbg"><div class="wa2-list" id="waLeft"><b style="padding:2px 4px">💬 Chats <span class="badge">${L.length}</span></b><input id="waQBuscar" type="search" placeholder="Buscar chat…" value="${esc(ui.waQ||'')}" aria-label="Buscar chat"><div class="wa2-rows">${lista.map(c=>waFilaChat(c,false,true)).join('')||'<div class="kb-vacio">Sin chats</div>'}</div></div>
   <div class="kb" id="kb">${tabs.map((t,i)=>{const l=lista.filter(c=>c.t===t.id);return `<div class="kb-col" data-col="${esc(t.id)}" style="border-top:4px solid ${esc(t.color)}"><div class="kb-h" style="padding-bottom:6px"><b style="flex:1;min-width:0">${esc(t.nombre)}</b><span>${l.length}</span></div><div class="row" style="gap:4px;margin:0 0 8px"><button class="btn sm" type="button" data-tbmv="${i}:-1" ${i===0?'disabled':''} aria-label="Mover tablero a la izquierda">◀</button><button class="btn sm" type="button" data-tbmv="${i}:1" ${i===tabs.length-1?'disabled':''} aria-label="Mover tablero a la derecha">▶</button><button class="btn sm" type="button" data-tbed="${i}" aria-label="Editar tablero">✎</button></div>${l.length?l.map(c=>`<div class="kb-card" draggable="true" data-tel="${esc(c.tel)}"><div class="nm"><span class="av">${esc(waIni(c))}</span><div style="min-width:0"><b>${esc(c.nombre)}</b><br><small>+${esc(c.tel)}</small></div></div>${c.ult?`<small>Pedido: <span class="badge b-${esc(c.ult.estado)}">${esc(c.ult.estado)}</span></small>`:''}<div class="wa-btns"><a class="btn wa" href="${esc(waLink(c.tel,''))}" target="_blank" rel="noopener" data-wabrir="${esc(c.tel)}">💬 Chat</a><button class="btn" type="button" data-wsel="${esc(c.tel)}" data-ir="chats">Ficha</button></div></div>`).join(''):'<div class="kb-vacio">Suelta aquí</div>'}</div>`}).join('')}</div></div></div>`;
 }
@@ -1595,6 +1600,7 @@ document.addEventListener('click',e=>{
   if(D.tbmv){const [i,d]=D.tbmv.split(':').map(Number),l=waTabs(),j=i+d;if(j<0||j>=l.length)return;[l[i],l[j]]=[l[j],l[i]];save();waTableros();return}
   if(D.tbed!=null){waDlgTab(+D.tbed);return}
   if(t.id==='tbNuevo'){waTabs().push({id:uid(),nombre:'Nuevo tablero',color:'#EC4899'});save();waTableros();waDlgTab(waTabs().length-1);return}
+  if(t.id==='kbEtqSync'){waSincronizar(true);return}
   if(t.id==='kbSync'){ask('¿Poner cada cliente en el tablero que corresponde al estado de su último pedido?',()=>{let n=0;waLista().forEach(c=>{if(!c.ult)return;const id=WA_MAPA_T[c.ult.estado];if(id&&waTabs().some(x=>x.id===id)&&c.t!==id){waSet(c.tel,'t',id);n++}});waTableros();waCabecera();toast(n?n+' chats movidos':'Ya estaban ordenados')});return}
   if(D.pdel!=null){ask('¿Eliminar esta plantilla?',()=>{waPlant().splice(+D.pdel,1);save();waPlantillas()});return}
   if(D.wvar){const ta=document.activeElement&&document.activeElement.matches('#v-wa textarea')?document.activeElement:window.__waUltima;if(!ta){toast('Primero toca dentro del mensaje donde quieres agregarla');return}const a=ta.selectionStart??ta.value.length,b=ta.selectionEnd??a;ta.value=ta.value.slice(0,a)+D.wvar+ta.value.slice(b);ta.focus();ta.selectionStart=ta.selectionEnd=a+D.wvar.length;ta.dispatchEvent(new Event('input',{bubbles:true}));return}

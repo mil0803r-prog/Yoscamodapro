@@ -147,10 +147,10 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
         return { status: 200, body: { chats: salida.slice(0, 300) } };
       }
       case 'etiquetas': {
-        let j = [];
-        try { j = await evo(c, '/label/findLabels/' + I, 'POST', {}); } catch (e) { if (e.estado !== 404 && e.estado !== 400 && e.estado !== 500) throw e; }
+        let j = [], fallo = 0;
+        try { j = await evo(c, '/label/findLabels/' + I, 'POST', {}); } catch (e) { if (!e.estado) throw e; fallo = e.estado; }
         const arr = Array.isArray(j) ? j : (j && (j.labels || j.records)) || [];
-        return { status: 200, body: { etiquetas: arr.map((l) => ({ id: String(l.id || l.labelId || ''), nombre: String(l.name || l.nombre || '').slice(0, 40), color: Number(l.color) || 0 })).filter((l) => l.id && l.nombre).slice(0, 60) } };
+        return { status: 200, body: { fallo, etiquetas: arr.map((l) => ({ id: String(l.id || l.labelId || ''), nombre: String(l.name || l.nombre || '').slice(0, 40), color: Number(l.color) || 0 })).filter((l) => l.id && l.nombre).slice(0, 60) } };
       }
       case 'etiquetar': {
         const jid = String(p.jid || ''), lid = String(p.labelId || '');
