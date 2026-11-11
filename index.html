@@ -400,6 +400,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .iq-res li{display:flex;justify-content:space-between;gap:12px;background:rgba(255,255,255,.55);border-radius:8px;padding:6px 10px}.iq-res li b{flex:none}
 .iq-tot{font-size:15px;margin-top:2px}.iq-nota{font-size:13px;opacity:.85;margin-top:4px}.iq-ojo{margin-top:6px;font-weight:800;color:var(--error)}
 .inv2{border-top:2px dashed var(--line);padding-top:12px}
+.ih-var{display:flex;gap:6px;flex-wrap:wrap;margin:3px 0}.ih-row{align-items:flex-start}
 /* ===== Optimización móvil y PC ===== */
 .kpi small,.scen small,.ord-money small,.vfhead,th,.wa-m small,.chartcard .tbtn{font-size:max(12px,.75rem)}
 @media (max-width:899px),(pointer:coarse){
@@ -588,6 +589,19 @@ summary{cursor:pointer}
         </div>
         <div id="invList"></div>
         <div class="row" style="margin-top:14px"><button class="btn" id="invExp" type="button">Descargar inventario (.csv)</button></div>
+      </div>
+      <div class="card" id="invHist" style="margin-top:14px">
+        <div class="row sb" style="margin-bottom:6px"><h3>Historial de salidas por talla</h3><span class="badge" id="ihCount"></span></div>
+        <p class="sub" style="margin:0 0 10px">Todo lo que se restó del inventario: cada venta, salida manual o ajuste, con su talla y color.</p>
+        <div class="row" style="margin-bottom:12px">
+          <select id="ihProd" style="width:auto;flex:1 1 150px" aria-label="Producto"></select>
+          <select id="ihTalla" style="width:auto" aria-label="Talla"></select>
+          <select id="ihColor" style="width:auto" aria-label="Color"></select>
+          <select id="ihPer" style="width:auto" aria-label="Periodo"><option value="">Todo el historial</option><option value="hoy">Hoy</option><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option><option value="mes">Este mes</option></select>
+        </div>
+        <div id="ihResumen"></div>
+        <div id="ihLista"></div>
+        <div class="row" style="margin-top:12px"><button class="btn" id="ihExp" type="button">Descargar historial (.csv)</button></div>
       </div>
     </section>
     <div class="dlg" id="dlg" hidden><div class="dlgcard" id="dlgBody" role="dialog" aria-modal="true"></div></div>
@@ -2499,7 +2513,7 @@ pf.invId.addEventListener('change',()=>{const it=invFind(pf.invId.value);if(it){
 
 const invKpi=(l,v,s='',cls='')=>`<div class="kpi"><span class="caps">${l}</span><b class="${cls}">${v}</b>${s?`<small>${s}</small>`:''}</div>`;
 function renderInv(){
-  const all=S.inventory;
+  const all=S.inventory;renderInvHist();
   const uds=all.reduce((a,i)=>a+Math.max(0,num(i.stock)),0);
   const vc=all.reduce((a,i)=>a+Math.max(0,num(i.stock))*num(i.costo),0);
   const vv=all.filter(i=>i.tipo==='prenda').reduce((a,i)=>a+Math.max(0,num(i.stock))*num(i.precio),0);
@@ -2536,6 +2550,40 @@ function renderInv(){
       <div class="inv-acts"><button class="btn sm pri" data-inv-var="${esc(f.id)}">+ Agregar talla o color</button></div>
     </article>`}).join('')+'</div>';
 }
+/* Historial de salidas por talla: todo lo que se restó del inventario */
+function ihMovs(){
+  const out=[];
+  S.inventory.forEach(i=>(i.mov||[]).forEach(m=>{if(num(m.cant)!==0)out.push({i,m,ts:m.ts||0})}));
+  return out.sort((a,b)=>String(b.m.fecha).localeCompare(String(a.m.fecha))||b.ts-a.ts);
+}
+function ihFiltrar(){
+  const k=$('#ihProd').value,t=$('#ihTalla').value,c=$('#ihColor').value,per=$('#ihPer').value,hoy=today();
+  const desde=per==='hoy'?hoy:per==='7'?addDays(hoy,-6):per==='30'?addDays(hoy,-29):per==='mes'?hoy.slice(0,8)+'01':'';
+  return ihMovs().filter(({i,m})=>(!k||invKey(i)===k)&&(!t||String(i.talla||'')===t)&&(!c||String(i.color||'')===c)&&(!desde||String(m.fecha)>=desde));
+}
+function renderInvHist(){
+  const all=ihMovs(),selP=$('#ihProd'),selT=$('#ihTalla'),selC=$('#ihColor');
+  const vp=selP.value,vt=selT.value,vc=selC.value;
+  const grupos=new Map();S.inventory.filter(i=>i.tipo==='prenda').forEach(i=>{const k=invKey(i);if(!grupos.has(k))grupos.set(k,i.nombre+(i.cuello?' · '+i.cuello:''))});
+  selP.innerHTML='<option value="">Todos los productos</option>'+[...grupos.entries()].map(([k,n])=>`<option value="${esc(k)}">${esc(n)}</option>`).join('');selP.value=grupos.has(vp)?vp:'';
+  const base=S.inventory.filter(i=>!selP.value||invKey(i)===selP.value);
+  const tallas=[...new Set(base.map(i=>String(i.talla||'')).filter(Boolean))].sort(cmpSz),colores=[...new Set(base.map(i=>String(i.color||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  selT.innerHTML='<option value="">Todas las tallas</option>'+tallas.map(x=>`<option>${esc(x)}</option>`).join('');selT.value=tallas.includes(vt)?vt:'';
+  selC.innerHTML='<option value="">Todos los colores</option>'+colores.map(x=>`<option>${esc(x)}</option>`).join('');selC.value=colores.includes(vc)?vc:'';
+  const rows=ihFiltrar(),res=rows.filter(x=>num(x.m.cant)<0),dev=rows.filter(x=>num(x.m.cant)>0&&/anulado|editado/i.test(x.m.motivo||''));
+  $('#ihCount').textContent=res.length+(res.length===1?' salida':' salidas');
+  // resumen por talla
+  const por=new Map();
+  rows.forEach(({i,m})=>{const t=String(i.talla||'Sin talla'),r=por.get(t)||{rest:0,dev:0};if(num(m.cant)<0)r.rest+=-num(m.cant);else if(/anulado|editado/i.test(m.motivo||''))r.dev+=num(m.cant);por.set(t,r)});
+  const tot=[...por.values()].reduce((a,r)=>({rest:a.rest+r.rest,dev:a.dev+r.dev}),{rest:0,dev:0});
+  $('#ihResumen').innerHTML=por.size?`<div class="tablewrap"><table class="ordtbl"><thead><tr><th>Talla</th><th class="num">Restado</th><th class="num">Devuelto</th><th class="num">Neto</th></tr></thead><tbody>${[...por.entries()].sort((a,b)=>cmpSz(a[0],b[0])).map(([t,r])=>`<tr><td><b>${esc(t)}</b></td><td class="num">−${r2(r.rest)}</td><td class="num">${r.dev?'+'+r2(r.dev):'—'}</td><td class="num"><b>${r2(r.rest-r.dev)?'−'+r2(r.rest-r.dev):'0'}</b></td></tr>`).join('')}<tr><td><b>Total</b></td><td class="num"><b>−${r2(tot.rest)}</b></td><td class="num">${tot.dev?'+'+r2(tot.dev):'—'}</td><td class="num"><b>${r2(tot.rest-tot.dev)?'−'+r2(tot.rest-tot.dev):'0'}</b></td></tr></tbody></table></div>`:'';
+  const lim=ui.ihMas?300:40;
+  $('#ihLista').innerHTML=rows.length?`<div style="margin-top:12px">${rows.slice(0,lim).map(({i,m})=>{const neg=num(m.cant)<0;
+    return `<div class="mvrow ih-row"><div><b>${esc([i.nombre,i.cuello].filter(Boolean).join(' · '))}</b><div class="ih-var"><span class="badge">${esc(i.talla?'Talla '+i.talla:'Único')}</span>${i.color?`<span class="badge">${esc(i.color)}</span>`:''}</div><div class="sub">${esc(fechaCorta(m.fecha))} · ${esc(m.motivo||m.tipo)}${m.nota?' · '+esc(m.nota):''}</div></div><div style="text-align:right"><b class="${neg?'neg':'pos'}" style="font-size:16px">${neg?'−':'+'}${Math.abs(num(m.cant))}</b><div class="sub">quedó ${num(m.saldo)}</div></div></div>`}).join('')}${rows.length>lim?`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm" type="button" id="ihMas">Ver más (${rows.length-lim})</button></div>`:''}</div>`:`<div class="empty"><b>${all.length?'Sin movimientos con esos filtros':'Aún no hay salidas'}</b>${all.length?'Cambia el producto, la talla o el periodo.':'Cuando un pedido pase a «Ya pagó» o registres una salida, aparece aquí.'}</div>`;
+}
+['ihProd','ihTalla','ihColor','ihPer'].forEach(id=>$('#'+id).addEventListener('change',renderInvHist));
+$('#invHist').addEventListener('click',e=>{if(e.target.id==='ihMas'){ui.ihMas=true;renderInvHist()}});
+$('#ihExp').addEventListener('click',()=>download(`historial-salidas-${today()}.csv`,toCsv(ihFiltrar().map(({i,m})=>({fecha:m.fecha,producto:i.nombre,cuello:i.cuello||'',talla:i.talla||'',color:i.color||'',cantidad:m.cant,motivo:m.motivo||m.tipo,nota:m.nota||'',queda:m.saldo})),['fecha','producto','cuello','talla','color','cantidad','motivo','nota','queda'])));
 const SZ_ORD=['XXS','XS','S','M','L','XL','XXL','XXXL','2XL','3XL'];
 const szKey=t=>{t=String(t||'').trim().toUpperCase();if(!t)return[9,0,''];const i=SZ_ORD.indexOf(t);if(i>=0)return[0,i,''];const n=parseFloat(t);if(Number.isFinite(n))return[1,n,''];return[2,0,t]};
 const cmpSz=(a,b)=>{const x=szKey(a),y=szKey(b);return x[0]-y[0]||x[1]-y[1]||x[2].localeCompare(y[2])};
