@@ -50,6 +50,11 @@ const textoDe = (m) => {
   const x = m.message || m;
   return x.conversation || (x.extendedTextMessage && x.extendedTextMessage.text) || (x.imageMessage && (x.imageMessage.caption || '📷 Foto')) || (x.videoMessage && (x.videoMessage.caption || '🎥 Video')) || (x.audioMessage && '🎤 Audio') || (x.documentMessage && ('📄 ' + (x.documentMessage.fileName || 'Documento'))) || (x.stickerMessage && 'Sticker') || (x.reactionMessage && '') || '';
 };
+const etiquetasDe = (raw) => {
+  let a = raw;
+  if (typeof a === 'string') { try { a = JSON.parse(a); } catch { a = []; } }
+  return (Array.isArray(a) ? a : []).map((l) => String((l && typeof l === 'object' ? (l.id || l.labelId) : l) || '')).filter(Boolean).slice(0, 20);
+};
 const ts = (v) => { const n = Number(v && v.low !== undefined ? v.low : v) || 0; return n > 1e12 ? n : n * 1000; };
 const tsISO = (v) => { if (!v) return 0; if (typeof v === 'string' && /\D/.test(v)) { const d = Date.parse(v); return Number.isFinite(d) ? d : 0; } return ts(v); };
 
@@ -121,6 +126,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
             if (id) ag.set(id, k);
           }
         } catch (e) { /* si falla la agenda, se siguen mostrando los chats */ }
+        const conEtq = arr.some((x) => x && Object.prototype.hasOwnProperty.call(x, 'labels'));
         const salida = [];
         for (const x of arr) {
           let jid = String(x.remoteJid || x.id || '');
@@ -139,7 +145,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
             foto: (() => { const f = (ag.get(jid) || {}).profilePicUrl || x.profilePicUrl || ''; return /^https:\/\//.test(f) ? f : ''; })(),
             ultimo: String(textoDe(lm) || '').slice(0, 140),
             fecha: ts(lm && (lm.messageTimestamp || lm.timestamp)) || tsISO(x.updatedAt || x.conversationTimestamp),
-            etiquetas: (Array.isArray(x.labels) ? x.labels : []).map((l) => String((l && (l.id || l.labelId)) || l)).slice(0, 10),
+            etiquetas: etiquetasDe(x.labels), conEtq,
             noLeidos: Number(x.unreadMessages || x.unreadCount || 0) || 0,
           });
         }

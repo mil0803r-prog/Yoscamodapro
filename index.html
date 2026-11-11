@@ -1296,15 +1296,33 @@ function waEtq(){return waTabs()}
 const WA_COL=['#ff9485','#64c4ff','#ffd429','#dfaef0','#99b6c1','#55ccb3','#ff9dff','#d3a91d','#6d7cce','#d7e752','#00d0e2','#ffc5c7','#93ceac','#f74848','#00a0f2','#83e422','#ffaf04','#b5ebff','#9ba6ff','#9368cf'];
 function waAsig(){const st=S.settings;if(!st.waAsig||typeof st.waAsig!=='object')st.waAsig={};return st.waAsig}
 function waDatos(){const st=S.settings;if(!st.waDatos||typeof st.waDatos!=='object')st.waDatos={};return st.waDatos}
-function waSet(tel,k,v){if(k==='e')k='t';const a=waAsig(),prev=(a[tel]||{}).t;a[tel]=a[tel]||{};delete a[tel].e;if(v===''||v==null||v==='_ninguna')delete a[tel][k];else a[tel][k]=v;if(!Object.keys(a[tel]).length)delete a[tel];save();if(k==='t')waPushEtq(tel,prev,(a[tel]||{}).t)}
-/* Pone o quita la etiqueta real en WhatsApp Business cuando el tablero está vinculado a una etiqueta */
-async function waPushEtq(tel,prev,nuevo){
-  if(prev===nuevo||!(ui.waConn&&ui.waConn.estado==='conectado'))return;
-  const tb=id=>waTabs().find(x=>x.id===id),c=waLista().find(x=>x.tel===tel);if(!c)return;
-  const jid=waJid(c),a=tb(prev),b=tb(nuevo);
-  try{if(a&&a.lid)await waApi('etiquetar',{jid,labelId:a.lid,quitar:true});if(b&&b.lid)await waApi('etiquetar',{jid,labelId:b.lid})}
-  catch(e){toast('Se guardó aquí, pero no pude etiquetar en WhatsApp: '+(e.detalle||'revisa la conexión'))}
+/* Cada contacto puede tener VARIAS etiquetas (tableros). reg.ts = etiquetas del panel · reg.sl = última foto de WhatsApp */
+const waEtqDe=tel=>{const r=waAsig()[tel]||{};return Array.isArray(r.ts)?r.ts.slice():(r.t?[r.t]:[])};
+function waEtqRaw(tel,ids){
+  const a=waAsig(),r=a[tel]=a[tel]||{};delete r.t;delete r.e;
+  const u=[...new Set(ids)].filter(id=>waTabs().some(t=>t.id===id));
+  if(u.length)r.ts=u;else delete r.ts;
+  if(!Object.keys(r).length)delete a[tel];
 }
+function waEtqSet(tel,ids){const antes=waEtqDe(tel);waEtqRaw(tel,ids);save();waPushDiff(tel,antes,waEtqDe(tel))}
+const waEtqAdd=(tel,id)=>{const l=waEtqDe(tel);if(!l.includes(id))waEtqSet(tel,[...l,id])};
+const waEtqDel=(tel,id)=>waEtqSet(tel,waEtqDe(tel).filter(x=>x!==id));
+const waEtqMove=(tel,from,to)=>{let l=waEtqDe(tel);if(from&&from!=='_ninguna')l=l.filter(x=>x!==from);if(to&&to!=='_ninguna'&&!l.includes(to))l.push(to);waEtqSet(tel,l)};
+function waSet(tel,k,v){
+  if(k==='e'||k==='t'){if(v===''||v==null||v==='_ninguna')waEtqSet(tel,[]);else waEtqAdd(tel,v);return}
+  const a=waAsig();a[tel]=a[tel]||{};if(v===''||v==null)delete a[tel][k];else a[tel][k]=v;if(!Object.keys(a[tel]).length)delete a[tel];save();
+}
+/* Cambios hechos en el panel -> etiquetas reales de WhatsApp Business */
+async function waPushDiff(tel,antes,despues){
+  if(!(ui.waConn&&ui.waConn.estado==='conectado'))return;
+  const c=waLista().find(x=>x.tel===tel);if(!c)return;
+  const tb=id=>waTabs().find(x=>x.id===id),jid=waJid(c);
+  const plan=[...despues.filter(i=>!antes.includes(i)).map(i=>[i,0]),...antes.filter(i=>!despues.includes(i)).map(i=>[i,1])];
+  for(const [id,quitar] of plan){const t=tb(id);if(!(t&&t.lid))continue;
+    try{await waApi('etiquetar',{jid,labelId:t.lid,quitar:!!quitar});waSlSet(tel,id,!quitar)}
+    catch(e){toast('Se guardó aquí, pero no pude etiquetar en WhatsApp: '+(e.detalle||'revisa la conexión'));return}}
+}
+function waSlSet(tel,id,on){const r=(waAsig()[tel]=waAsig()[tel]||{}),sl=new Set(r.sl||[]);if(on)sl.add(id);else sl.delete(id);if(sl.size)r.sl=[...sl];else delete r.sl;if(!Object.keys(r).length)delete waAsig()[tel];saveSoon()}
 /* Trae las etiquetas de WhatsApp Business: crea los tableros que falten y vincula por nombre */
 async function waSyncEtq(){
   try{
@@ -1316,21 +1334,31 @@ async function waSyncEtq(){
     L.forEach(l=>{const t=tabs.find(x=>x.lid===l.id&&!usados.has(x))||tabs.find(x=>!x.lid&&nm(x.nombre)===nm(l.nombre)&&!usados.has(x))||{id:uid()};
       t.lid=l.id;t.nombre=l.nombre;t.color=WA_COL[l.color%WA_COL.length]||'#64748B';usados.add(t);nuevos.push(t)});
     const quedan=new Set(nuevos.map(t=>t.id));
-    Object.values(waAsig()).forEach(a=>{if(a.t&&!quedan.has(a.t))delete a.t});
+    Object.values(waAsig()).forEach(a=>{if(a.t&&!quedan.has(a.t))delete a.t;if(Array.isArray(a.ts)){a.ts=a.ts.filter(i=>quedan.has(i));if(!a.ts.length)delete a.ts}if(Array.isArray(a.sl))a.sl=a.sl.filter(i=>quedan.has(i))});
     tabs.splice(0,tabs.length,...nuevos);
     if(JSON.stringify(tabs)!==antes)save();
   }catch(e){ui.waEtqOk=false}
 }
 /* Lo que ya tiene cada chat en WhatsApp manda: se refleja en su tablero */
 function waAplicarEtqChats(){
-  const tabs=waTabs(),a=waAsig();let ch=false;const subir=[];
+  const tabs=waTabs().filter(t=>t.lid),lid2id=new Map(tabs.map(t=>[t.lid,t.id])),id2lid=new Map(tabs.map(t=>[t.id,t.lid]));
+  const cola=[];let ch=false;
   (ui.waLive||[]).forEach(x=>{
-    const t=x.etiquetas&&x.etiquetas.length?tabs.find(z=>z.lid&&x.etiquetas.includes(z.lid)):null;
-    if(t){if((a[x.tel]||{}).t!==t.id){a[x.tel]=a[x.tel]||{};a[x.tel].t=t.id;ch=true}}
-    else{const loc=tabs.find(z=>z.id===(a[x.tel]||{}).t);if(loc&&loc.lid&&!(x.etiquetas||[]).length)subir.push({jid:x.jid||(x.tel+'@s.whatsapp.net'),labelId:loc.lid})}});
+    if(!x.conEtq)return; // el servidor no entrega las etiquetas de cada chat
+    const wa=new Set((x.etiquetas||[]).map(l=>lid2id.get(l)).filter(Boolean));
+    const reg=waAsig()[x.tel]||{},sl=new Set((reg.sl||[]).filter(id=>id2lid.has(id))),loc=waEtqDe(x.tel),locS=new Set(loc);
+    const nuevo=new Set(loc);
+    wa.forEach(id=>{if(!sl.has(id))nuevo.add(id)});            // etiqueta puesta en WhatsApp -> aparece en el panel
+    sl.forEach(id=>{if(!wa.has(id))nuevo.delete(id)});          // etiqueta quitada en WhatsApp -> se quita del panel
+    const jid=x.jid||(x.tel+'@s.whatsapp.net');
+    loc.forEach(id=>{if(id2lid.has(id)&&!sl.has(id)&&!wa.has(id))cola.push({tel:x.tel,id,jid,labelId:id2lid.get(id),quitar:false})});   // puesta en el panel -> WhatsApp
+    sl.forEach(id=>{if(!locS.has(id)&&wa.has(id))cola.push({tel:x.tel,id,jid,labelId:id2lid.get(id),quitar:true})});                       // quitada en el panel -> WhatsApp
+    if([...nuevo].sort().join()!==[...loc].sort().join()){waEtqRaw(x.tel,[...nuevo]);ch=true}
+    const r=(waAsig()[x.tel]=waAsig()[x.tel]||{});const nsl=[...wa];if(JSON.stringify(nsl)!==JSON.stringify(r.sl||[])){if(nsl.length)r.sl=nsl;else delete r.sl;ch=true}
+    if(!Object.keys(r).length)delete waAsig()[x.tel];
+  });
   if(ch)save();
-  // Lo que solo estaba en el panel se pone también en WhatsApp (de a poco para no saturar)
-  (async()=>{for(const q of subir.slice(0,40)){try{await waApi('etiquetar',q)}catch(e){break}}})();
+  (async()=>{for(const q of cola.slice(0,40)){try{await waApi('etiquetar',{jid:q.jid,labelId:q.labelId,quitar:q.quitar});waSlSet(q.tel,q.id,!q.quitar)}catch(e){break}}})();
 }
 function waContactos(){
   const m=new Map();
@@ -1346,7 +1374,7 @@ function waContactos(){
 function waLiveGet(){if(!ui.waLive){try{ui.waLive=JSON.parse(localStorage.getItem('yosca_wa_live'))||[]}catch(e){ui.waLive=[]}}return ui.waLive}
 function waLista(){
   const as=waAsig(),da=waDatos();
-  return waContactos().map(c=>{const a=as[c.tel]||{};c.e=a.e||'';c.t=a.t||'';c.n=a.n||'';c.at=a.at||0;c.datos=da[c.tel]||null;return c})
+  return waContactos().map(c=>{const a=as[c.tel]||{};c.ts=waEtqDe(c.tel);c.t=c.ts[0]||'';c.n=a.n||'';c.at=a.at||0;c.datos=da[c.tel]||null;return c})
    .sort((x,y)=>((y.datos&&!y.ped)?1:0)-((x.datos&&!x.ped)?1:0)||waTs(y)-waTs(x)||x.nombre.localeCompare(y.nombre));
 }
 const waTs=c=>(c.live&&c.live.fecha)||(c.ult?Date.parse(c.ult.fecha):0)||0;
@@ -1354,7 +1382,7 @@ function waHora(t){if(!t)return '';const d=new Date(t),h=new Date();return d.toD
 }
 function waOrden(c){return c.ult||{cliente:c.nombre,producto:(c.datos&&c.datos.producto)||'',talla:(c.datos&&c.datos.talla)||'',color:(c.datos&&c.datos.color)||'',cantidad:num(c.datos&&c.datos.cantidad)||1,precio:0,pago:'',ciudad:(c.datos&&c.datos.ciudad)||'',fecha:today(),estado:''}}
 const WA_FIL=[['todos','Todos'],['grupos','Grupos'],['nuevo','Nuevos'],['pedido','Con pedido'],['espera','Esperando pago'],['sinctc','Sin contactar']];
-const waCumple=(c,f)=>f==='todos'||(f==='grupos'&&c.grupo)||(!c.grupo&&((f==='nuevo'&&!c.ped)||(f==='pedido'&&c.ped>0)||(f==='espera'&&c.t==='espera')||(f==='sinctc'&&!c.at)));
+const waCumple=(c,f)=>f==='todos'||(f==='grupos'&&c.grupo)||(!c.grupo&&((f==='nuevo'&&!c.ped)||(f==='pedido'&&c.ped>0)||(f==='espera'&&c.ts.includes('espera'))||(f==='sinctc'&&!c.at)));
 const waColorT=id=>(waTabs().find(x=>x.id===id)||{}).color||'#9AA5B1';
 const waNomT=id=>(waTabs().find(x=>x.id===id)||{}).nombre||'';
 const waIni=c=>String(c.nombre||'?').trim().charAt(0).toUpperCase()||'?';
@@ -1386,23 +1414,22 @@ function waBanner(){
   }
 }
 function waFilaChat(c,sel,conSelect){
-  const et=waEtq().find(x=>x.id===c.e);
   const prev=c.n?c.n:c.live&&c.live.ultimo?c.live.ultimo:c.ult?waDetalle(c.ult)+' · '+(num(c.ult.cantidad)||1)+' u.':c.datos?'Datos del pedido listos':'Aún sin pedidos';
   return `<div class="wa2-row ${sel?'on':''}" draggable="true" data-tel="${esc(c.tel)}" ${conSelect?'':`data-wsel="${esc(c.tel)}" role="button" tabindex="0"`}>
    ${c.live&&c.live.foto?`<img class="av av-img" src="${esc(c.live.foto)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-ini="${esc(waIni(c))}">`:`<span class="av">${esc(c.grupo?'👥':waIni(c))}</span>`}<div class="mid" ${conSelect?`data-wsel="${esc(c.tel)}"`:''}><div class="r1"><b>${esc(c.nombre)}</b><small>${c.live&&c.live.fecha?esc(waHora(c.live.fecha)):c.ult?esc(fechaCorta(c.ult.fecha)):''}</small></div><div class="r2">${c.grupo?'Grupo':'+'+esc(c.tel)}${c.live&&c.live.noLeidos?` <span class="badge" style="background:#25D366;color:#fff">${c.live.noLeidos}</span>`:''}</div><div class="r3">${esc(prev)}</div>
-   <div class="chips">${c.ult?`<span class="badge b-${esc(c.ult.estado)}">${esc(c.ult.estado)}</span>`:''}${c.t?`<span class="wa-chip" style="background:${esc(waColorT(c.t))}22;color:${esc(waColorT(c.t))}">${esc(waNomT(c.t))}</span>`:''}${et?`<span class="wa-chip"><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(et.color)};margin-right:4px"></i>${esc(et.nombre)}</span>`:''}${c.at?'<span class="wa-chip ok">✓</span>':''}</div>
-   ${conSelect?`<select data-wmover="${esc(c.tel)}" aria-label="Mover a un tablero"><option value="">Mover a un tablero…</option><option value="_ninguna">Sin tablero</option>${waTabs().map(t=>`<option value="${esc(t.id)}" ${c.t===t.id?'disabled':''}>${esc(t.nombre)}</option>`).join('')}</select>`:''}</div></div>`;
+   <div class="chips">${c.ult?`<span class="badge b-${esc(c.ult.estado)}">${esc(c.ult.estado)}</span>`:''}${c.ts.map(id=>`<span class="wa-chip" style="background:${esc(waColorT(id))}22;color:${esc(waColorT(id))}">${esc(waNomT(id))}</span>`).join('')}${c.at?'<span class="wa-chip ok">✓</span>':''}</div>
+   ${conSelect?`<select data-wmover="${esc(c.tel)}" aria-label="Agregar etiqueta"><option value="">Agregar etiqueta…</option>${c.ts.length?'<option value="_ninguna">Quitar todas</option>':''}${waTabs().map(t=>`<option value="${esc(t.id)}" ${c.ts.includes(t.id)?'disabled':''}>${esc(t.nombre)}</option>`).join('')}</select>`:''}</div></div>`;
 }
 function waChats(){
   const L=waLista(),f=ui.waFiltro||'todos',ef=ui.waEtqF||'',q=(ui.waQ||'').toLowerCase();
-  const vis=L.filter(c=>waCumple(c,f)&&(!ef||c.e===ef)&&(!q||(c.nombre+' '+c.tel+' '+c.n+' '+(c.ult?c.ult.ciudad:'')).toLowerCase().includes(q)));
+  const vis=L.filter(c=>waCumple(c,f)&&(!ef||c.ts.includes(ef))&&(!q||(c.nombre+' '+c.tel+' '+c.n+' '+(c.ult?c.ult.ciudad:'')).toLowerCase().includes(q)));
   const pend=L.filter(c=>!c.ped&&c.datos);
   const etqs=waEtq();
   const sel=L.find(c=>c.tel===ui.waSel);
   $('#waBody').innerHTML=`<div class="wa2 ${sel?'conSel':''}"><div class="wa2-list">
     <input id="waQBuscar" type="search" placeholder="Buscar nombre, celular, ciudad…" value="${esc(ui.waQ||'')}" aria-label="Buscar chat">
     <div class="wa-fil">${WA_FIL.map(([k,l])=>`<button type="button" data-wfil="${k}" class="${f===k?'on':''}">${l} <i>${L.filter(c=>waCumple(c,k)).length}</i></button>`).join('')}</div>
-    <div class="wa-fil"><button type="button" data-wetqf="" class="${!ef?'on':''}">Etiquetas</button>${etqs.map(e=>`<button type="button" data-wetqf="${esc(e.id)}" class="${ef===e.id?'on':''}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(e.color)};margin-right:4px"></span>${esc(e.nombre)} <i>${L.filter(c=>c.e===e.id).length}</i></button>`).join('')}<button type="button" data-wedetq="1" style="border-style:dashed">✎</button></div>
+    <div class="wa-fil"><button type="button" data-wetqf="" class="${!ef?'on':''}">Etiquetas</button>${etqs.map(e=>`<button type="button" data-wetqf="${esc(e.id)}" class="${ef===e.id?'on':''}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(e.color)};margin-right:4px"></span>${esc(e.nombre)} <i>${L.filter(c=>c.ts.includes(e.id)).length}</i></button>`).join('')}<button type="button" data-wedetq="1" style="border-style:dashed">✎</button></div>
     ${pend.length?`<div class="wa-pend"><b>📦 ${pend.length} ${pend.length===1?'chat con datos de pedido listos':'chats con datos de pedido listos'}</b><button class="btn sm pri" type="button" data-wsel="${esc(pend[0].tel)}">Revisar y pasar a Pedidos</button></div>`:''}
     <div class="wa2-rows">${vis.length?vis.map(c=>waFilaChat(c,c.tel===ui.waSel,false)).join(''):'<div class="kb-vacio">No hay chats con ese filtro.<br>Crea uno con «+ Chat» o registra pedidos con teléfono.</div>'}</div></div>
    <div class="wa2-det">${sel?waFicha(sel):'<div class="wa2-vacio"><div>Elige un chat a la izquierda<br><small>o crea uno con «+ Chat».</small></div></div>'}</div></div>`;
@@ -1412,8 +1439,7 @@ function waFicha(c){
   const d=c.datos,dl=d?[['Nombre',d.nombre],['Celular',d.tel],['Ciudad',d.ciudad],['Producto',d.producto],['Talla',d.talla],['Color',d.color],['Cantidad',d.cantidad],['DNI',d.dni],['Dirección',d.direccion],['Agencia / sede',d.agencia]].filter(x=>x[1]):[];
   return `<button class="btn sm wa2-back" type="button" data-wback="1">← Volver a los chats</button>
   <div class="wa2-h"><span class="av g">${esc(waIni(c))}</span><div style="flex:1;min-width:0"><b style="font-size:17px">${esc(c.nombre)}</b><div class="sub">+${esc(c.tel)}${c.ped?' · '+c.ped+(c.ped===1?' pedido':' pedidos')+' · '+fmt(c.total):''}${c.at?' · ✓ contactado '+waHace(c.at):''}</div></div>${c.grupo?'':`<a class="btn wa" href="${esc(waLink(c.tel,''))}" target="_blank" rel="noopener" data-wabrir="${esc(c.tel)}">💬 Abrir chat</a>`}</div>
-  <div class="form" style="margin-top:12px"><div><label>Etiqueta (como en WhatsApp Business)</label><select data-wetq="${esc(c.tel)}"><option value="">Sin etiqueta</option>${waEtq().map(e=>`<option value="${esc(e.id)}" ${c.e===e.id?'selected':''}>${esc(e.nombre)}</option>`).join('')}</select></div>
-   <div><label>Tablero</label><select data-wtab="${esc(c.tel)}"><option value="">Sin tablero</option>${waTabs().map(t=>`<option value="${esc(t.id)}" ${c.t===t.id?'selected':''}>${esc(t.nombre)}</option>`).join('')}</select></div>
+  <div class="form" style="margin-top:12px"><div class="full" style="grid-column:1/-1"><label>Etiquetas (tableros) · tócalas para poner o quitar, igual que en WhatsApp Business</label><div class="wa-fil" style="flex-wrap:wrap;overflow:visible">${waTabs().map(t=>`<button type="button" class="${c.ts.includes(t.id)?'on':''}" data-wtog="${esc(c.tel)}" data-wid="${esc(t.id)}" style="${c.ts.includes(t.id)?'border-color:'+esc(t.color)+';background:'+esc(t.color)+'22':''}"><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(t.color)};margin:0 5px 0 0"></i>${esc(t.nombre)}</button>`).join('')}</div></div>
    <div class="full"><label>Nota</label><input data-knota="${esc(c.tel)}" maxlength="120" placeholder="Ej. prefiere pagar por Yape" value="${esc(c.n)}"></div></div>
   ${dl.length?`<div class="card" style="margin-top:12px;background:var(--primary-soft)"><h3 style="font-size:15px">📦 Datos del pedido</h3><div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:6px;font-size:13.5px">${dl.map(([k,v])=>`<span class="sub">${k}</span><b>${esc(v)}</b>`).join('')}</div>${c.ped?'':`<button class="btn pri" type="button" data-wpasar="${esc(c.tel)}" style="margin-top:10px">Pasar a Pedidos</button>`}</div>`:''}
   ${(ui.waConn&&ui.waConn.estado==='conectado')?`<h3 style="margin:16px 0 8px;font-size:15px">Conversación</h3><div class="wa-thread" id="waThread" data-th="${esc(c.tel)}">${waHiloHtml(c.tel)}</div>`:''}
@@ -1432,7 +1458,7 @@ function waTableros(){
  if(!ui.waEtqN)return `<p class="hint" style="flex:1 1 100%;margin:4px 0 0">⚠️ WhatsApp no devolvió etiquetas${ui.waEtqFallo?' (el servidor respondió '+ui.waEtqFallo+')':''}. Revisa que sea una cuenta de <b>WhatsApp Business</b> con etiquetas creadas (Herramientas → Etiquetas) y toca <b>Traer etiquetas</b>.</p>`;
  return sin.length?`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">⚠️ Sin etiqueta en WhatsApp todavía: <b>${sin.map(esc).join(', ')}</b>.</p>`:`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">✅ ${ui.waEtqN} etiquetas de WhatsApp Business sincronizadas.</p>`})()}</div>
   <div class="wa-tbg"><div class="wa2-list" id="waLeft"><b style="padding:2px 4px">💬 Chats <span class="badge">${L.length}</span></b><input id="waQBuscar" type="search" placeholder="Buscar chat…" value="${esc(ui.waQ||'')}" aria-label="Buscar chat"><div class="wa2-rows">${lista.map(c=>waFilaChat(c,false,true)).join('')||'<div class="kb-vacio">Sin chats</div>'}</div></div>
-  <div class="kb" id="kb">${tabs.map((t,i)=>{const l=lista.filter(c=>c.t===t.id);return `<div class="kb-col" data-col="${esc(t.id)}" style="border-top:4px solid ${esc(t.color)}"><div class="kb-h" style="padding-bottom:6px"><b style="flex:1;min-width:0">${esc(t.nombre)}</b><span>${l.length}</span></div><div class="row" style="gap:4px;margin:0 0 8px"><button class="btn sm" type="button" data-tbmv="${i}:-1" ${i===0?'disabled':''} aria-label="Mover tablero a la izquierda">◀</button><button class="btn sm" type="button" data-tbmv="${i}:1" ${i===tabs.length-1?'disabled':''} aria-label="Mover tablero a la derecha">▶</button><button class="btn sm" type="button" data-tbed="${i}" aria-label="Editar tablero">✎</button></div>${l.length?l.map(c=>`<div class="kb-card" draggable="true" data-tel="${esc(c.tel)}"><div class="nm"><span class="av">${esc(waIni(c))}</span><div style="min-width:0"><b>${esc(c.nombre)}</b><br><small>+${esc(c.tel)}</small></div></div>${c.ult?`<small>Pedido: <span class="badge b-${esc(c.ult.estado)}">${esc(c.ult.estado)}</span></small>`:''}<div class="wa-btns"><a class="btn wa" href="${esc(waLink(c.tel,''))}" target="_blank" rel="noopener" data-wabrir="${esc(c.tel)}">💬 Chat</a><button class="btn" type="button" data-wsel="${esc(c.tel)}" data-ir="chats">Ficha</button></div></div>`).join(''):'<div class="kb-vacio">Suelta aquí</div>'}</div>`}).join('')}</div></div></div>`;
+  <div class="kb" id="kb">${tabs.map((t,i)=>{const l=lista.filter(c=>c.ts.includes(t.id));return `<div class="kb-col" data-col="${esc(t.id)}" style="border-top:4px solid ${esc(t.color)}"><div class="kb-h" style="padding-bottom:6px"><b style="flex:1;min-width:0">${esc(t.nombre)}</b><span>${l.length}</span></div><div class="row" style="gap:4px;margin:0 0 8px"><button class="btn sm" type="button" data-tbmv="${i}:-1" ${i===0?'disabled':''} aria-label="Mover tablero a la izquierda">◀</button><button class="btn sm" type="button" data-tbmv="${i}:1" ${i===tabs.length-1?'disabled':''} aria-label="Mover tablero a la derecha">▶</button><button class="btn sm" type="button" data-tbed="${i}" aria-label="Editar tablero">✎</button></div>${l.length?l.map(c=>`<div class="kb-card" draggable="true" data-tel="${esc(c.tel)}"><div class="nm"><span class="av">${esc(waIni(c))}</span><div style="min-width:0"><b>${esc(c.nombre)}</b><br><small>+${esc(c.tel)}</small></div></div>${c.ult?`<small>Pedido: <span class="badge b-${esc(c.ult.estado)}">${esc(c.ult.estado)}</span></small>`:''}<div class="wa-btns"><a class="btn wa" href="${esc(waLink(c.tel,''))}" target="_blank" rel="noopener" data-wabrir="${esc(c.tel)}">💬 Chat</a><button class="btn" type="button" data-wsel="${esc(c.tel)}" data-ir="chats">Ficha</button></div></div>`).join(''):'<div class="kb-vacio">Suelta aquí</div>'}</div>`}).join('')}</div></div></div>`;
 }
 function waPlantillas(){
   const l=waPlant(),ej=S.orders[0]||{cliente:'Ana Pérez',producto:'Polo básico',modelo:'Cuello V',talla:'M',color:'Negro',cantidad:2,precio:29.9,pago:'Yape',ciudad:'Lima',fecha:today(),estado:'Pendiente'};
@@ -1574,7 +1600,7 @@ document.addEventListener('click',e=>{
     if(e.target.dataset&&e.target.dataset.copia){tiCopiar(e.target.dataset.copia);return}
     if(e.target.closest('[data-dlg-x]'))ui.waQrTok=0;
     if(e.target.id==='wpAnalizar'){const d=waParsear($('#wpT').value),f=$('#waFPegar');['nombre','tel','ciudad','producto','talla','color','cantidad','dni','direccion','agencia'].forEach(k=>{if(d[k])f.elements[k].value=d[k]});if(!Object.keys(d).length)toast('No encontré datos. Revisa que cada línea sea «Dato: valor».');return}
-    if(e.target.id==='waTabDel'){const i=+e.target.dataset.i,t=waTabs()[i];dlgClose();ask(`¿Eliminar el tablero "${t.nombre}"? Sus chats quedan sin tablero.`,()=>{const id=t.id;waTabs().splice(i,1);Object.values(waAsig()).forEach(a=>{if(a.t===id)delete a.t});save();waRefrescar()});return}
+    if(e.target.id==='waTabDel'){const i=+e.target.dataset.i,t=waTabs()[i];dlgClose();ask(`¿Eliminar el tablero "${t.nombre}"? Sus chats quedan sin tablero.`,()=>{const id=t.id;waTabs().splice(i,1);Object.values(waAsig()).forEach(a=>{if(a.t===id)delete a.t;if(Array.isArray(a.ts)){a.ts=a.ts.filter(i=>i!==id);if(!a.ts.length)delete a.ts}if(Array.isArray(a.sl))a.sl=a.sl.filter(i=>i!==id)});save();waRefrescar()});return}
     if(document.querySelector('#waEtqL')){
       const t=e.target.closest('button');if(!t)return;
       if(t.id==='kbNuevaEtq'){waEtq().push({id:uid(),nombre:'Nueva etiqueta',color:'#F06292'});save();waEditarEtiquetas()}
@@ -1611,7 +1637,7 @@ document.addEventListener('click',e=>{
   if(D.tbed!=null){waDlgTab(+D.tbed);return}
   if(t.id==='tbNuevo'){waTabs().push({id:uid(),nombre:'Nuevo tablero',color:'#EC4899'});save();waTableros();waDlgTab(waTabs().length-1);return}
   if(t.id==='kbEtqSync'){waSincronizar(true);return}
-  if(t.id==='kbSync'){ask('¿Poner cada cliente en el tablero que corresponde al estado de su último pedido?',()=>{let n=0;waLista().forEach(c=>{if(!c.ult)return;const id=WA_MAPA_T[c.ult.estado];if(id&&waTabs().some(x=>x.id===id)&&c.t!==id){waSet(c.tel,'t',id);n++}});waTableros();waCabecera();toast(n?n+' chats movidos':'Ya estaban ordenados')});return}
+  if(t.id==='kbSync'){ask('¿Poner cada cliente en el tablero que corresponde al estado de su último pedido?',()=>{let n=0;waLista().forEach(c=>{if(!c.ult)return;const id=WA_MAPA_T[c.ult.estado];if(id&&waTabs().some(x=>x.id===id)&&!c.ts.includes(id)){waSet(c.tel,'t',id);n++}});waTableros();waCabecera();toast(n?n+' chats movidos':'Ya estaban ordenados')});return}
   if(D.pdel!=null){ask('¿Eliminar esta plantilla?',()=>{waPlant().splice(+D.pdel,1);save();waPlantillas()});return}
   if(D.wvar){const ta=document.activeElement&&document.activeElement.matches('#v-wa textarea')?document.activeElement:window.__waUltima;if(!ta){toast('Primero toca dentro del mensaje donde quieres agregarla');return}const a=ta.selectionStart??ta.value.length,b=ta.selectionEnd??a;ta.value=ta.value.slice(0,a)+D.wvar+ta.value.slice(b);ta.focus();ta.selectionStart=ta.selectionEnd=a+D.wvar.length;ta.dispatchEvent(new Event('input',{bubbles:true}));return}
   if(t.id==='waNueva'){waPlant().push({id:uid(),nombre:'Nueva plantilla',estado:'',texto:'Hola {cliente}, '});save();waPlantillas();return}
@@ -1625,14 +1651,15 @@ document.addEventListener('submit',e=>{
     if(!waContactos().some(c=>c.tel===n)){(S.settings.waContactos=S.settings.waContactos||[]).push({id:uid(),nombre:String(d.nombre).trim().slice(0,40),tel:n})}ui.waSel=n;ui.waTab='chats';save();dlgClose();renderWa();return}
   if(f.id==='waFPegar'){e.preventDefault();const d=Object.fromEntries(new FormData(f)),n=waNumber(d.tel);if(!n){toast('Ese celular no es válido');return}
     waDatos()[n]={...d,tel:n};if(!waContactos().some(c=>c.tel===n))(S.settings.waContactos=S.settings.waContactos||[]).push({id:uid(),nombre:String(d.nombre).trim().slice(0,40),tel:n});
-    if(!(waAsig()[n]||{}).t)waSet(n,'t','datos');ui.waSel=n;ui.waTab='chats';save();dlgClose();renderWa();toast('Chat guardado con sus datos');return}
+    if(!waEtqDe(n).length&&waTabs().some(x=>x.id==='datos'))waSet(n,'t','datos');ui.waSel=n;ui.waTab='chats';save();dlgClose();renderWa();toast('Chat guardado con sus datos');return}
   if(f.id==='waFTab'){e.preventDefault();const t=waTabs()[+f.dataset.i],d=Object.fromEntries(new FormData(f));t.nombre=String(d.nombre).trim().slice(0,30)||t.nombre;t.color=d.color;save();dlgClose();waTableros();return}
 });
 document.addEventListener('focusin',e=>{if(e.target.matches&&e.target.matches('#v-wa textarea'))window.__waUltima=e.target});
-document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('[draggable][data-tel]');if(!c||!c.closest('#v-wa'))return;window.__kbTel=c.dataset.tel;c.classList.add('drag');try{e.dataTransfer.setData('text/plain',c.dataset.tel);e.dataTransfer.effectAllowed='move'}catch(x){}});
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-wtog]');if(!b)return;const tel=b.dataset.wtog,id=b.dataset.wid;if(waEtqDe(tel).includes(id))waEtqDel(tel,id);else waEtqAdd(tel,id);waRefrescar()});
+document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('[draggable][data-tel]');if(!c||!c.closest('#v-wa'))return;window.__kbTel=c.dataset.tel;const colO=c.closest('.kb-col');window.__kbFrom=colO?colO.dataset.col:'';c.classList.add('drag');try{e.dataTransfer.setData('text/plain',c.dataset.tel);e.dataTransfer.effectAllowed='move'}catch(x){}});
 document.addEventListener('dragend',e=>{document.querySelectorAll('.drag').forEach(c=>c.classList.remove('drag'));document.querySelectorAll('.kb-col.over').forEach(c=>c.classList.remove('over'))});
 document.addEventListener('dragover',e=>{const c=e.target.closest&&e.target.closest('.kb-col');if(!c||!window.__kbTel)return;e.preventDefault();document.querySelectorAll('.kb-col.over').forEach(x=>{if(x!==c)x.classList.remove('over')});c.classList.add('over')});
-document.addEventListener('drop',e=>{const c=e.target.closest&&e.target.closest('.kb-col');if(!c||!window.__kbTel)return;e.preventDefault();const tel=window.__kbTel;window.__kbTel=null;waSet(tel,'t',c.dataset.col);waTableros();waCabecera()});
+document.addEventListener('drop',e=>{const c=e.target.closest&&e.target.closest('.kb-col');if(!c||!window.__kbTel)return;e.preventDefault();const tel=window.__kbTel,from=window.__kbFrom;window.__kbTel=null;window.__kbFrom='';if(from&&from!==c.dataset.col)waEtqMove(tel,from,c.dataset.col);else waEtqAdd(tel,c.dataset.col);waTableros();waCabecera()});
 document.addEventListener('input',e=>{
   const el=e.target;
   if(el.dataset&&el.dataset.ef&&el.closest('#waEtqL')){const e2=waEtq()[+el.closest('[data-ei]').dataset.ei];e2[el.dataset.ef]=el.value;saveSoon();return}
@@ -1644,7 +1671,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   const el=e.target;if(!el.closest||!el.closest('#v-wa'))return;const D=el.dataset||{};
-  if(D.wmover){waSet(D.wmover,'t',el.value);waTableros();waCabecera();return}
+  if(D.wmover){if(el.value)waSet(D.wmover,'t',el.value);waTableros();waCabecera();return}
   if(D.wetq){waSet(D.wetq,'e',el.value);waRefrescar();return}
   if(D.wtab){waSet(D.wtab,'t',el.value);waRefrescar();return}
   if(D.wpl){const c=waLista().find(x=>x.tel===D.wpl),pl=waPlant().find(x=>x.id===el.value);if(c&&pl)document.querySelector('[data-wtx="'+c.tel+'"]').value=waLlenar(pl.texto,waOrden(c));return}
@@ -2136,28 +2163,28 @@ function pedTablero(rows){
   const tabs=waTabs(),a=waAsig();
   const cols=[{id:'_ninguna',nombre:'Sin tablero',color:'#94A3B8'},...tabs];
   const por=new Map(cols.map(c=>[c.id,[]]));
-  rows.forEach(o=>{const n=waNumber(o.telefono),t=n&&a[n]&&a[n].t;por.get(por.has(t)?t:'_ninguna').push(o)});
+  rows.forEach(o=>{const n=waNumber(o.telefono),ids=(n?waEtqDe(n):[]).filter(i=>por.has(i));(ids.length?ids:['_ninguna']).forEach(i=>por.get(i).push(o))});
   const tot=l=>l.reduce((s,o)=>s+num(o.precio)*(num(o.cantidad)||1),0);
   const resumen=cols.map(c=>{const l=por.get(c.id);return `<div class="pk-res" style="border-top:3px solid ${esc(c.color)}"><span style="color:${esc(c.color)}">${esc(c.nombre)}</span><b>${l.length}</b><small>${fmt(tot(l))}</small></div>`}).join('');
-  const card=o=>{const n=waNumber(o.telefono),q=num(o.cantidad)||1,u=orderProfit(o);
-    return `<div class="kb-card pk-card" ${n?'draggable="true"':''} data-oid="${esc(o.id)}" data-ptel="${esc(n||'')}">
+  const card=(o,col)=>{const n=waNumber(o.telefono),q=num(o.cantidad)||1,u=orderProfit(o);
+    return `<div class="kb-card pk-card" ${n?'draggable="true"':''} data-oid="${esc(o.id)}" data-from="${esc(col)}" data-ptel="${esc(n||'')}">
       <div class="row sb"><b>${esc(o.producto||'Sin producto')}</b><small>${esc(fechaCorta(o.fecha).replace(/ \d{4}$/,''))}</small></div>
       <small>${esc([o.cliente,o.ciudad,'x'+q].filter(Boolean).join(' · '))}</small>
       <div class="pk-m"><span><small>Venta</small><b>${fmt(num(o.precio)*q)}</b></span><span><small>Utilidad</small><b class="${u>0?'pos':u<0?'neg':''}">${u?fmt(u):'—'}</b></span></div>
-      <select data-pmover="${esc(o.id)}" aria-label="Mover a un tablero"${n?'':' disabled title="Este pedido no tiene teléfono"'}><option value="">Mover a…</option>${cols.map(c=>`<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join('')}</select>
+      <select data-pmover="${esc(o.id)}" data-from="${esc(col)}" aria-label="Mover a un tablero"${n?'':' disabled title="Este pedido no tiene teléfono"'}><option value="">Mover a…</option>${cols.map(c=>`<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join('')}</select>
       <button class="btn sm" type="button" data-ed="${esc(o.id)}">Editar</button>
     </div>`};
-  return `<div class="pk-resumen">${resumen}</div><div class="kb" id="pkb">${cols.map(c=>{const l=por.get(c.id);return `<div class="kb-col" data-pcol="${esc(c.id)}" style="border-top:4px solid ${esc(c.color)}"><div class="kb-h"><b style="flex:1;min-width:0">${esc(c.nombre)}</b><span>${l.length}</span><small style="color:var(--on-var)">${fmt(tot(l))}</small></div>${l.length?l.map(card).join(''):'<div class="kb-vacio">Suelta aquí</div>'}</div>`}).join('')}</div>`;
+  return `<div class="pk-resumen">${resumen}</div><div class="kb" id="pkb">${cols.map(c=>{const l=por.get(c.id);return `<div class="kb-col" data-pcol="${esc(c.id)}" style="border-top:4px solid ${esc(c.color)}"><div class="kb-h"><b style="flex:1;min-width:0">${esc(c.nombre)}</b><span>${l.length}</span><small style="color:var(--on-var)">${fmt(tot(l))}</small></div>${l.length?l.map(o=>card(o,c.id)).join(''):'<div class="kb-vacio">Suelta aquí</div>'}</div>`}).join('')}</div>`;
 }
-function pedMover(oid,col){
+function pedMover(oid,col,from){
   const o=S.orders.find(x=>x.id===oid),n=o&&waNumber(o.telefono);
   if(!n){toast('Este pedido no tiene teléfono, no se puede mover de tablero.');return}
-  waSet(n,'t',col);renderPed();
+  if(col==='_ninguna'){if(from&&from!=='_ninguna')waEtqDel(n,from)}else if(from&&from!==col)waEtqMove(n,from,col);else waEtqAdd(n,col);renderPed();
 }
-$('#pedTabla').addEventListener('change',e=>{const id=e.target.dataset&&e.target.dataset.pmover;if(id&&e.target.value)pedMover(id,e.target.value)});
-document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('.pk-card[draggable]');if(!c)return;window.__pkOid=c.dataset.oid;c.classList.add('drag');try{e.dataTransfer.setData('text/plain',c.dataset.oid);e.dataTransfer.effectAllowed='move'}catch(x){}});
+$('#pedTabla').addEventListener('change',e=>{const id=e.target.dataset&&e.target.dataset.pmover;if(id&&e.target.value)pedMover(id,e.target.value,e.target.dataset.from)});
+document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('.pk-card[draggable]');if(!c)return;window.__pkOid=c.dataset.oid;window.__pkFrom=c.dataset.from;c.classList.add('drag');try{e.dataTransfer.setData('text/plain',c.dataset.oid);e.dataTransfer.effectAllowed='move'}catch(x){}});
 document.addEventListener('dragover',e=>{const c=e.target.closest&&e.target.closest('[data-pcol]');if(!c||!window.__pkOid)return;e.preventDefault();document.querySelectorAll('[data-pcol].over').forEach(x=>{if(x!==c)x.classList.remove('over')});c.classList.add('over')});
-document.addEventListener('drop',e=>{const c=e.target.closest&&e.target.closest('[data-pcol]');if(!c||!window.__pkOid)return;e.preventDefault();const id=window.__pkOid;window.__pkOid=null;pedMover(id,c.dataset.pcol)});
+document.addEventListener('drop',e=>{const c=e.target.closest&&e.target.closest('[data-pcol]');if(!c||!window.__pkOid)return;e.preventDefault();const id=window.__pkOid,fr=window.__pkFrom;window.__pkOid=null;pedMover(id,c.dataset.pcol,fr)});
 document.addEventListener('dragend',()=>{window.__pkOid=null;document.querySelectorAll('[data-pcol].over').forEach(c=>c.classList.remove('over'))});
 $('#pedViewSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ui.pedView=b.dataset.v;try{localStorage.setItem('yosca_pedview',ui.pedView)}catch(x){}renderPed()});
 $('#pedBuscar').addEventListener('input',renderPed);
