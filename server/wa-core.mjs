@@ -53,13 +53,32 @@ const textoDe = (m) => {
 const ts = (v) => { const n = Number(v && v.low !== undefined ? v.low : v) || 0; return n > 1e12 ? n : n * 1000; };
 const tsISO = (v) => { if (!v) return 0; if (typeof v === 'string' && /\D/.test(v)) { const d = Date.parse(v); return Number.isFinite(d) ? d : 0; } return ts(v); };
 
+// Lee acceso/{correo} con el propio token de la persona: las reglas de Firestore deciden (solo puede leer el suyo).
+async function nivelDeAcceso(correo, token) {
+  const pid = String(process.env.FIREBASE_PROJECT_ID || '').trim();
+  if (!pid || !correo) return '';
+  try {
+    const r = await fetch(`https://firestore.googleapis.com/v1/projects/${encodeURIComponent(pid)}/databases/(default)/documents/acceso/${encodeURIComponent(correo)}`, { headers: { authorization: 'Bearer ' + token } });
+    if (!r.ok) return '';
+    const f = (await r.json()).fields || {};
+    if (!f.estado || f.estado.stringValue !== 'activo') return '';
+    const n = (((f.permisos || {}).mapValue || {}).fields || {}).wa;
+    const v = n && n.stringValue;
+    return v === 'editar' || v === 'ver' ? v : '';
+  } catch { return ''; }
+}
+
 export async function handle({ method, rawBody, authorization, ip, verificar = usuarioFirebase }) {
   const c = cfg();
   const b = /^Bearer\s+(.+)$/i.exec(authorization || '');
   if (!b) return { status: 401, body: { error: 'sesion' } };
   const u = await verificar(b[1]);
   if (!u) return { status: 401, body: { error: 'sesion' } };
-  if (!u.verificado || !c.correos.includes(String(u.email || '').toLowerCase())) return { status: 403, body: { error: 'sin_permiso' } };
+  if (!u.verificado) return { status: 403, body: { error: 'sin_permiso' } };
+  const correo = String(u.email || '').toLowerCase();
+  let nivelWa = c.correos.includes(correo) ? 'admin' : '';
+  if (!nivelWa) nivelWa = await nivelDeAcceso(correo, b[1]); // miembro aprobado por el administrador ('ver' | 'editar')
+  if (!nivelWa) return { status: 403, body: { error: 'sin_permiso' } };
   if (superaLimite('u:' + u.uid)) return { status: 429, body: { error: 'limite' } };
   const configurado = Boolean(c.url && c.key);
   if (method === 'GET') return { status: 200, body: { disponible: configurado, instancia: c.inst } };
@@ -68,6 +87,8 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
   if (!rawBody || rawBody.length > MAX_BYTES) return { status: 413, body: { error: 'grande' } };
   let p; try { p = JSON.parse(rawBody); } catch { return { status: 400, body: { error: 'json' } }; }
   const I = encodeURIComponent(c.inst);
+  const soloAdmin = ['conectar', 'desvincular'].includes(p.accion), escribe = p.accion === 'enviar';
+  if ((soloAdmin && nivelWa !== 'admin') || (escribe && nivelWa === 'ver')) return { status: 403, body: { error: 'sin_permiso' } };
   try {
     switch (p.accion) {
       case 'estado': {

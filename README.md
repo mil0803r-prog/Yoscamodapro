@@ -26,6 +26,17 @@ Se hace con Firebase (plan gratuito Spark). Mientras `firebase-config.js` tenga 
    ```
 6. Sube el cambio a GitHub; Vercel o Netlify publican solos.
 
+### Acceso privado: tú apruebas a cada correo (administrador: mil0803r@gmail.com)
+
+Con esto la app deja de ser abierta: solo entra quien tú apruebes, y cada persona ve solo las secciones que le des (**Sin acceso / Solo ver / Ver y editar**).
+
+1. En Firebase → **Firestore Database → Reglas**, borra lo que hay y pega **todo** el contenido del archivo `firestore.rules` de este repositorio. Toca **Publicar**.
+2. Entra con `mil0803r@gmail.com` (verificado). Aparece la sección **Equipo**.
+3. La persona crea su cuenta (o entra con Google), verifica su correo y toca **Solicitar acceso**. También puedes darle acceso tú escribiendo su correo en **Equipo → Dar acceso a un correo**.
+4. En **Equipo** tocas **Aprobar…**, eliges permisos por sección (hay atajos: *Solo mirar*, *Vendedor*, *Todo editar*) y **Guardar**. Puedes cambiar permisos, suspender o quitar a alguien cuando quieras.
+
+Las personas aprobadas trabajan sobre los datos del administrador (los mismos pedidos, inventario, etc.). Las reglas de Firestore hacen cumplir los permisos en el servidor, no solo en la pantalla. Tienda, Equipo y los respaldos son solo del administrador. En WhatsApp, quien tenga permiso lo usa sin estar en `WA_EMAILS` (se lee su permiso de Firestore; requiere `FIREBASE_PROJECT_ID`), pero conectar o desvincular el número es solo del administrador.
+
 Respaldos: la app guarda sola una copia al día (últimas 14) en tu cuenta, en `users/{uid}/backups`, y se pueden restaurar o descargar desde Ajustes.
 
 Cada persona ve únicamente sus datos. La primera vez que alguien entra, lo que ya tenía guardado en ese navegador se sube a su cuenta. Al cerrar sesión se borran los datos locales del dispositivo.

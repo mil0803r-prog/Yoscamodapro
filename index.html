@@ -380,6 +380,12 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 #v-wa .ti-top .ico{width:36px;height:36px}
 #v-wa .wa-top .btn{min-height:38px;padding:8px 14px}
 @media (min-width:900px){#v-wa .wa2-rows,#v-wa .wa-tbg .wa2-rows{max-height:calc(100vh - 250px)}#v-wa .kb{max-height:calc(100vh - 215px)}}
+.svban{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:8px 12px;font-size:13px;font-weight:700;margin-bottom:10px}
+.sv .btn.pri,.sv .btn.del,.sv [type=submit],.sv form input,.sv form select,.sv form textarea,.sv [draggable]{pointer-events:none;opacity:.55}
+#v-set.miembro>.card:not(#accCard){display:none}
+.eq-fila{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.eq-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 220px}.eq-info small{color:var(--on-var);overflow-wrap:anywhere}
+.eq-perm{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center}.eq-perm label{margin:0}
 /* ===== Optimización móvil y PC ===== */
 .kpi small,.scen small,.ord-money small,.vfhead,th,.wa-m small,.chartcard .tbtn{font-size:max(12px,.75rem)}
 @media (max-width:899px),(pointer:coarse){
@@ -571,6 +577,7 @@ summary{cursor:pointer}
 
     <!-- AJUSTES -->
     <!-- TIENDA (solo para la cuenta del dueño) -->
+    <section id="v-equipo" hidden></section>
     <section id="v-tienda" hidden>
       <div id="tiHead"></div>
       <div id="tiBody"></div>
@@ -649,6 +656,9 @@ summary{cursor:pointer}
     </div>
   </div>
 </section>
+<section id="lock" class="login" hidden aria-label="Acceso privado">
+  <div class="logincard"><div id="lockBox" class="card" style="display:flex;flex-direction:column;gap:12px"></div></div>
+</section>
 <button id="aiFab" class="aifab" type="button" hidden aria-label="Abrir el asistente"></button>
 <section id="aiPanel" class="aipanel" role="dialog" aria-modal="true" aria-label="Asistente de Yosca" hidden>
   <div class="aihead"><div><h2 style="margin:0;font-size:16px">Asistente</h2><p class="sub" style="margin:0">Responde con tus datos reales. No modifica nada.</p></div>
@@ -690,6 +700,7 @@ const ICONS={
   spark:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
   eyeoff:'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'
 };
 const icon=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -757,20 +768,22 @@ const seenDb={settings:false};COLS.forEach(c=>seenDb[c]=false);
 const unsubs=[];let MIGRATE=false,FB_USER=null,FB_MODE=false;
 let saveTimer=null;
 const saveSoon=()=>{clearTimeout(saveTimer);saveTimer=setTimeout(save,350)};
+const COL_SEC={orders:['ped','wa'],inventory:['inv','ped'],expenses:['gas'],cif:['gas'],garments:['calc'],quotes:['calc'],settings:['ped','wa','inv','gas','calc']};
+const puedeEscribir=col=>!esMiembro()||(COL_SEC[col]||[]).some(k=>nivelSec(k)==='editar');
 function save(){
   clearTimeout(saveTimer);
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){if(!DB)toast('No se pudo guardar en este navegador. Descarga un respaldo.')}
   if(!DB)return;
   const ops=[];
   for(const name of COLS){
-    if(!seenDb[name])continue; // aún no llegó lo que hay en la nube: no se escribe encima
+    if(!seenDb[name]||!puedeEscribir(name))continue; // aún no llegó lo que hay en la nube: no se escribe encima
     const seen=new Set();
     for(const x of S[name]){seen.add(x.id);const j=JSON.stringify(x);
       if(remote[name].get(x.id)!==j){remote[name].set(x.id,j);ops.push(DB.collection(name).doc(x.id).set(x))}}
     for(const id of [...remote[name].keys()])if(!seen.has(id)){remote[name].delete(id);ops.push(DB.collection(name).doc(id).delete())}
   }
   const sj=JSON.stringify(S.settings);
-  if(seenDb.settings&&sj!==remote.settings){remote.settings=sj;ops.push(DB.doc('config/settings').set(S.settings))}
+  if(seenDb.settings&&puedeEscribir('settings')&&sj!==remote.settings){remote.settings=sj;ops.push(DB.doc('config/settings').set(S.settings))}
   Promise.all(ops).catch(()=>toast('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.'));
 }
 function load(){
@@ -896,7 +909,7 @@ async function connectFirebase(){
   YoscaFB.onUser(u=>{
     if(!u){
       // Solo se borran los datos del navegador si de verdad se cerró una sesión; al abrir sin sesión se conservan para pasarlos a la cuenta nueva.
-      if(FB_USER){detachDb();resetLocal();try{localStorage.removeItem('yosca_owner')}catch(e){}}
+      if(FB_USER){detachDb();resetLocal();accParar();try{localStorage.removeItem('yosca_owner')}catch(e){}}
       FB_USER=null;pintarNav();{const f=$('#tiendaFrame');if(f)f.removeAttribute('src')}applyTheme();refreshAll();renderAccount();showLogin();return;
     }
     if(FB_USER&&FB_USER.uid===u.uid){FB_USER=u;pintarNav();renderAccount();return}
@@ -904,12 +917,112 @@ async function connectFirebase(){
     let owner='';try{owner=localStorage.getItem('yosca_owner')||''}catch(e){}
     if(owner&&owner!==u.uid)resetLocal();               // datos de otra cuenta en este navegador: no se mezclan
     try{localStorage.setItem('yosca_owner',u.uid)}catch(e){}
-    hideLogin();renderAccount();
-    attachDb(fsAdapter(YoscaFB.store(u.uid)),{migrate:true});
-    connectAi();
+    if(puedeTienda()){
+      ACC={rol:'admin',permisos:{},duenio:u.uid};$('#lock').hidden=true;
+      hideLogin();renderAccount();pintarNav();
+      attachDb(fsAdapter(YoscaFB.store(u.uid)),{migrate:true});
+      connectAi();equipoIniciar();
+    }else{renderAccount();accEntrar(u)}
   });
   return true;
 }
+
+/* ================= ACCESO PRIVADO: solicitudes, permisos y equipo ================= */
+function accParar(){ui.eqOn=false;accUnsub.forEach(f=>{try{f&&f()}catch(e){}});accUnsub=[];ACC={rol:'',permisos:{},duenio:''};ui.eqSol=[];ui.eqAcc=[];$('#lock').hidden=true}
+function lockMostrar(estado){
+  const u=FB_USER||{},em=esc(u.email||'');
+  const salir='<button class="btn del" type="button" id="lockOut">Cerrar sesión</button>';
+  const M={
+    verificar:`<h1>Verifica tu correo</h1><p class="sub">Para pedir acceso primero confirma que ${em} es tuyo. Te enviamos un mensaje; ábrelo y toca el enlace.</p><div class="row"><button class="btn pri" type="button" id="lockVer">Reenviar correo</button><button class="btn" type="button" id="lockRel">Ya lo verifiqué</button></div>${salir}`,
+    nueva:`<h1>Acceso privado</h1><p class="sub">Esta app es privada. Entraste como <b>${em}</b>, pero el administrador todavía no te dio acceso.</p><button class="btn pri" type="button" id="lockSol">Solicitar acceso</button>${salir}`,
+    pendiente:`<h1>Solicitud enviada</h1><p class="sub">El administrador tiene que aprobar <b>${em}</b>. Esta pantalla se actualiza sola cuando lo haga; no necesitas volver a entrar.</p>${salir}`,
+    suspendido:`<h1>Acceso suspendido</h1><p class="sub">El administrador pausó el acceso de <b>${em}</b>. Si crees que es un error, habla con él.</p>${salir}`,
+    cargando:`<p class="sub">Revisando tu acceso…</p>`
+  };
+  $('#lockBox').innerHTML=M[estado]||M.cargando;
+  $('#lock').hidden=false;$('#login').hidden=true;document.documentElement.classList.remove('fb-in');
+}
+function accEntrar(u){
+  accParar();lockMostrar('cargando');
+  if(!u.emailVerified){lockMostrar('verificar');return}
+  const em=String(u.email||'').toLowerCase();let a,sol,la=false,ls=false;
+  const pintar=()=>{
+    if(!la||!ls||!FB_USER||FB_USER.uid!==u.uid)return;
+    if(a&&a.estado==='activo'&&a.duenio){
+      const nuevo=!(ACC.rol==='miembro'&&ACC.duenio===a.duenio);
+      ACC={rol:'miembro',permisos:a.permisos||{},duenio:a.duenio};
+      $('#lock').hidden=true;hideLogin();
+      if(nuevo){detachDb();resetLocal();attachDb(fsAdapter(YoscaFB.store(a.duenio)),{migrate:false});connectAi()}
+      pintarNav();renderTab();renderAccount();
+    }else{
+      if(ACC.rol==='miembro'){detachDb();resetLocal();ACC={rol:'',permisos:{},duenio:''};refreshAll()}
+      lockMostrar(a&&a.estado==='suspendido'?'suspendido':sol?'pendiente':'nueva');
+    }
+  };
+  accUnsub.push(YoscaFB.acc.mio(em,x=>{a=x;la=true;pintar()},()=>{a=null;la=true;pintar()}));
+  accUnsub.push(YoscaFB.acc.solicitud(em,x=>{sol=x;ls=true;pintar()},()=>{sol=null;ls=true;pintar()}));
+}
+$('#lockBox').addEventListener('click',async e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.id==='lockOut')try{await YoscaFB.out()}catch(err){toast('No se pudo cerrar la sesión.')}
+  else if(b.id==='lockRel')location.reload();
+  else if(b.id==='lockVer')try{await YoscaFB.verify();toast('Correo de verificación enviado.')}catch(err){toast('No se pudo enviar. Inténtalo en unos minutos.')}
+  else if(b.id==='lockSol'){b.disabled=true;try{const u=FB_USER;await YoscaFB.acc.solicitar(String(u.email).toLowerCase(),{email:String(u.email).toLowerCase(),nombre:String(u.displayName||'').slice(0,60),fecha:Date.now()});toast('Solicitud enviada al administrador.')}catch(err){b.disabled=false;toast('No se pudo enviar la solicitud. Inténtalo de nuevo.')}}
+});
+/* --- panel del administrador --- */
+function equipoIniciar(){
+  if(!puedeTienda()||ui.eqOn)return;ui.eqOn=true;ui.eqSol=[];ui.eqAcc=[];
+  accUnsub.push(YoscaFB.acc.listaSolicitudes(l=>{ui.eqSol=l.sort((x,y)=>(y.fecha||0)-(x.fecha||0));pintarNav();if(ui.tab==='equipo')renderEquipo()},()=>{}));
+  accUnsub.push(YoscaFB.acc.listaAcceso(l=>{ui.eqAcc=l.sort((x,y)=>String(x.email).localeCompare(String(y.email)));if(ui.tab==='equipo')renderEquipo()},()=>{}));
+}
+const NIV_TXT={no:'Sin acceso',ver:'Solo ver',editar:'Ver y editar'};
+const eqResumen=p=>{const l=Object.keys(SEC_NOM).filter(k=>p&&(p[k]==='ver'||p[k]==='editar')).map(k=>SEC_NOM[k]+(p[k]==='ver'?' (ver)':''));return l.length?l.join(' · '):'Ningún permiso'};
+function renderEquipo(){
+  const el=$('#v-equipo');if(!puedeTienda()){el.innerHTML='';return}
+  const sol=ui.eqSol||[],ac=ui.eqAcc||[];
+  el.innerHTML=`<div class="card"><h2>Acceso privado</h2><p class="sub">Solo tú (${esc(TIENDA_EMAIL)}) ves esta sección y la Tienda. Nadie entra a los datos del taller hasta que tú lo apruebes aquí.</p></div>
+  <div class="card" style="margin-top:10px"><div class="row sb"><h3>Solicitudes pendientes</h3><span class="badge">${sol.length}</span></div>
+   ${sol.length?sol.map(x=>`<div class="eq-fila"><div class="eq-info"><b>${esc(x.nombre||x.email)}</b><small>${esc(x.email)} · ${esc(waHora(x.fecha))}</small></div><div class="row"><button class="btn sm pri" type="button" data-eq="aprobar" data-e="${esc(x.email)}">Aprobar…</button><button class="btn sm del" type="button" data-eq="rechazar" data-e="${esc(x.email)}">Rechazar</button></div></div>`).join(''):'<p class="hint">No hay solicitudes. Quien quiera entrar crea su cuenta, toca “Solicitar acceso” y aparece aquí.</p>'}
+  </div>
+  <div class="card" style="margin-top:10px"><div class="row sb"><h3>Personas con acceso</h3><span class="badge">${ac.length}</span></div>
+   ${ac.length?ac.map(x=>`<div class="eq-fila"><div class="eq-info"><b>${esc(x.nombre||x.email)} ${x.estado==='activo'?'':'<span class="badge b-Pendiente">Suspendido</span>'}</b><small>${esc(x.email)}</small><small>${esc(eqResumen(x.permisos))}</small></div><div class="row"><button class="btn sm" type="button" data-eq="editar" data-e="${esc(x.email)}">Permisos</button><button class="btn sm" type="button" data-eq="pausa" data-e="${esc(x.email)}">${x.estado==='activo'?'Suspender':'Reactivar'}</button><button class="btn sm del" type="button" data-eq="quitar" data-e="${esc(x.email)}">Quitar</button></div></div>`).join(''):'<p class="hint">Todavía no has dado acceso a nadie.</p>'}
+  </div>
+  <div class="card" style="margin-top:10px"><h3>Dar acceso a un correo</h3><p class="sub">Escribe el correo de la persona (debe verificarlo al crear su cuenta) y elige qué puede ver.</p>
+   <div class="row" style="margin-top:8px"><input id="eqMail" type="email" inputmode="email" placeholder="correo@ejemplo.com" style="flex:1 1 220px" aria-label="Correo de la persona"><button class="btn pri" type="button" data-eq="invitar">Elegir permisos…</button></div></div>`;
+}
+const EQ_PRESETS={ver:['Solo mirar todo',{dash:'ver',calc:'ver',ped:'ver',wa:'ver',inv:'ver',gas:'ver',proy:'ver'}],vend:['Vendedor',{ped:'editar',wa:'editar',inv:'editar'}],todo:['Todo editar',{dash:'editar',calc:'editar',ped:'editar',wa:'editar',inv:'editar',gas:'editar',proy:'editar'}]};
+function eqDialogo(email,nombre,base){
+  ui.eqCur={email,nombre};
+  const p=base||{};
+  dlgOpen(`<h2 style="margin:0 0 4px">Permisos de ${esc(email)}</h2><p class="sub">Elige qué puede hacer en cada sección.</p>
+  <div class="row" style="margin:8px 0">${Object.entries(EQ_PRESETS).map(([k,v])=>`<button class="btn sm" type="button" data-eqp="${k}">${v[0]}</button>`).join('')}</div>
+  <div class="eq-perm">${Object.entries(SEC_NOM).map(([k,n])=>`<label for="eqp-${k}">${n}</label><select id="eqp-${k}" data-eqs="${k}">${['no','ver','editar'].map(v=>`<option value="${v}"${(p[k]||'no')===v?' selected':''}>${NIV_TXT[v]}</option>`).join('')}</select>`).join('')}</div>
+  <p class="hint">Ajustes solo le muestra su cuenta. Tienda y Equipo son solo tuyos. En WhatsApp, conectar o desvincular el número es solo del administrador.</p>
+  <div class="row" style="margin-top:10px"><button class="btn pri" type="button" id="eqGuardar">Guardar acceso</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>`);
+}
+document.addEventListener('click',async e=>{
+  const pr=e.target.closest('[data-eqp]');
+  if(pr){const q=EQ_PRESETS[pr.dataset.eqp][1];document.querySelectorAll('#dlgBody [data-eqs]').forEach(se=>{se.value=q[se.dataset.eqs]||'no'});return}
+  if(e.target.closest('#eqGuardar')){
+    const c=ui.eqCur;if(!c||!puedeTienda())return;
+    const permisos={};document.querySelectorAll('#dlgBody [data-eqs]').forEach(se=>{if(se.value!=='no')permisos[se.dataset.eqs]=se.value});
+    const prev=(ui.eqAcc||[]).find(x=>x.email===c.email);
+    try{await YoscaFB.acc.guardar(c.email,{email:c.email,nombre:c.nombre||'',estado:prev?prev.estado:'activo',duenio:FB_USER.uid,permisos,fecha:Date.now()});
+      try{await YoscaFB.acc.quitarSolicitud(c.email)}catch(err){}
+      dlgClose();toast('Acceso guardado para '+c.email)}catch(err){toast('No se pudo guardar. ¿Pegaste las reglas de Firestore nuevas?')}
+    return}
+  const b=e.target.closest('#v-equipo [data-eq]');if(!b||!puedeTienda())return;
+  const em=b.dataset.e||'',acc=(ui.eqAcc||[]).find(x=>x.email===em),sol=(ui.eqSol||[]).find(x=>x.email===em);
+  switch(b.dataset.eq){
+    case 'aprobar':eqDialogo(em,sol&&sol.nombre,EQ_PRESETS.vend[1]);break;
+    case 'editar':eqDialogo(em,acc&&acc.nombre,acc&&acc.permisos);break;
+    case 'invitar':{const m=($('#eqMail').value||'').trim().toLowerCase();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)){toast('Escribe un correo válido.');return}eqDialogo(m,'',EQ_PRESETS.vend[1]);break}
+    case 'rechazar':ask('¿Rechazar la solicitud de '+em+'?',async()=>{try{await YoscaFB.acc.quitarSolicitud(em);toast('Solicitud rechazada.')}catch(err){toast('No se pudo rechazar.')}});break;
+    case 'pausa':if(acc)try{await YoscaFB.acc.guardar(em,{...acc,estado:acc.estado==='activo'?'suspendido':'activo'});toast(acc.estado==='activo'?'Acceso suspendido.':'Acceso reactivado.')}catch(err){toast('No se pudo cambiar.')}break;
+    case 'quitar':ask('¿Quitar el acceso de '+em+'? Ya no podrá entrar.',async()=>{try{await YoscaFB.acc.quitar(em);toast('Acceso quitado.')}catch(err){toast('No se pudo quitar.')}});break;
+  }
+});
+
 // Adaptador: hace que Firestore se use igual que la base de datos de Claude.
 function fsAdapter(st){
   return {
@@ -943,10 +1056,26 @@ const TABS=[['dash','Dashboard','dash'],['calc','Calculadora','calc'],['ped','Pe
 /* Sección extra solo para la cuenta del dueño (se muestra únicamente con ese correo, ya verificado) */
 const TIENDA_EMAIL='mil0803r@gmail.com';
 const puedeTienda=()=>!!(FB_USER&&String(FB_USER.email||'').toLowerCase()===TIENDA_EMAIL&&FB_USER.emailVerified);
+/* Acceso privado: el administrador aprueba correos y asigna permisos por sección ('no' | 'ver' | 'editar') */
+let ACC={rol:'',permisos:{},duenio:''},accUnsub=[];
+const SEC_NOM={dash:'Dashboard',calc:'Calculadora',ped:'Pedidos',wa:'WhatsApp',inv:'Inventario',gas:'Gastos',proy:'Proyección'};
+const nivelSec=t=>{
+  if(!FB_MODE||!FB_USER||ACC.rol==='admin'||puedeTienda())return 'editar';
+  if(t==='set')return 'ver';
+  if(t==='tienda'||t==='equipo')return 'no';
+  const v=ACC.permisos&&ACC.permisos[t];return v==='ver'||v==='editar'?v:'no';
+};
+const esMiembro=()=>FB_MODE&&ACC.rol==='miembro';
+function pestanas(){
+  let t=TABS.filter(x=>nivelSec(x[0])!=='no');
+  if(puedeTienda()){const n=(ui.eqSol||[]).length;t=[...t,['tienda','Tienda','store'],['equipo','Equipo'+(n?' ('+n+')':''),'users']]}
+  return t;
+}
 function pintarNav(){
-  const t=puedeTienda()?[...TABS,['tienda','Tienda','store']]:TABS;
+  const t=pestanas();
   $('#nav').innerHTML=t.map(([k,n,i])=>`<button data-tab="${k}">${icon(i)}<span>${n}</span></button>`).join('');
-  if(ui.tab==='tienda'&&!puedeTienda())showTab('dash');
+  const ok=ui.tab==='set'||t.some(x=>x[0]===ui.tab);
+  if(!ok&&FB_USER)showTab(t.length?t[0][0]:'set');
   else document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===ui.tab));
 }
 pintarNav();
@@ -956,17 +1085,18 @@ $('#menuBtn').addEventListener('click',()=>navOpen(!$('#mainNav').classList.cont
 $('#navBack').addEventListener('click',()=>navOpen(false));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')navOpen(false)});
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b){showTab(b.dataset.tab);navOpen(false)}});
-const HEADS={dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],wa:['chat','WhatsApp','Escribe a tus clientes con mensajes listos'],inv:['box','Inventario','Prendas y materiales: cuánto tienes y qué se acaba'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],tienda:['store','Tienda','Edita los colores, precios y textos de tu tienda'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
+const HEADS={equipo:['users','Equipo y permisos','Quién puede entrar y qué puede hacer'],dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],wa:['chat','WhatsApp','Escribe a tus clientes con mensajes listos'],inv:['box','Inventario','Prendas y materiales: cuánto tienes y qué se acaba'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],tienda:['store','Tienda','Edita los colores, precios y textos de tu tienda'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
 function showTab(t){
-  if(t==='tienda'&&!puedeTienda())t='dash';
+  if(nivelSec(t)==='no'&&t!=='set'){const f=pestanas();t=f.length?f[0][0]:'set'}
   ui.tab=t;
   const hd=HEADS[t];$('#pageHead').innerHTML=`<div class="pico">${icon(hd[0])}</div><div><h1>${hd[1]}</h1><p>${hd[2]}</p></div>`;
-  ['dash','calc','ped','wa','inv','gas','proy','tienda','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
+  ['dash','calc','ped','wa','inv','gas','proy','tienda','equipo','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   scrollTo(0,0);renderTab();
 }
 function renderTab(){
-  ({dash:renderDash,calc:renderCalc,ped:renderPed,wa:renderWa,inv:renderInv,gas:renderGas,proy:renderProy,tienda:renderTienda,set:renderSet})[ui.tab]();
+  ({dash:renderDash,calc:renderCalc,ped:renderPed,wa:renderWa,inv:renderInv,gas:renderGas,proy:renderProy,tienda:renderTienda,equipo:renderEquipo,set:renderSet})[ui.tab]();
+  const sec=$('#v-'+ui.tab);if(sec){const sv=nivelSec(ui.tab)==='ver'&&ui.tab!=='set';sec.classList.toggle('sv',sv);let b=sec.querySelector(':scope>.svban');if(sv&&!b){b=document.createElement('div');b.className='svban';b.textContent='👁 Solo lectura: tienes permiso para ver esta sección, no para cambiarla.';sec.prepend(b)}else if(!sv&&b)b.remove();$('#v-set').classList.toggle('miembro',esMiembro())}
 }
 /* ================= TIENDA (solo cuenta del dueño): editor, dominio y nube ================= */
 const DNS_A='76.76.21.21',DNS_CNAME='cname.vercel-dns.com';
@@ -2368,6 +2498,7 @@ function bkWrite(id,etiqueta){
 }
 const bkHasData=()=>COLS.some(c=>S[c].length);
 function maybeAutoBackup(){
+  if(esMiembro())return;
   if(!bkHasData())return;
   if(DB&&!(bkSeen&&COLS.every(c=>seenDb[c])&&seenDb.settings))return;
   const id=today();

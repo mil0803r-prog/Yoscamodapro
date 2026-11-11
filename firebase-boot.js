@@ -6,7 +6,7 @@ import {
   sendEmailVerification, signOut,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
-  getFirestore, doc, collection, setDoc, deleteDoc, onSnapshot,
+  getFirestore, doc, collection, setDoc, deleteDoc, onSnapshot, getDoc,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const cfg = window.YOSCA_FIREBASE;
@@ -31,6 +31,17 @@ if (cfg && cfg.apiKey) {
     verify: () => (auth.currentUser ? sendEmailVerification(auth.currentUser) : Promise.resolve()),
     out: () => signOut(auth),
     idToken: () => (auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve('')),
+    // Control de acceso: el administrador aprueba correos y asigna permisos por sección.
+    acc: {
+      mio: (email, next, err) => onSnapshot(doc(db, 'acceso', email), (s) => next(s.exists() ? s.data() : null), err),
+      solicitud: (email, next, err) => onSnapshot(doc(db, 'solicitudes', email), (s) => next(s.exists() ? s.data() : null), err),
+      solicitar: (email, data) => setDoc(doc(db, 'solicitudes', email), data),
+      listaSolicitudes: (next, err) => onSnapshot(collection(db, 'solicitudes'), (s) => next(s.docs.map((d) => d.data())), err),
+      listaAcceso: (next, err) => onSnapshot(collection(db, 'acceso'), (s) => next(s.docs.map((d) => d.data())), err),
+      guardar: (email, data) => setDoc(doc(db, 'acceso', email), data),
+      quitar: (email) => deleteDoc(doc(db, 'acceso', email)),
+      quitarSolicitud: (email) => deleteDoc(doc(db, 'solicitudes', email)),
+    },
     // Los datos de cada persona viven en users/{uid}/...
     store: (uid) => ({
       colSnap: (name, next, err) => onSnapshot(collection(db, 'users', uid, name), (s) => next(s.docs.map((d) => d.data())), err),

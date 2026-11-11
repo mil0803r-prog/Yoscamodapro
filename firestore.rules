@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // El administrador (único dueño de los datos)
+    function admin() {
+      return request.auth != null
+        && request.auth.token.email == 'mil0803r@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+    function correo() { return request.auth.token.email.lower(); }
+    function ficha() { return get(/databases/$(database)/documents/acceso/$(correo())).data; }
+    // Persona aprobada por el administrador y dueño de los datos que se consultan
+    function miembro(owner) {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/acceso/$(correo()))
+        && ficha().estado == 'activo'
+        && ficha().duenio == owner;
+    }
+    function nivel(sec) { return ficha().permisos.get(sec, 'no'); }
+    function ve(sec) { return nivel(sec) in ['ver', 'editar']; }
+    function edita(sec) { return nivel(sec) == 'editar'; }
+
+    // Solicitudes de acceso: cada persona escribe solo la suya; solo el administrador las lee y borra
+    match /solicitudes/{email} {
+      allow create, update: if request.auth != null
+        && request.auth.token.email_verified == true
+        && email == correo()
+        && request.resource.data.keys().hasOnly(['email', 'nombre', 'fecha']);
+      allow read: if admin() || (request.auth != null && email == correo());
+      allow delete: if admin();
+    }
+    // Permisos aprobados: solo el administrador los cambia; cada persona lee el suyo
+    match /acceso/{email} {
+      allow read: if admin() || (request.auth != null && email == correo());
+      allow write: if admin();
+    }
+
+    // Datos del negocio: viven en la cuenta del administrador
+    match /users/{uid} {
+      match /{document=**} {
+        allow read, write: if admin() && request.auth.uid == uid;
+      }
+      match /orders/{d} {
+        allow read: if miembro(uid) && (ve('ped') || ve('wa') || ve('dash') || ve('proy'));
+        allow write: if miembro(uid) && (edita('ped') || edita('wa'));
+      }
+      match /inventory/{d} {
+        allow read: if miembro(uid) && (ve('inv') || ve('ped'));
+        allow write: if miembro(uid) && (edita('inv') || edita('ped'));
+      }
+      match /expenses/{d} {
+        allow read: if miembro(uid) && (ve('gas') || ve('dash') || ve('proy'));
+        allow write: if miembro(uid) && edita('gas');
+      }
+      match /cif/{d} {
+        allow read: if miembro(uid) && (ve('gas') || ve('dash') || ve('proy'));
+        allow write: if miembro(uid) && edita('gas');
+      }
+      match /garments/{d} {
+        allow read: if miembro(uid) && (ve('calc') || ve('ped') || ve('dash') || ve('proy'));
+        allow write: if miembro(uid) && edita('calc');
+      }
+      match /quotes/{d} {
+        allow read: if miembro(uid) && (ve('calc') || ve('dash') || ve('proy'));
+        allow write: if miembro(uid) && edita('calc');
+      }
+      match /config/{d} {
+        allow read: if miembro(uid);
+        allow write: if miembro(uid) && (edita('wa') || edita('ped') || edita('inv') || edita('gas') || edita('calc'));
+      }
+    }
+  }
+}
