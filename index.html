@@ -1001,13 +1001,13 @@ function renderEquipo(){
    <div class="row" style="margin-top:8px"><input id="eqMail" type="email" inputmode="email" placeholder="correo@ejemplo.com" style="flex:1 1 220px" aria-label="Correo de la persona"><button class="btn pri" type="button" data-eq="invitar">Elegir permisos…</button></div></div>`;
 }
 const EQ_PRESETS={ver:['Solo mirar todo',{dash:'ver',calc:'ver',ped:'ver',wa:'ver',inv:'ver',gas:'ver',proy:'ver'}],vend:['Vendedor',{ped:'editar',wa:'editar',inv:'editar'}],todo:['Todo editar',{dash:'editar',calc:'editar',ped:'editar',wa:'editar',inv:'editar',gas:'editar',proy:'editar'}]};
-function eqDialogo(email,nombre,base,propio){
+function eqDialogo(email,nombre,base,propio=true){
   ui.eqCur={email,nombre};
   const p=base||{};
   dlgOpen(`<h2 style="margin:0 0 4px">Permisos de ${esc(email)}</h2><p class="sub">Elige qué puede hacer en cada sección.</p>
   <div class="row" style="margin:8px 0">${Object.entries(EQ_PRESETS).map(([k,v])=>`<button class="btn sm" type="button" data-eqp="${k}">${v[0]}</button>`).join('')}</div>
   <div class="eq-perm">${Object.entries(SEC_NOM).map(([k,n])=>`<label for="eqp-${k}">${n}</label><select id="eqp-${k}" data-eqs="${k}">${['no','ver','editar'].map(v=>`<option value="${v}"${(p[k]||'no')===v?' selected':''}>${NIV_TXT[v]}</option>`).join('')}</select>`).join('')}</div>
-  <label style="display:flex;gap:8px;align-items:flex-start;margin:10px 0 4px;font-size:14px;color:var(--on)"><input type="checkbox" id="eqPropio" style="margin-top:3px"${propio?' checked':''}><span><b>Tiene su propia base de datos.</b> Sus datos son suyos y separados de los tuyos (así recupera lo que tenía antes). Si lo dejas sin marcar, trabaja sobre tus datos.</span></label>
+  <label style="display:flex;gap:8px;align-items:flex-start;margin:10px 0 4px;font-size:14px;color:var(--on)"><input type="checkbox" id="eqPropio" style="margin-top:3px"${propio?' checked':''}><span><b>Solo ve sus propios datos (recomendado).</b> Cada correo tiene su base de datos separada: no ve nada de otros correos ni de los tuyos, y recupera lo que ya tenía. Tú solo decides qué secciones puede usar. Si la desmarcas, trabajará sobre TUS datos.</span></label>
   <p class="hint">Ajustes solo le muestra su cuenta (con base propia, sus ajustes completos). Tienda y Equipo son solo tuyos. En WhatsApp, conectar o desvincular el número es solo del administrador; con base propia deja WhatsApp en «Sin acceso», porque el WhatsApp conectado es el tuyo.</p>
   <div class="row" style="margin-top:10px"><button class="btn pri" type="button" id="eqGuardar">Guardar acceso</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>`);
 }
@@ -1026,7 +1026,7 @@ document.addEventListener('click',async e=>{
   const em=b.dataset.e||'',acc=(ui.eqAcc||[]).find(x=>x.email===em),sol=(ui.eqSol||[]).find(x=>x.email===em);
   switch(b.dataset.eq){
     case 'aprobar':eqDialogo(em,sol&&sol.nombre,EQ_PRESETS.vend[1]);break;
-    case 'editar':eqDialogo(em,acc&&acc.nombre,acc&&acc.permisos,acc&&acc.propio);break;
+    case 'editar':eqDialogo(em,acc&&acc.nombre,acc&&acc.permisos,!!(acc&&acc.propio));break;
     case 'invitar':{const m=($('#eqMail').value||'').trim().toLowerCase();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)){toast('Escribe un correo válido.');return}eqDialogo(m,'',EQ_PRESETS.vend[1]);break}
     case 'rechazar':ask('¿Rechazar la solicitud de '+em+'?',async()=>{try{await YoscaFB.acc.quitarSolicitud(em);toast('Solicitud rechazada.')}catch(err){toast('No se pudo rechazar.')}});break;
     case 'pausa':if(acc)try{await YoscaFB.acc.guardar(em,{...acc,estado:acc.estado==='activo'?'suspendido':'activo'});toast(acc.estado==='activo'?'Acceso suspendido.':'Acceso reactivado.')}catch(err){toast('No se pudo cambiar.')}break;
