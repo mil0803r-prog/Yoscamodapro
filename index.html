@@ -253,8 +253,22 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .wa-chip{font-size:11.5px;font-weight:800;border-radius:99px;padding:3px 10px;background:var(--s-high);color:var(--on-var)}
 .wa-chip.ok{background:var(--primary-soft);color:var(--primary)}.wa-chip.pend{background:var(--warn-soft);color:var(--warn)}
 .wa-vars{display:flex;flex-wrap:wrap;gap:6px}.wa-vars button{border:1px dashed var(--line);background:var(--s-low);border-radius:8px;padding:3px 8px;font:inherit;font-size:12px;cursor:pointer;color:var(--on)}
+.ti-top>.btn.wa{flex:0 0 auto;white-space:nowrap;border-radius:12px;padding:10px 16px}
 @media (max-width:560px){.ti-top>.btn.wa{flex:1 1 100%;text-align:center}}
 .ti-top>div{min-width:0}
+.kb{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 14px;align-items:flex-start;scroll-snap-type:x proximity}
+.kb-col{flex:0 0 272px;background:var(--s-low);border-radius:16px;padding:10px;scroll-snap-align:start;min-height:120px;border:2px solid transparent}
+.kb-col.over{border-color:var(--primary);background:var(--primary-soft)}
+.kb-h{display:flex;align-items:center;gap:8px;padding:2px 4px 10px;font-weight:800;font-size:14px}
+.kb-h i{width:12px;height:12px;border-radius:50%;flex:none}.kb-h span{margin-left:auto;background:var(--s-lowest);border-radius:99px;padding:1px 9px;font-size:12px}
+.kb-card{background:var(--s-lowest);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px;display:flex;flex-direction:column;gap:6px;cursor:grab;box-shadow:0 1px 2px rgba(11,28,48,.05)}
+.kb-card.drag{opacity:.4}
+.kb-card .nm{display:flex;gap:8px;align-items:center}
+.kb-card .av{width:32px;height:32px;border-radius:50%;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;font-weight:800;flex:none}
+.kb-card b{font-size:14.5px;line-height:1.2;overflow-wrap:anywhere}.kb-card small{color:var(--on-var);font-size:12px}
+.kb-card .btn{padding:6px 10px;font-size:12.5px}
+.kb-card select,.kb-card input{font-size:12.5px;padding:6px 8px;min-height:0}
+.kb-vacio{color:var(--on-var);font-size:12.5px;text-align:center;padding:14px 6px}
 .wa-qr{display:grid;place-items:center;background:#fff;border-radius:14px;padding:10px;border:1px solid var(--line)}
 .ti-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .ti-top .ico{width:44px;height:44px;border-radius:14px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;flex:none}
@@ -1036,11 +1050,43 @@ function waPlantDe(o){const l=waPlant();return l.find(p=>p.estado===o.estado)||l
 const WA_EST_ACT=['Pendiente','Confirmado','Enviado'];
 function waCabecera(){
   const n=String(S.settings.waEmpresa||'').replace(/\D/g,''),sin=S.orders.filter(o=>WA_EST_ACT.includes(o.estado)&&waNumber(o.telefono)&&!o.waAt).length;
-  const tabs=[['clientes','Mensajes a clientes'],['plantillas','Plantillas'],['enlace','Enlace y QR']];
-  $('#waHead').innerHTML=`<div class="card"><div class="ti-top"><span class="ico" style="background:#E3F7EA;color:#128C4A">${icon('chat')}</span><div style="flex:1 1 180px;min-width:0"><h2 style="margin:0">WhatsApp Web</h2><p class="sub" style="margin:2px 0 0">Escribe a tus clientes con un toque, con el mensaje ya armado. Abre WhatsApp Web (en el celular abre la app).</p></div><a class="btn wa" href="https://web.whatsapp.com/" target="_blank" rel="noopener">Abrir WhatsApp Web</a></div>
+  const tabs=[['tablero','Tablero'],['clientes','Mensajes'],['plantillas','Plantillas'],['enlace','Enlace y QR']];
+  $('#waHead').innerHTML=`<div class="card"><div class="ti-top"><span class="ico" style="background:#E3F7EA;color:#128C4A">${icon('chat')}</span><div style="flex:1 1 180px;min-width:0"><h2 style="margin:0">WhatsApp Web</h2><p class="sub" style="margin:2px 0 0">Organiza tus chats en un tablero con las mismas etiquetas de tu WhatsApp Business y escríbeles con un toque.</p></div><a class="btn wa" href="https://web.whatsapp.com/" target="_blank" rel="noopener">Abrir WhatsApp Web</a></div>
   <div class="ti-chips"><span class="ti-chip ${sin?'warn':'ok'}">${sin?sin+' '+(sin===1?'cliente por contactar':'clientes por contactar'):'Todos contactados'}</span><span class="ti-chip ${n?'ok':''}">${n?'Tu WhatsApp: +'+esc(n):'Tu WhatsApp: sin configurar'}</span></div>
   <div class="seg" id="waSeg" style="display:flex;width:100%">${tabs.map(([k,l])=>`<button type="button" data-wa="${k}" class="${ui.waTab===k?'on':''}" style="flex:1;font-size:12.5px">${l}</button>`).join('')}</div></div>`;
 }
+const WA_ETQ=[{id:'nuevo',nombre:'Cliente nuevo',color:'#25D366'},{id:'pedido',nombre:'Nuevo pedido',color:'#34B7F1'},{id:'pagopend',nombre:'Pago pendiente',color:'#FFB300'},{id:'pagado',nombre:'Pagado',color:'#7E57C2'},{id:'fin',nombre:'Pedido finalizado',color:'#2E7D32'}];
+const WA_MAPA={Pendiente:'pedido',Confirmado:'pagopend',Enviado:'pagado',Entregado:'fin'};
+function waEtq(){const st=S.settings;if(!Array.isArray(st.waEtiquetas)||!st.waEtiquetas.length)st.waEtiquetas=JSON.parse(JSON.stringify(WA_ETQ));return st.waEtiquetas}
+function waAsig(){const st=S.settings;if(!st.waAsig||typeof st.waAsig!=='object')st.waAsig={};return st.waAsig}
+function waContactos(){
+  const m=new Map();
+  S.orders.forEach(o=>{const n=waNumber(o.telefono);if(!n)return;let c=m.get(n);if(!c){c={tel:n,nombre:o.cliente||'Sin nombre',ped:0,total:0,ult:null,manual:false};m.set(n,c)}
+    c.ped++;if(o.estado!=='Cancelado'&&o.estado!=='Devuelto')c.total+=num(o.precio)*(num(o.cantidad)||1);
+    if(!c.ult||String(o.fecha)>=String(c.ult.fecha)){c.ult=o;c.nombre=o.cliente||c.nombre}});
+  (S.settings.waContactos||[]).forEach(x=>{const n=waNumber(x.tel);if(n&&!m.has(n))m.set(n,{tel:n,nombre:x.nombre||'Sin nombre',ped:0,total:0,ult:null,manual:true,id:x.id})});
+  return [...m.values()];
+}
+function waTarjeta(c,etqs){
+  const a=waAsig()[c.tel]||{},ini=String(c.nombre||'?').trim().charAt(0).toUpperCase()||'?';
+  return `<div class="kb-card" draggable="true" data-tel="${esc(c.tel)}"><div class="nm"><span class="av">${esc(ini)}</span><div style="min-width:0"><b>${esc(c.nombre)}</b><br><small>+${esc(c.tel)}</small></div></div>
+  ${c.ult?`<small>${esc(waDetalle(c.ult))} · <span class="badge b-${esc(c.ult.estado)}">${esc(c.ult.estado)}</span></small><small>${c.ped} ${c.ped===1?'pedido':'pedidos'} · ${fmt(c.total)}</small>`:'<small>Aún sin pedidos</small>'}
+  <input data-knota="${esc(c.tel)}" placeholder="Nota rápida…" maxlength="80" value="${esc(a.n||'')}" aria-label="Nota">
+  <div class="wa-btns"><a class="btn wa" href="${esc(waLink(c.tel,''))}" target="_blank" rel="noopener" data-kabrir="${esc(c.tel)}">💬 Abrir chat</a>${c.manual?`<button class="btn" type="button" data-kdel="${esc(c.id)}" aria-label="Quitar contacto">✕</button>`:''}</div>
+  <select data-kmover="${esc(c.tel)}" aria-label="Mover a"><option value="">Mover a…</option><option value="_ninguna">Sin etiqueta</option>${etqs.map(e=>`<option value="${esc(e.id)}" ${a.e===e.id?'disabled':''}>${esc(e.nombre)}</option>`).join('')}</select></div>`;
+}
+function waTablero(){
+  const etqs=waEtq(),asig=waAsig(),q=(ui.waQ||'').toLowerCase();
+  const todos=waContactos().filter(c=>!q||(c.nombre+' '+c.tel+' '+((asig[c.tel]||{}).n||'')).toLowerCase().includes(q));
+  const cols=[{id:'',nombre:'Sin etiqueta',color:'#9AA5B1'},...etqs];
+  const por=id=>todos.filter(c=>((asig[c.tel]||{}).e||'')===id||(id===''&&!etqs.some(e=>e.id===(asig[c.tel]||{}).e)));
+  const editor=ui.waEdEtq?`<div class="card" style="margin-top:12px"><h3>Etiquetas</h3><p class="sub">Escribe las mismas etiquetas que tienes en tu WhatsApp Business, para que el tablero y tu app coincidan.</p>${etqs.map((e,i)=>`<div class="row" style="margin:8px 0;flex-wrap:nowrap" data-ei="${i}"><input type="color" data-ef="color" value="${esc(e.color)}" style="width:46px;padding:2px;flex:none" aria-label="Color"><input data-ef="nombre" value="${esc(e.nombre)}" maxlength="30" style="flex:1;min-width:0" aria-label="Nombre de la etiqueta"><button class="btn sm del" type="button" data-edel="${i}" aria-label="Eliminar etiqueta">✕</button></div>`).join('')}<div class="row"><button class="btn" type="button" id="kbNuevaEtq">+ Nueva etiqueta</button><button class="btn" type="button" id="kbResetEtq">Restaurar las de WhatsApp Business</button></div></div>`:'';
+  $('#waBody').innerHTML=`<div class="card" style="margin-top:12px"><div class="row"><input id="kbBuscar" placeholder="Buscar contacto…" value="${esc(ui.waQ||'')}" style="flex:1;min-width:140px" aria-label="Buscar contacto"><button class="btn" type="button" id="kbNuevo">+ Contacto</button></div>
+  <div class="row" style="margin-top:8px"><button class="btn sm" type="button" id="kbSync">Ordenar según el estado del pedido</button><button class="btn sm" type="button" id="kbEtq">${ui.waEdEtq?'Cerrar etiquetas':'Editar etiquetas'}</button></div>
+  <p class="hint">Arrastra cada chat a su etiqueta (en el celular usa <b>Mover a…</b>). Las etiquetas del tablero son de esta plataforma: no se copian solas a tu app de WhatsApp Business.</p></div>${editor}
+  <div class="kb" id="kb" style="margin-top:12px">${cols.map(c=>{const l=por(c.id);return `<div class="kb-col" data-col="${esc(c.id)}"><div class="kb-h"><i style="background:${esc(c.color)}"></i>${esc(c.nombre)}<span>${l.length}</span></div>${l.length?l.map(x=>waTarjeta(x,etqs)).join(''):'<div class="kb-vacio">Suelta aquí un chat</div>'}</div>`}).join('')}</div>`;
+}
+function waMover(tel,e){const a=waAsig();if(!e||e==='_ninguna')delete a[tel];else{a[tel]=a[tel]||{};a[tel].e=e}save();waTablero();waCabecera()}
 function waClientes(){
   const est=ui.waEst||'activos',q=(ui.waQ||'').toLowerCase();
   const lista=S.orders.filter(o=>(est==='activos'?WA_EST_ACT.includes(o.estado):est==='todos'||o.estado===est)&&(!q||[o.cliente,o.producto,o.ciudad,o.telefono].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
@@ -1073,15 +1119,22 @@ function waEnlace(){
   <div class="wa-qr" style="margin-top:12px"><img alt="Código QR de tu WhatsApp" width="220" height="220" src="https://api.qrserver.com/v1/create-qr-code/?size=440x440&margin=10&data=${encodeURIComponent(link)}"></div><p class="hint" style="text-align:center">Para imprimirlo en tu empaque o en tu local. El QR se genera con un servicio externo (api.qrserver.com) usando solo este enlace.</p>`:'<div class="alert" style="margin-top:10px">Guarda tu número arriba para generar el enlace y el QR.</div>'}</div>`;
 }
 function renderWa(){
-  if(!ui.waTab)ui.waTab='clientes';
+  if(!ui.waTab)ui.waTab='tablero';
   const act=document.activeElement;if(act&&act.closest&&act.closest('#v-wa')&&act.matches('input,textarea')&&$('#waHead').innerHTML)return;
   waCabecera();
-  if(ui.waTab==='clientes')waClientes();else if(ui.waTab==='plantillas')waPlantillas();else waEnlace();
+  if(ui.waTab==='tablero')waTablero();else if(ui.waTab==='clientes')waClientes();else if(ui.waTab==='plantillas')waPlantillas();else waEnlace();
 }
 document.addEventListener('click',e=>{
   if(!e.target.closest('#v-wa'))return;
   const t=e.target.closest('button,a');if(!t)return;
   if(t.dataset.wa){ui.waTab=t.dataset.wa;renderWa();return}
+  if(t.id==='kbEtq'){ui.waEdEtq=!ui.waEdEtq;waTablero();return}
+  if(t.id==='kbNuevaEtq'){waEtq().push({id:uid(),nombre:'Nueva etiqueta',color:'#F06292'});save();waTablero();return}
+  if(t.id==='kbResetEtq'){ask('¿Volver a las etiquetas originales de WhatsApp Business?',()=>{S.settings.waEtiquetas=JSON.parse(JSON.stringify(WA_ETQ));save();waTablero()});return}
+  if(t.dataset.edel!=null){const i=+t.dataset.edel,e=waEtq()[i];ask(`¿Eliminar la etiqueta "${e.nombre}"? Sus chats pasan a "Sin etiqueta".`,()=>{waEtq().splice(i,1);save();waTablero()});return}
+  if(t.id==='kbNuevo'){const nom=prompt('Nombre del contacto');if(!nom)return;const tel=prompt('Teléfono (con o sin 51)');if(!tel)return;if(!waNumber(tel)){toast('Ese teléfono no es válido');return}const l=S.settings.waContactos=S.settings.waContactos||[];l.push({id:uid(),nombre:nom.trim().slice(0,40),tel:waNumber(tel)});save();waTablero();return}
+  if(t.id==='kbSync'){ask('¿Poner cada cliente en la etiqueta que corresponde al estado de su último pedido? Cambia a los que tienen pedidos.',()=>{const a=waAsig();let n=0;waContactos().forEach(c=>{if(!c.ult)return;const e=WA_MAPA[c.ult.estado];if(e&&waEtq().some(x=>x.id===e)){a[c.tel]=a[c.tel]||{};if(a[c.tel].e!==e){a[c.tel].e=e;n++}}});save();waTablero();waCabecera();toast(n?n+' chats movidos':'Ya estaban ordenados')});return}
+  if(t.dataset.kdel){ask('¿Quitar este contacto del tablero?',()=>{S.settings.waContactos=(S.settings.waContactos||[]).filter(x=>x.id!==t.dataset.kdel);save();waTablero()});return}
   const id=t.dataset.wsend||t.dataset.wcopy||t.dataset.wdone||t.dataset.wundo,o=id&&S.orders.find(x=>x.id===id);
   if(t.dataset.wsend&&o){const tx=document.querySelector('[data-wtx="'+id+'"]').value,u=waLink(o.telefono,tx);if(!u){toast('Ese teléfono no es válido');return}window.open(u,'_blank','noopener');o.waAt=Date.now();save();waCabecera();const r=t.closest('.wa-row');if(r){const ch=r.querySelector('.wa-chip');ch.className='wa-chip ok';ch.textContent='✓ Contactado hoy'}toast('Abriendo WhatsApp… marqué a '+o.cliente+' como contactado');return}
   if(t.dataset.wcopy&&o){tiCopiar(document.querySelector('[data-wtx="'+id+'"]').value);return}
@@ -1095,14 +1148,22 @@ document.addEventListener('click',e=>{
   if(t.id==='waCopLink')tiCopiar($('#waLinkTxt').value);
 });
 document.addEventListener('focusin',e=>{if(e.target.matches&&e.target.matches('#v-wa textarea'))window.__waUltima=e.target});
+document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('.kb-card');if(!c)return;window.__kbTel=c.dataset.tel;c.classList.add('drag');try{e.dataTransfer.setData('text/plain',c.dataset.tel);e.dataTransfer.effectAllowed='move'}catch(x){}});
+document.addEventListener('dragend',e=>{document.querySelectorAll('.kb-card.drag').forEach(c=>c.classList.remove('drag'));document.querySelectorAll('.kb-col.over').forEach(c=>c.classList.remove('over'))});
+document.addEventListener('dragover',e=>{const c=e.target.closest&&e.target.closest('.kb-col');if(!c||!window.__kbTel)return;e.preventDefault();document.querySelectorAll('.kb-col.over').forEach(x=>{if(x!==c)x.classList.remove('over')});c.classList.add('over')});
+document.addEventListener('drop',e=>{const c=e.target.closest&&e.target.closest('.kb-col');if(!c||!window.__kbTel)return;e.preventDefault();const tel=window.__kbTel;window.__kbTel=null;waMover(tel,c.dataset.col||'_ninguna')});
 document.addEventListener('input',e=>{
   const el=e.target;if(!el.closest||!el.closest('#v-wa'))return;
-  if(el.id==='waBuscar'){ui.waQ=el.value;clearTimeout(waClientes.t);waClientes.t=setTimeout(()=>{waClientes();const b=$('#waBuscar');if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length)}},250)}
+  if(el.id==='kbBuscar'){ui.waQ=el.value;clearTimeout(waTablero.t);waTablero.t=setTimeout(()=>{waTablero();const b=$('#kbBuscar');if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length)}},250)}
+  else if(el.dataset&&el.dataset.knota){const a=waAsig();a[el.dataset.knota]=a[el.dataset.knota]||{};a[el.dataset.knota].n=el.value;saveSoon()}
+  else if(el.dataset&&el.dataset.ef){const e=waEtq()[+el.closest('[data-ei]').dataset.ei];e[el.dataset.ef]=el.value;saveSoon()}
+  else if(el.id==='waBuscar'){ui.waQ=el.value;clearTimeout(waClientes.t);waClientes.t=setTimeout(()=>{waClientes();const b=$('#waBuscar');if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length)}},250)}
   else if(el.id==='waMsg'){ui.waMsg=el.value;const n=String(S.settings.waEmpresa||'').replace(/\D/g,'');if(n){const l='https://wa.me/'+n+'?text='+encodeURIComponent(String(el.value).replace(/\{marca\}/g,S.settings.marca||'Yosca Moda'));const t=$('#waLinkTxt');if(t)t.value=l}}
   else if(el.dataset&&el.dataset.pf){const c=el.closest('[data-pi]'),i=+c.dataset.pi,x=waPlant()[i];x[el.dataset.pf]=el.value;saveSoon();const pv=c.querySelector('[data-prev]');if(pv)pv.textContent=waLlenar(x.texto,S.orders[0]||{cliente:'Ana Pérez',producto:'Polo básico',cantidad:2,precio:29.9,pago:'Yape',ciudad:'Lima',fecha:today(),estado:'Pendiente'})}
 });
 document.addEventListener('change',e=>{
   const el=e.target;if(!el.closest||!el.closest('#v-wa'))return;
+  if(el.dataset&&el.dataset.kmover){waMover(el.dataset.kmover,el.value);return}
   if(el.id==='waEstSel'){ui.waEst=el.value;waClientes()}
   else if(el.dataset&&el.dataset.wpl){const o=S.orders.find(x=>x.id===el.dataset.wpl),pl=waPlant().find(x=>x.id===el.value);if(o&&pl)document.querySelector('[data-wtx="'+o.id+'"]').value=waLlenar(pl.texto,o)}
   else if(el.dataset&&el.dataset.pf==='estado'){const c=el.closest('[data-pi]');waPlant()[+c.dataset.pi].estado=el.value;save()}
@@ -2215,7 +2276,7 @@ const GUIDE=[
  {t:'Calculadora de costos',ic:'calc',pasos:['Crea una prenda con el botón de nueva prenda y ponle nombre. Puedes poner foto.','Tela: elige "Por kilo" (kilos × precio del kilo) o "Por metro". Agrega el % de merma si se desperdicia tela.','Completa hilos, confección (máquina), avíos, etiqueta y empaque. Etiqueta y empaque van por separado.','Con "Agregar costo extra" sumas más categorías (bordado, lavandería, transporte, etc.).','La cuota de gastos fijos (CIF) se suma sola: total de gastos fijos ÷ prendas del mes.','Modo "Por prenda": pones el precio de venta y ves tu ganancia y margen.','Modo "Cuánto quieres ganar": escribes tu meta y la app te dice a cuánto vender (si sabes cuántas prendas) o cuántas prendas necesitas (si sabes el precio).','Packs de 3, 6 o 12: escribe lo que cobras por el pack y la app calcula lo que vale cada prenda.','Guarda cotizaciones para volver a cargarlas después.'],tip:'Margen sano: entre 50% y 65%. Menos de 30% es bajo.',q:'¿A qué precio vendo para ganar S/ 1,000?'},
  {t:'Pedidos',ic:'bag',pasos:['Llena el formulario: cliente, teléfono, ciudad, producto (puedes elegir una prenda de tu catálogo), modelo, talla, color, cantidad, precio, costo, flete, estado y forma de pago.','Para vender en pack (3, 6 o 12), elige el pack y escribe el precio del pack: la app divide el valor por prenda.','Cambia el estado desde la misma tarjeta: Pendiente, Enviado, Entregado, Devuelto o Cancelado.','El icono verde de WhatsApp abre el chat con el cliente con un mensaje listo.','Mira el historial en encuadros o en tabla con el selector de arriba. Busca por cliente, producto o ciudad y filtra por estado.','Editar carga el pedido en el formulario; ✕ lo elimina.','Utilidad: Entregado = (precio − costo) × cantidad − flete. Devuelto = pierdes el flete (por el factor de Ajustes).'],tip:'Escribe el teléfono con o sin 51; la app lo entiende. Configura tu código de país en Ajustes.',q:'¿Qué ciudad me compra más?'},
  {t:'Inventario',ic:'box',pasos:['Toca "+ Registrar producto". Elige si es una prenda terminada o un material (tela, hilos, avíos). ','Si vendes la misma prenda con cuello redondo y cuello V, regístralas como productos separados poniendo el cuello en el nombre (Ej. Polera cuello redondo y Polera cuello V): cada una tiene su propio stock.','Para varias tallas y colores a la vez: toca las tallas (S, M, L…) y escribe los colores (Negro, Blanco), toca "Generar tablero" y pon el stock de cada fila. Cada talla y color tiene su propio inventario. Con "+ Agregar talla o color" sumas más después.','Completa también el mínimo (te avisa cuando quede igual o menos), costo por unidad, SKU y ubicación.','Entrada: suma stock (compra, producción terminada, devolución). Salida: resta stock (venta, uso en producción, merma, muestra). Contar: pones lo que realmente hay y la app registra la diferencia.','Cada producto tiene su Historial con fecha, motivo y saldo de cada movimiento.','Arriba ves productos, unidades, valor a costo, valor de venta, stock bajo y agotados. "Por reponer" lista lo que se acaba, con botón de entrada.','Pedidos: en el formulario elige el \"Producto del inventario\" y la talla y el color se jalan solos con su stock disponible (también puedes escribirlos). Al guardar el pedido se descuenta del inventario; si luego lo cancelas o se devuelve, el stock regresa.','Puedes buscar, filtrar por tipo o por stock bajo/agotado y descargar el inventario en .csv.'],tip:'Pon un mínimo en cada producto para que la app te avise antes de quedarte sin stock.',q:'¿Qué productos tengo con stock bajo?'},
- {t:'WhatsApp',ic:'chat',pasos:['En "Mensajes a clientes" ves tus pedidos con el mensaje ya armado según su estado (confirmar, enviado, gracias por tu compra…).','Elige otra plantilla si quieres, cambia el texto y toca "Enviar por WhatsApp Web". En computadora abre web.whatsapp.com y en el celular abre la app. El pedido queda marcado como contactado.','En "Plantillas" editas tus mensajes. Usa variables como {cliente}, {producto} y {total}: se reemplazan con los datos de cada pedido. Puedes crear las tuyas.','En "Enlace y QR" guardas el número de tu negocio y generas el enlace de WhatsApp y el QR para tus redes, anuncios o empaques.'],tip:'WhatsApp Web no se puede mostrar dentro de la app: se abre en otra pestaña. La primera vez escaneas el QR con tu celular.',q:'¿Cómo mando un mensaje a mis clientes?'},
+ {t:'WhatsApp',ic:'chat',pasos:['En "Tablero" ves tus chats en columnas, una por etiqueta (Cliente nuevo, Nuevo pedido, Pago pendiente, Pagado, Pedido finalizado). Arrastra cada chat a su etiqueta, o usa "Mover a…" en el celular. "Editar etiquetas" las deja iguales a las de tu WhatsApp Business.','En "Mensajes" ves tus pedidos con el mensaje ya armado según su estado (confirmar, enviado, gracias por tu compra…).','Elige otra plantilla si quieres, cambia el texto y toca "Enviar por WhatsApp Web". En computadora abre web.whatsapp.com y en el celular abre la app. El pedido queda marcado como contactado.','En "Plantillas" editas tus mensajes. Usa variables como {cliente}, {producto} y {total}: se reemplazan con los datos de cada pedido. Puedes crear las tuyas.','En "Enlace y QR" guardas el número de tu negocio y generas el enlace de WhatsApp y el QR para tus redes, anuncios o empaques.'],tip:'WhatsApp Web no se puede mostrar dentro de la app: se abre en otra pestaña. La primera vez escaneas el QR con tu celular.',q:'¿Cómo mando un mensaje a mis clientes?'},
  {t:'Gastos',ic:'money',pasos:['Fijos (CIF): alquiler, luz, sueldos, internet… lo que pagas cada mes aunque no vendas.','Variables: gastos del día a día (envíos, publicidad, compras sueltas). Elige la fecha y la categoría.','La "base de prendas por mes" (200, 300, 400, 500 o 600) define cuánto gasto fijo toca a cada prenda: más prendas, menos costo fijo por prenda.','Puedes editar o borrar cualquier gasto.'],tip:'Si cambias la base de prendas, el costo por prenda en la Calculadora se actualiza solo.',q:'¿Cuántas prendas necesito vender para cubrir mis gastos fijos?'},
  {t:'Proyección',ic:'trend',pasos:['Prueba escenarios de producción: conservador, moderado y expansión (puedes cambiar las cantidades).','Elige una prenda y un lote de 25, 50 o 100 para ver inversión, venta estimada y utilidad.','Verás el punto de equilibrio: cuántas prendas debes vender para recuperar lo invertido.'],tip:'Úsala antes de producir un lote grande para saber cuánto necesitas vender.',q:'Revisa mis costos y dime qué mejorar'},
  {t:'Ajustes, importar y respaldo',ic:'gear',pasos:['Ajustes (engranaje): nombre de la marca, tipo de cambio S/ por US$, cuánto cuesta una devolución (× flete), código de país y WhatsApp de la empresa.','Importar pedidos de Shopify: en Shopify ve a Pedidos → Exportar → CSV y sube ese archivo. No duplica pedidos ya importados; el costo lo completas tú.','Respaldo automático: la app guarda una copia cada día (últimas 14). Puedes restaurar o descargar cualquiera.','"Crear respaldo ahora" guarda una copia al momento. También puedes descargar el respaldo .json y los pedidos o gastos en .csv.','Cerrar sesión está en la tarjeta de tu cuenta, en Ajustes.'],tip:'Antes de restaurar, la app guarda una copia de tus datos actuales por si te arrepientes.',q:'¿Cómo restauro un respaldo?'},
