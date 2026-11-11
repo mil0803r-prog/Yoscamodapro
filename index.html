@@ -386,7 +386,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .eq-fila{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
 .eq-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 220px}.eq-info small{color:var(--on-var);overflow-wrap:anywhere}
 .eq-perm{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center}.eq-perm label{margin:0}
-.pk-resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+.pk-resumen{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px}.pk-resumen .pk-res{flex:1 0 118px}
 .pk-res{background:var(--s-lowest);border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:1px;min-width:0}
 .pk-m{display:flex;gap:16px}.pk-m span{display:flex;flex-direction:column}.pk-m small{font-size:12px;color:var(--on-var)}.pk-m b{font-size:15px}.pk-card .btn{width:100%}
 .pk-res span{font-size:12px;font-weight:800;overflow-wrap:anywhere}.pk-res b{font-size:22px}.pk-res small{color:var(--on-var);font-size:12px}
@@ -468,7 +468,17 @@ summary{cursor:pointer}
 
     <!-- PEDIDOS -->
     <section id="v-ped" hidden>
+      <div class="row" style="justify-content:flex-end;margin-bottom:10px"><button class="btn pri" id="pedNuevo" type="button">+ Nuevo pedido</button></div>
       <div class="card">
+        <div class="row sb" style="margin-bottom:12px"><h3>Historial de pedidos</h3><span class="badge" id="pedCount"></span></div>
+        <div class="seg" id="pedViewSeg" style="display:flex;margin-bottom:12px" aria-label="Vista"><button data-v="board" style="flex:1">Tablero</button><button data-v="cards" style="flex:1">Encuadros</button><button data-v="table" style="flex:1">Tabla</button></div>
+        <div class="row" style="margin-bottom:14px">
+          <input class="grow" id="pedBuscar" placeholder="Buscar cliente, producto, ciudad…" aria-label="Buscar pedidos">
+          <select id="pedFiltro" style="width:auto" aria-label="Filtrar por estado"></select>
+        </div>
+        <div id="pedTabla"></div>
+      </div>
+      <div class="card" id="pedCard" hidden style="margin-top:14px">
         <h2 id="pedTitle">Registrar pedido</h2>
         <form id="pedForm" class="form" autocomplete="off" style="margin-top:10px">
           <div><label for="p-fecha">Fecha</label><input id="p-fecha" type="date" name="fecha" required></div>
@@ -494,15 +504,6 @@ summary{cursor:pointer}
           <div class="full"><label for="p-notas">Notas</label><textarea id="p-notas" name="notas"></textarea></div>
           <div class="row full"><button class="btn pri" type="submit">Guardar pedido</button><button class="btn" type="button" id="pedCancel" hidden>Cancelar edición</button></div>
         </form>
-      </div>
-      <div class="card" style="margin-top:14px">
-        <div class="row sb" style="margin-bottom:12px"><h3>Historial de pedidos</h3><span class="badge" id="pedCount"></span></div>
-        <div class="seg" id="pedViewSeg" style="display:flex;margin-bottom:12px" aria-label="Vista"><button data-v="cards" style="flex:1">Encuadros</button><button data-v="table" style="flex:1">Tabla</button><button data-v="board" style="flex:1">Tablero</button></div>
-        <div class="row" style="margin-bottom:14px">
-          <input class="grow" id="pedBuscar" placeholder="Buscar cliente, producto, ciudad…" aria-label="Buscar pedidos">
-          <select id="pedFiltro" style="width:auto" aria-label="Filtrar por estado"></select>
-        </div>
-        <div id="pedTabla"></div>
       </div>
     </section>
 
@@ -736,7 +737,7 @@ const CATS_VAR=['Tela / Gamarra','Hilos y avíos','Confección / maquila','Publi
 const CATS_CIF=['Alquiler del taller','Luz, agua e internet','Sueldos fijos','Marketing fijo','Mantenimiento de máquinas','Movilidad','Otros'];
 
 let S={garments:[],quotes:[],orders:[],expenses:[],cif:[],inventory:[],settings:{marca:'Yosca Moda',moneda:'PEN',tc:3.75,base:400,factor:2,tema:'auto',pais:'51',waEmpresa:'51960614797'}};
-const ui={pedView:(()=>{try{const v=localStorage.getItem('yosca_pedview');return v==='table'||v==='board'?v:'cards'}catch(e){return'cards'}})(),tab:'dash',desde:'',hasta:'',diaR:'30',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
+const ui={pedView:(()=>{try{const v=localStorage.getItem('yosca_pedview');return v==='table'||v==='cards'?v:'board'}catch(e){return'board'}})(),tab:'dash',desde:'',hasta:'',diaR:'30',gid:null,lote:1,periodo:'mes',gasTab:'cif',editOrder:null,editGas:null,editCif:null,projVol:[80,130,250],batch:25,projGid:null,metric:'ventas',tbl:{mes:false,sem:false,dia:false,ciudad:false},mode:'prenda',meta:1000,metaN:20,metaFrom:'cant'};
 
 /* ---- costos de una prenda (todo en soles) ---- */
 const telaCost=g=>g.modo==='kilos'?num(g.kilos)*num(g.precioKg)*(1+num(g.merma)/100):num(g.metros)*num(g.precioMetro);
@@ -1657,7 +1658,7 @@ function waPasarAPedidos(c){
   const set=(n,v)=>{if(v!=null&&v!==''&&pf[n]){pf[n].value=v;pf[n].dispatchEvent(new Event('input',{bubbles:true}))}};
   set('cliente',d.nombre||c.nombre);set('telefono',d.tel||c.tel);set('ciudad',d.ciudad);set('producto',d.producto);set('talla',d.talla);set('color',d.color);set('cantidad',d.cantidad);
   set('notas',[d.dni&&'DNI '+d.dni,d.direccion&&'Dirección: '+d.direccion,d.agencia&&'Agencia: '+d.agencia].filter(Boolean).join(' · '));
-  pf.scrollIntoView({behavior:'smooth'});toast('Revisa los datos y toca «Guardar pedido»');
+  pedMostrarForm(true);toast('Revisa los datos y toca «Guardar pedido»');
 }
 function waEditarEtiquetas(){
   const et=waEtq();
@@ -2180,7 +2181,9 @@ pf.pack.addEventListener('change',()=>{
 pf.precioPack.addEventListener('input',syncPack);pf.cantidad.addEventListener('input',syncPack);
 function syncWaForm(){const w=$('#waForm');if(w)w.innerHTML=waBtn(pf.telefono.value,pf.cliente.value,pf.producto.value)}
 pf.telefono.addEventListener('input',syncWaForm);pf.cliente.addEventListener('input',syncWaForm);pf.producto.addEventListener('input',syncWaForm);
-function resetPed(){pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
+function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
+$('#pedNuevo').addEventListener('click',()=>{if($('#pedCard').hidden){resetPed();pedMostrarForm(true)}else pedMostrarForm(false)});
+function resetPed(){$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
 pf.addEventListener('submit',e=>{
   e.preventDefault();
   const fd=Object.fromEntries(new FormData(pf));
@@ -2265,7 +2268,7 @@ $('#pedTabla').addEventListener('click',e=>{
     Object.keys(o).forEach(k=>{if(pf[k]&&k!=='id')pf[k].value=o[k]});
     pf.pack.value=String(o.pack>1?o.pack:1);if(o.pack>1)pf.cantidad.value=o.packs||1;syncPack();syncWaForm();
     {const it=o.invId&&invFind(o.invId);pig.value=it?invKey(it):'';pf.invId.value=it?it.id:'';invRefresh()}
-    $('#pedTitle').textContent='Editar pedido';$('#pedCancel').hidden=false;pf.scrollIntoView({behavior:'smooth'})}
+    $('#pedTitle').textContent='Editar pedido';$('#pedCancel').hidden=false;pedMostrarForm(true)}
   if(b.dataset.del)ask('¿Eliminar este pedido?',()=>{const od=S.orders.find(o=>o.id===b.dataset.del);if(od)orderStockRelease(od);S.orders=S.orders.filter(o=>o.id!==b.dataset.del);save();renderPed()});
 });
 
