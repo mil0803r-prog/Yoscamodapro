@@ -453,7 +453,7 @@ summary{cursor:pointer}
       <div id="charts" style="display:flex;flex-direction:column;gap:14px;margin-top:14px"></div>
       <div class="card" id="alertas" style="margin-top:14px"></div>
       <div class="card" style="margin-top:14px"><h3>Pedidos por estado</h3><div id="porEstado"></div></div>
-      <div class="card" style="margin-top:14px"><h3>Más vendidas (Ya pagó / entregadas)</h3><div id="topProd"></div></div>
+      <div class="card" style="margin-top:14px"><h3>Más vendidas (Ya pagó)</h3><div id="topProd"></div></div>
       <div class="card" style="margin-top:14px"><h3>Gastos por categoría</h3><div id="gastoCat"></div></div>
     </section>
 
@@ -751,14 +751,14 @@ function gCalc(g){
   const total=direct+cif,pvp=num(g.pvp),ganancia=pvp-total;
   return {tela,extras,direct,cif,total,pvp,ganancia,margen:pvp>0?ganancia/pvp*100:0,markup:total>0?pvp/total:0};
 }
-/* Un pedido "cuenta" como venta (análisis, utilidad e inventario) cuando el cliente está en el tablero «Ya pagó» o el pedido está Entregado */
+/* Un pedido "cuenta" como venta (análisis, utilidad e inventario) SOLO cuando está en el tablero «Ya pagó». «Entregado» es solo un estado visible: no mueve nada. */
 const esTabPagado=t=>!!t&&(t.id==='pagado'||/\bya\s*pag/i.test(String(t.nombre||'')));
+const pedEtqsDe=o=>{const n=waNumber(o.telefono);return n?waEtqDe(n):(Array.isArray(o.ts)?o.ts:[])};   // sin teléfono, la etiqueta se guarda en el propio pedido
 function pedPagado(o){
-  const n=waNumber(o.telefono);if(!n)return false;
-  const ids=waEtqDe(n);if(!ids.length)return false;
+  const ids=pedEtqsDe(o);if(!ids.length)return false;
   return waTabs().some(t=>ids.includes(t.id)&&esTabPagado(t));
 }
-const pedCuenta=o=>o.estado!=='Cancelado'&&o.estado!=='Devuelto'&&(o.estado==='Entregado'||pedPagado(o));
+const pedCuenta=o=>o.estado!=='Cancelado'&&o.estado!=='Devuelto'&&pedPagado(o);
 function orderProfit(o){
   const q=num(o.cantidad)||1;
   if(pedCuenta(o))return (num(o.precio)-num(o.costo))*q-num(o.flete);
@@ -1839,12 +1839,12 @@ function renderDash(){
   $('#hola').textContent='Hola, '+((S.settings.marca||'Yosca').split(' ')[0]);
   $('#kpis').innerHTML=
     k('Utilidad neta real',fmt(neta),'','después de gastos fijos y variables','hero'+(neta<0?' neg':''))+
-    k('Ventas (Ya pagó / entregado)',fmt(ventas))+
+    k('Ventas (Ya pagó)',fmt(ventas))+
     k('Utilidad de pedidos',fmt(bruta),bruta>=0?'pos':'neg')+
     k('Gastos variables',fmt(vars))+
     k('Gastos fijos (CIF)',fmt(fijos),'',['mes','mesant','todo'].includes(p)?'':'prorrateado al periodo')+
     k('Pedidos',os.length)+
-    k('Tasa de entrega',Number.isFinite(tasa)?pct(tasa):'—')+
+    k('Tasa de éxito (pagados vs devueltos)',Number.isFinite(tasa)?pct(tasa):'—')+
     k('Por cobrar',fmt(porCobrar),'','en proceso');
   const al=[];
   const pend=S.orders.filter(o=>o.estado==='Pendiente').length;
@@ -1871,7 +1871,7 @@ $('#periodo').addEventListener('change',e=>{ui.periodo=e.target.value;if(ui.peri
 ['perDesde','perHasta'].forEach(id=>$('#'+id).addEventListener('change',e=>{ui[id==='perDesde'?'desde':'hasta']=e.target.value||'';renderDash()}));
 
 /* ---- gráficos: por mes, por día y por ciudad ---- */
-const METRICS={ventas:{label:'Ventas (Ya pagó / entregado)',money:true,f:orderRevenue},utilidad:{label:'Utilidad de pedidos (antes de gastos)',money:true,f:orderProfit},pedidos:{label:'Pedidos (sin cancelados)',money:false,f:o=>o.estado==='Cancelado'?0:1}};
+const METRICS={ventas:{label:'Ventas (Ya pagó)',money:true,f:orderRevenue},utilidad:{label:'Utilidad de pedidos (antes de gastos)',money:true,f:orderProfit},pedidos:{label:'Pedidos (sin cancelados)',money:false,f:o=>o.estado==='Cancelado'?0:1}};
 const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const isoDate=d=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
 const dispVal=(v,m)=>m.money&&S.settings.moneda==='USD'?v/(num(S.settings.tc)||3.75):v;
@@ -2253,22 +2253,25 @@ function pedTablero(rows){
   const tabs=waTabs(),a=waAsig();
   const cols=[{id:'_ninguna',nombre:'Sin tablero',color:'#94A3B8'},...tabs];
   const por=new Map(cols.map(c=>[c.id,[]]));
-  rows.forEach(o=>{const n=waNumber(o.telefono),ids=(n?waEtqDe(n):[]).filter(i=>por.has(i));(ids.length?ids:['_ninguna']).forEach(i=>por.get(i).push(o))});
+  rows.forEach(o=>{const ids=pedEtqsDe(o).filter(i=>por.has(i));(ids.length?ids:['_ninguna']).forEach(i=>por.get(i).push(o))});
   const tot=l=>l.reduce((s,o)=>s+num(o.precio)*(num(o.cantidad)||1),0);
   const resumen=cols.map(c=>{const l=por.get(c.id);return `<div class="pk-res" style="border-top:3px solid ${esc(c.color)}"><span style="color:${esc(c.color)}">${esc(c.nombre)}</span><b>${l.length}</b><small>${fmt(tot(l))}</small></div>`}).join('');
   const card=(o,col)=>{const n=waNumber(o.telefono),q=num(o.cantidad)||1,u=orderProfit(o);
-    return `<div class="kb-card pk-card" ${n?'draggable="true"':''} data-oid="${esc(o.id)}" data-from="${esc(col)}" data-ptel="${esc(n||'')}">
+    return `<div class="kb-card pk-card" draggable="true" data-oid="${esc(o.id)}" data-from="${esc(col)}" data-ptel="${esc(n||'')}">
       <div class="row sb"><b>${esc(o.producto||'Sin producto')}</b><small>${esc(fechaCorta(o.fecha).replace(/ \d{4}$/,''))}</small></div>
       <small>${esc([o.cliente,o.ciudad,'x'+q].filter(Boolean).join(' · '))}</small>
       <div class="pk-m"><span><small>Venta</small><b>${fmt(num(o.precio)*q)}</b></span><span><small>Utilidad</small><b class="${u>0?'pos':u<0?'neg':''}">${u?fmt(u):'—'}</b></span></div>
-      <select data-pmover="${esc(o.id)}" data-from="${esc(col)}" aria-label="Mover a un tablero"${n?'':' disabled title="Este pedido no tiene teléfono"'}><option value="">Mover a…</option>${cols.map(c=>`<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join('')}</select>
+      <select data-pmover="${esc(o.id)}" data-from="${esc(col)}" aria-label="Mover a un tablero"><option value="">Mover a…</option>${cols.map(c=>`<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join('')}</select>
       <button class="btn sm" type="button" data-ed="${esc(o.id)}">Editar</button>
     </div>`};
   return `<div class="pk-resumen">${resumen}</div><div class="kb" id="pkb">${cols.map(c=>{const l=por.get(c.id);return `<div class="kb-col" data-pcol="${esc(c.id)}" style="border-top:4px solid ${esc(c.color)}"><div class="kb-h"><b style="flex:1;min-width:0">${esc(c.nombre)}</b><span>${l.length}</span><small style="color:var(--on-var)">${fmt(tot(l))}</small></div>${l.length?l.map(o=>card(o,c.id)).join(''):'<div class="kb-vacio">Suelta aquí</div>'}</div>`}).join('')}</div>`;
 }
 function pedMover(oid,col,from){
   const o=S.orders.find(x=>x.id===oid),n=o&&waNumber(o.telefono);
-  if(!n){toast('Este pedido no tiene teléfono, no se puede mover de tablero.');return}
+  if(!o)return;
+  if(!n){   // pedido sin teléfono: la etiqueta vive en el pedido (no hay chat de WhatsApp)
+    let l=Array.isArray(o.ts)?o.ts.slice():[];if(from&&from!=='_ninguna')l=l.filter(x=>x!==from);if(col!=='_ninguna'&&!l.includes(col))l.push(col);
+    if(l.length)o.ts=l;else delete o.ts;orderStockSync(o);save();renderPed();return}
   if(col==='_ninguna'){if(from&&from!=='_ninguna')waEtqDel(n,from)}else if(from&&from!==col)waEtqMove(n,from,col);else waEtqAdd(n,col);renderPed();
 }
 $('#pedTabla').addEventListener('change',e=>{const id=e.target.dataset&&e.target.dataset.pmover;if(id&&e.target.value)pedMover(id,e.target.value,e.target.dataset.from)});
@@ -2312,7 +2315,7 @@ function orderStockRelease(o){
 }
 function orderStockSync(o){
   const it=o.invId?invFind(o.invId):null,q=num(o.cantidad)||1;
-  const want=!!it&&pedCuenta(o);   // el stock se descuenta cuando el pedido está en «Ya pagó» (o Entregado)
+  const want=!!it&&pedCuenta(o);   // el stock se descuenta cuando el pedido está en «Ya pagó»
   if(o.stockDesc&&!(want&&o.stockInv===o.invId&&num(o.stockDesc)===q))orderStockRelease(o);
   if(want&&!o.stockDesc){
     invMove(it,-q,'salida','Venta','Pedido de '+(o.cliente||''),o.fecha,o.id);o.stockDesc=q;o.stockInv=it.id;
@@ -2353,7 +2356,7 @@ function invRefresh(){
   const h=$('#invHint'),q=num(pf.cantidad.value)||1;
   let msg='',cls='';
   const sel=pf.invId.value&&invFind(pf.invId.value);
-  if(sel){const dispo=num(sel.stock);msg=`Stock disponible de ${esc(invName(sel))}: <b>${dispo} ${esc(sel.unidad||'unid')}</b>. Se descuenta cuando el cliente pasa al tablero «Ya pagó» (o el pedido se marca Entregado). Si lo quitas de ahí, se cancela o se devuelve, el stock regresa.`+(q>dispo?` <b>Ojo: pides ${q} y solo hay ${dispo}.</b>`:'');cls=q>dispo?'warn':''}
+  if(sel){const dispo=num(sel.stock);msg=`Stock disponible de ${esc(invName(sel))}: <b>${dispo} ${esc(sel.unidad||'unid')}</b>. Se descuenta cuando el cliente pasa al tablero «Ya pagó». Si lo quitas de ahí, se cancela o se devuelve, el stock regresa.`+(q>dispo?` <b>Ojo: pides ${q} y solo hay ${dispo}.</b>`:'');cls=q>dispo?'warn':''}
   else if(pig.value&&(t||c)){msg='Esa talla o color no está en el inventario de este producto. Elige una de la lista.';cls='warn'}
   else if(pig.value){msg='Elige la talla y el color para descontar del inventario.'}
   h.hidden=!msg;h.innerHTML=msg;h.className='full alert'+(cls?' err':'');h.style.background=cls?'':'var(--primary-soft)';
