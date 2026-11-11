@@ -93,7 +93,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
   if (!rawBody || rawBody.length > MAX_BYTES) return { status: 413, body: { error: 'grande' } };
   let p; try { p = JSON.parse(rawBody); } catch { return { status: 400, body: { error: 'json' } }; }
   const I = encodeURIComponent(c.inst);
-  const soloAdmin = ['conectar', 'desvincular', 'webhook'].includes(p.accion), escribe = p.accion === 'enviar' || p.accion === 'etiquetar';
+  const soloAdmin = ['conectar', 'desvincular', 'webhook', 'webhookEstado'].includes(p.accion), escribe = p.accion === 'enviar' || p.accion === 'etiquetar';
   if ((soloAdmin && nivelWa !== 'admin') || (escribe && nivelWa === 'ver')) return { status: 403, body: { error: 'sin_permiso' } };
   try {
     switch (p.accion) {
@@ -161,6 +161,14 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
         try { await evo(c, '/webhook/set/' + I, 'POST', { webhook: { enabled: true, url, webhookByEvents: false, byEvents: false, webhookBase64: false, base64: false, events } }); }
         catch (e) { if (e.estado !== 400 && e.estado !== 422) throw e; await evo(c, '/webhook/set/' + I, 'POST', { enabled: true, url, webhookByEvents: false, webhookBase64: false, events }); }
         return { status: 200, body: { ok: true, cuenta: Boolean(String(process.env.FIREBASE_SERVICE_ACCOUNT || '').trim()) } };
+      }
+      case 'webhookEstado': {
+        // ¿Evolution ya está avisando a esta app cuando cambian las etiquetas?
+        let w = null;
+        try { w = await evo(c, '/webhook/find/' + I); } catch (e) { if (!e.estado) throw e; }
+        const x = (w && (w.webhook || w)) || {};
+        const url = String(x.url || ''), ev = Array.isArray(x.events) ? x.events.map((e) => String(e).toUpperCase()) : [];
+        return { status: 200, body: { activo: Boolean(x.enabled !== false && url.includes('/api/wa-hook')), conEtiquetas: ev.some((e) => e.includes('LABELS_ASSOCIATION')), cuenta: Boolean(String(process.env.FIREBASE_SERVICE_ACCOUNT || '').trim()), hayAviso: Boolean(url) } };
       }
       case 'etiquetas': {
         let j = [], fallo = 0;

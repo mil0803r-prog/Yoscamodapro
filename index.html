@@ -1376,6 +1376,11 @@ function waHookIniciar(){
     if(ui.tab==='wa')waRender();else if(ui.tab==='ped')renderPed();
   },()=>{}));
 }
+async function waHookEstado(){
+  if(ui.waHookBusy||Date.now()-(ui.waHookTs||0)<45000)return;ui.waHookBusy=true;ui.waHookTs=Date.now();
+  try{ui.waHookCfg=await waApi('webhookEstado');if(ui.tab==='wa'&&ui.waTab==='tableros')waTableros()}catch(e){ui.waHookCfg=null}
+  finally{ui.waHookBusy=false}
+}
 async function waActivarHook(){
   try{const r=await waApi('webhook',{origen:location.origin});
     if(!r.cuenta){waDlgHook();return}
@@ -1479,9 +1484,17 @@ function waFicha(c){
   ${c.manual?`<div class="row" style="margin-top:14px"><button class="btn sm del" type="button" data-kdel="${esc(c.id)}">Quitar este chat</button></div>`:''}`;
 }
 function waTableros(){
+  if(puedeTienda())waHookEstado();
   const L=waLista(),q=(ui.waQ||'').toLowerCase(),tabs=waTabs();
   const lista=L.filter(c=>!c.grupo&&(!q||(c.nombre+' '+c.tel).toLowerCase().includes(q)));
-  $('#waBody').innerHTML=`<div class="wa-tb"><div class="card" style="margin-top:12px"><div class="row"><button class="btn sm" type="button" id="kbSync">Ordenar según el estado del pedido</button><button class="btn sm wa" type="button" id="kbEtqSync">Traer etiquetas de WhatsApp</button><button class="btn sm" type="button" id="tbNuevo">+ Tablero</button></div><p class="hint" style="margin:0 0 0 auto;flex:1 1 260px">Cada tablero es una etiqueta de WhatsApp Business con el mismo nombre: al mover un chat se etiqueta también en tu WhatsApp. Arrastra o usa «Mover a un tablero…». ◀ ▶ ordena y ✎ renombra.</p>${(()=>{if(!(ui.waConn&&ui.waConn.estado==='conectado'&&ui.waEtqOk))return '';const hk=ui.waHookUlt?`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">🔔 Avisos de WhatsApp activos · último hace ${esc(waAgo(ui.waHookUlt.at))}. Lo que cambies en WhatsApp llega solo.</p>`:`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">Las etiquetas que cambies <b>en WhatsApp</b> solo llegan aquí con los avisos automáticos. ${puedeTienda()?'<button class="btn sm wa" type="button" data-whook="1">Activar sincronización desde WhatsApp</button>':'Pídele al administrador que los active.'}</p>`;const sin=waTabs().filter(t=>!t.lid).map(t=>t.nombre);
+  $('#waBody').innerHTML=`<div class="wa-tb"><div class="card" style="margin-top:12px"><div class="row"><button class="btn sm" type="button" id="kbSync">Ordenar según el estado del pedido</button><button class="btn sm wa" type="button" id="kbEtqSync">Traer etiquetas de WhatsApp</button><button class="btn sm" type="button" id="tbNuevo">+ Tablero</button></div><p class="hint" style="margin:0 0 0 auto;flex:1 1 260px">Cada tablero es una etiqueta de WhatsApp Business con el mismo nombre: al mover un chat se etiqueta también en tu WhatsApp. Arrastra o usa «Mover a un tablero…». ◀ ▶ ordena y ✎ renombra.</p>${(()=>{if(!(ui.waConn&&ui.waConn.estado==='conectado'&&ui.waEtqOk))return '';const cf=ui.waHookCfg,P=(t)=>`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">${t}</p>`,B='<button class="btn sm wa" type="button" data-whook="1">Activar sincronización desde WhatsApp</button>';
+  const hk=ui.waHookUlt?P(`🔔 Sincronización en vivo con WhatsApp activa · último aviso hace ${esc(waAgo(ui.waHookUlt.at))}. Lo que cambies en WhatsApp llega solo, como en WhatsApp Web.`)
+   :!puedeTienda()?P('Pídele al administrador que active la sincronización en vivo con WhatsApp.')
+   :!cf?P('Revisando la sincronización con WhatsApp…')
+   :!cf.cuenta?P('⚠️ Falta la variable <b>FIREBASE_SERVICE_ACCOUNT</b> en Vercel (y hacer Redeploy). '+B)
+   :!cf.activo?P('⚠️ La sincronización en vivo está <b>apagada</b>: por eso los cambios de WhatsApp no llegan aquí. '+B)
+   :!cf.conEtiquetas?P('⚠️ Evolution no está avisando de etiquetas. '+B)
+   :P('🟡 Sincronización encendida, pero WhatsApp todavía no mandó ningún aviso. <b>Pon o quita una etiqueta en tu WhatsApp</b> para probar; debe aparecer aquí en segundos. Si no llega, desvincula y vuelve a escanear el QR una vez.');const sin=waTabs().filter(t=>!t.lid).map(t=>t.nombre);
  if(!ui.waEtqN)return hk+`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">⚠️ WhatsApp no devolvió etiquetas${ui.waEtqFallo?' (el servidor respondió '+ui.waEtqFallo+')':''}. Revisa que sea una cuenta de <b>WhatsApp Business</b> con etiquetas creadas (Herramientas → Etiquetas) y toca <b>Traer etiquetas</b>.</p>`;
  return hk+(sin.length?`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">⚠️ Sin etiqueta en WhatsApp todavía: <b>${sin.map(esc).join(', ')}</b>.</p>`:`<p class="hint" style="flex:1 1 100%;margin:4px 0 0">✅ ${ui.waEtqN} etiquetas de WhatsApp Business sincronizadas.</p>`)})()}</div>
   <div class="wa-tbg"><div class="wa2-list" id="waLeft"><b style="padding:2px 4px">💬 Chats <span class="badge">${L.length}</span></b><input id="waQBuscar" type="search" placeholder="Buscar chat…" value="${esc(ui.waQ||'')}" aria-label="Buscar chat"><div class="wa2-rows">${lista.map(c=>waFilaChat(c,false,true)).join('')||'<div class="kb-vacio">Sin chats</div>'}</div></div>
