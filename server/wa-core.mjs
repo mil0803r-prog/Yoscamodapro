@@ -91,9 +91,22 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
       case 'chats': {
         const j = await evo(c, '/chat/findChats/' + I, 'POST', {});
         const arr = Array.isArray(j) ? j : (j && (j.chats || j.records)) || [];
+        // Agenda de contactos: nombres y fotos como en el WhatsApp original
+        const ag = new Map();
+        try {
+          const cj = await evo(c, '/chat/findContacts/' + I, 'POST', {});
+          for (const k of (Array.isArray(cj) ? cj : (cj && (cj.contacts || cj.records)) || [])) {
+            const id = String(k.remoteJid || k.id || '');
+            if (id) ag.set(id, k);
+          }
+        } catch (e) { /* si falla la agenda, se siguen mostrando los chats */ }
         const salida = [];
         for (const x of arr) {
-          const jid = String(x.remoteJid || x.id || '');
+          let jid = String(x.remoteJid || x.id || '');
+          if (jid.endsWith('@lid')) {
+            const alt = String(x.remoteJidAlt || (x.lastMessage && x.lastMessage.key && x.lastMessage.key.remoteJidAlt) || '');
+            if (/^[0-9]{8,15}@s\.whatsapp\.net$/.test(alt)) jid = alt;
+          }
           if (!jid || jid === 'status@broadcast' || jid.endsWith('@broadcast') || jid.endsWith('@newsletter')) continue;
           const grupo = jid.endsWith('@g.us');
           const lm = x.lastMessage || (x.messages && x.messages[0]) || null;
@@ -101,8 +114,8 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
             jid, grupo,
             tel: grupo ? jid : digitos(jid.split('@')[0]),
             lid: jid.endsWith('@lid'),
-            nombre: String(x.name || x.pushName || (x.contact && x.contact.pushName) || '').slice(0, 60),
-            foto: /^https:\/\//.test(x.profilePicUrl || '') ? x.profilePicUrl : '',
+            nombre: String((ag.get(jid) || {}).pushName || (ag.get(jid) || {}).name || x.name || x.pushName || (x.contact && x.contact.pushName) || '').slice(0, 60),
+            foto: (() => { const f = (ag.get(jid) || {}).profilePicUrl || x.profilePicUrl || ''; return /^https:\/\//.test(f) ? f : ''; })(),
             ultimo: String(textoDe(lm) || '').slice(0, 140),
             fecha: ts(lm && (lm.messageTimestamp || lm.timestamp)) || tsISO(x.updatedAt || x.conversationTimestamp),
             noLeidos: Number(x.unreadMessages || x.unreadCount || 0) || 0,
@@ -116,7 +129,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
         if (!jidValido(jid)) return { status: 400, body: { error: 'jid' } };
         const j = await evo(c, '/chat/findMessages/' + I, 'POST', { where: { key: { remoteJid: jid } }, limit: 60, offset: 60, page: 1 });
         const arr = Array.isArray(j) ? j : (j && j.messages && (j.messages.records || j.messages)) || (j && j.records) || [];
-        const ms = arr.map((m) => ({ id: String((m.key && m.key.id) || m.id || ''), mio: !!(m.key && m.key.fromMe), texto: String(textoDe(m) || '').slice(0, 1500), fecha: ts(m.messageTimestamp || m.timestamp) })).filter((m) => m.texto).sort((a, z) => a.fecha - z.fecha).slice(-50);
+        const ms = arr.map((m) => ({ id: String((m.key && m.key.id) || m.id || ''), mio: !!(m.key && m.key.fromMe), texto: String(textoDe(m) || '').slice(0, 1500), fecha: ts(m.messageTimestamp || m.timestamp), de: String(m.pushName || '').slice(0, 40), est: Number(m.status === 'READ' || m.status === 'PLAYED' ? 3 : m.status === 'DELIVERY_ACK' ? 2 : m.status === 'SERVER_ACK' ? 1 : 0) || 0 })).filter((m) => m.texto).sort((a, z) => a.fecha - z.fecha).slice(-50);
         return { status: 200, body: { mensajes: ms } };
       }
       case 'enviar': {

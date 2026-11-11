@@ -262,7 +262,8 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .wa-ban .btn.sm{background:rgba(255,255,255,.95);color:#0F5C45;border-color:transparent}
 .wa-ban .btn.sm.wa{background:#25D366;color:#fff}
 .av-img{object-fit:cover}
-.wa-thread{display:flex;flex-direction:column;gap:6px;background:var(--s-low);border-radius:12px;padding:10px;max-height:300px;overflow-y:auto}
+.wa-thread{display:flex;flex-direction:column;gap:6px;background:#EFE7DD;border-radius:12px;padding:10px;max-height:min(60vh,520px);min-height:200px;overflow-y:auto}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .wa-thread{background:#0B141A}}:root[data-theme=dark] .wa-thread{background:#0B141A}
 .wa-m{max-width:82%;padding:7px 10px;border-radius:12px;background:var(--s-lowest);align-self:flex-start;font-size:14px;line-height:1.4;overflow-wrap:anywhere;box-shadow:0 1px 1px rgba(0,0,0,.06)}
 .wa-m.yo{align-self:flex-end;background:#D9FDD3;color:#111}
 .wa-m small{display:block;text-align:right;color:var(--on-var);font-size:10.5px;margin-top:2px}
@@ -355,6 +356,9 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .crow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tip{position:fixed;z-index:50;pointer-events:none;background:var(--on);color:var(--surface);padding:7px 10px;border-radius:10px;font-size:12px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.3);max-width:220px}
 .tip small{display:block;font-weight:500;opacity:.8}
+.wa-dia{align-self:center;margin:6px 0}.wa-dia span{background:var(--s-high);color:var(--on-var);font-size:12px;font-weight:700;padding:3px 12px;border-radius:99px}
+.wa-de{display:block;font-size:12px;color:#128C4A;margin-bottom:2px}
+.wa-tk{font-style:normal;color:var(--on-var);letter-spacing:-2px;margin-left:2px}.wa-tk.leido{color:#34B7F1}
 /* ===== Optimización móvil y PC ===== */
 .kpi small,.scen small,.ord-money small,.vfhead,th,.wa-m small,.chartcard .tbtn{font-size:max(12px,.75rem)}
 @media (max-width:899px),(pointer:coarse){
@@ -1289,7 +1293,11 @@ const waJid=c=>c.live&&c.live.jid?c.live.jid:(c.grupo?c.tel:c.tel+'@s.whatsapp.n
 function waHiloHtml(tel){
   const l=(ui.waMsgs||{})[tel];if(!l)return '<div class="kb-vacio">Cargando mensajes…</div>';
   if(!l.length)return '<div class="kb-vacio">Aún no hay mensajes en este chat.</div>';
-  return l.map(m=>`<div class="wa-m ${m.mio?'yo':''}"><div>${esc(m.texto).replace(/\n/g,'<br>')}</div><small>${esc(waHora(m.fecha))}</small></div>`).join('');
+  let dia='';const gr=(waLista().find(x=>x.tel===tel)||{}).grupo;
+  return l.map(m=>{const d=m.fecha?new Date(m.fecha).toDateString():'';let sep='';
+    if(d&&d!==dia){dia=d;const h=new Date(),a=new Date(Date.now()-864e5);sep=`<div class="wa-dia"><span>${d===h.toDateString()?'Hoy':d===a.toDateString()?'Ayer':new Date(m.fecha).toLocaleDateString('es-PE',{day:'numeric',month:'long',year:'numeric'})}</span></div>`}
+    const tk=m.mio?`<i class="wa-tk ${m.est>=3?'leido':''}">${m.est>=2?'✓✓':'✓'}</i>`:'';
+    return sep+`<div class="wa-m ${m.mio?'yo':''}">${gr&&!m.mio&&m.de?`<b class="wa-de">${esc(m.de)}</b>`:''}<div>${esc(m.texto).replace(/\n/g,'<br>')}</div><small>${m.fecha?esc(new Date(m.fecha).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})):''} ${tk}</small></div>`}).join('');
 }
 async function waCargarMsgs(tel){
   if(!(ui.waConn&&ui.waConn.estado==='conectado'))return;
