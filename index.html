@@ -355,6 +355,35 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .crow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tip{position:fixed;z-index:50;pointer-events:none;background:var(--on);color:var(--surface);padding:7px 10px;border-radius:10px;font-size:12px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.3);max-width:220px}
 .tip small{display:block;font-weight:500;opacity:.8}
+/* ===== Optimización móvil y PC ===== */
+.kpi small,.scen small,.ord-money small,.vfhead,th,.wa-m small,.chartcard .tbtn{font-size:max(12px,.75rem)}
+@media (max-width:899px),(pointer:coarse){
+  .wa-fil button{min-height:40px;padding:8px 14px;font-size:13px}
+  .chartcard .tbtn{min-height:38px;padding:8px 14px;font-size:13px}
+  .badge[data-estcif],button.badge,.badge[role=button]{min-height:36px;padding:8px 14px;font-size:13px}
+}
+.caps,label,.kpi small,.badge,.hint,.sub{font-size:max(12px,.75rem)}
+.badge{padding:3px 10px;line-height:1.3}
+summary{cursor:pointer}
+@media (max-width:899px),(pointer:coarse){
+  .btn{min-height:44px}
+  .btn.sm{min-height:40px;padding:8px 14px;font-size:13px}
+  .seg button{min-height:38px;padding:8px 14px;font-size:13px}
+  .chip{min-height:40px;padding:9px 15px;font-size:13px}
+  summary{display:flex;align-items:center;min-height:44px}
+  input:not([type=checkbox]):not([type=radio]),select,textarea{min-height:44px;font-size:16px}
+  .iconbtn{min-width:40px;min-height:40px}
+  .kpi b{font-size:18px}
+  td .btn,td button{min-height:36px;min-width:36px}
+}
+@media (min-width:1100px){
+  .app{max-width:1120px;padding:0 28px 40px}
+  .grid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+  .form{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .toast,.ask{max-width:640px}
+  .aipanel{max-width:760px}
+}
+@media (min-width:1500px){.app{max-width:1280px}}
 </style>
 </head>
 <body>
