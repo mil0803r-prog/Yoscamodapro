@@ -244,6 +244,18 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .vfhead,.vfrow{display:grid;grid-template-columns:1fr 1.2fr .9fr auto;gap:6px;align-items:center}
 .vfhead{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--on-var);margin-bottom:4px}
 #vRows{display:flex;flex-direction:column;gap:6px}
+.wa-row{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--s-lowest);display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.wa-row .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.wa-row .top b{font-size:16px}
+.wa-row textarea{min-height:92px}
+.wa-btns{display:flex;gap:8px;flex-wrap:wrap}.wa-btns .btn{flex:1 1 auto}
+.btn.wa{background:#25D366;border-color:#25D366;color:#fff;font-weight:800}
+.wa-chip{font-size:11.5px;font-weight:800;border-radius:99px;padding:3px 10px;background:var(--s-high);color:var(--on-var)}
+.wa-chip.ok{background:var(--primary-soft);color:var(--primary)}.wa-chip.pend{background:var(--warn-soft);color:var(--warn)}
+.wa-vars{display:flex;flex-wrap:wrap;gap:6px}.wa-vars button{border:1px dashed var(--line);background:var(--s-low);border-radius:8px;padding:3px 8px;font:inherit;font-size:12px;cursor:pointer;color:var(--on)}
+@media (max-width:560px){.ti-top>.btn.wa{flex:1 1 100%;text-align:center}}
+.ti-top>div{min-width:0}
+.wa-qr{display:grid;place-items:center;background:#fff;border-radius:14px;padding:10px;border:1px solid var(--line)}
 .ti-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .ti-top .ico{width:44px;height:44px;border-radius:14px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;flex:none}
 .ti-top .ico svg{width:24px;height:24px}
@@ -413,6 +425,12 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
     </section>
 
     <!-- INVENTARIO -->
+    <!-- WHATSAPP WEB -->
+    <section id="v-wa" hidden>
+      <div id="waHead"></div>
+      <div id="waBody"></div>
+    </section>
+
     <section id="v-inv" hidden>
       <button class="btn pri" id="invAdd" type="button" style="width:100%;min-height:50px;font-size:16px;margin-bottom:12px">+ Registrar producto</button>
       <div class="grid" id="invKpis"></div>
@@ -541,6 +559,7 @@ const ICONS={
   calc:'<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8.01" y2="11"/><line x1="12" y1="11" x2="12.01" y2="11"/><line x1="16" y1="11" x2="16.01" y2="11"/><line x1="8" y1="15" x2="8.01" y2="15"/><line x1="12" y1="15" x2="12.01" y2="15"/><line x1="16" y1="15" x2="16.01" y2="15"/><line x1="8" y1="18.5" x2="12" y2="18.5"/>',
   store:'<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M9.5 20v-5h5v5"/>',
   box:'<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><line x1="12" y1="13" x2="12" y2="21"/>',
+  chat:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.5-4.6A8 8 0 1 1 21 12z"/><path d="M9 10h6M9 13.5h4"/>',
   bag:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>',
   money:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
   trend:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
@@ -803,7 +822,7 @@ $('#themeBtn').addEventListener('click',()=>{
 $('#curSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.settings.moneda=b.dataset.cur;applyTheme();save();refreshAll();toast(b.dataset.cur==='USD'?`Mostrando en dólares (S/ ${S.settings.tc} = $1)`:'Mostrando en soles (S/)')});
 $('#setBtn').innerHTML=icon('gear');$('#setBtn').addEventListener('click',()=>showTab('set'));
 
-const TABS=[['dash','Dashboard','dash'],['calc','Calculadora','calc'],['ped','Pedidos','bag'],['inv','Inventario','box'],['gas','Gastos','money'],['proy','Proyección','trend']];
+const TABS=[['dash','Dashboard','dash'],['calc','Calculadora','calc'],['ped','Pedidos','bag'],['wa','WhatsApp','chat'],['inv','Inventario','box'],['gas','Gastos','money'],['proy','Proyección','trend']];
 /* Sección extra solo para la cuenta del dueño (se muestra únicamente con ese correo, ya verificado) */
 const TIENDA_EMAIL='mil0803r@gmail.com';
 const puedeTienda=()=>!!(FB_USER&&String(FB_USER.email||'').toLowerCase()===TIENDA_EMAIL&&FB_USER.emailVerified);
@@ -820,17 +839,17 @@ $('#menuBtn').addEventListener('click',()=>navOpen(!$('#mainNav').classList.cont
 $('#navBack').addEventListener('click',()=>navOpen(false));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')navOpen(false)});
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b){showTab(b.dataset.tab);navOpen(false)}});
-const HEADS={dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],inv:['box','Inventario','Prendas y materiales: cuánto tienes y qué se acaba'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],tienda:['store','Tienda','Edita los colores, precios y textos de tu tienda'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
+const HEADS={dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],wa:['chat','WhatsApp','Escribe a tus clientes con mensajes listos'],inv:['box','Inventario','Prendas y materiales: cuánto tienes y qué se acaba'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],tienda:['store','Tienda','Edita los colores, precios y textos de tu tienda'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
 function showTab(t){
   if(t==='tienda'&&!puedeTienda())t='dash';
   ui.tab=t;
   const hd=HEADS[t];$('#pageHead').innerHTML=`<div class="pico">${icon(hd[0])}</div><div><h1>${hd[1]}</h1><p>${hd[2]}</p></div>`;
-  ['dash','calc','ped','inv','gas','proy','tienda','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
+  ['dash','calc','ped','wa','inv','gas','proy','tienda','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   scrollTo(0,0);renderTab();
 }
 function renderTab(){
-  ({dash:renderDash,calc:renderCalc,ped:renderPed,inv:renderInv,gas:renderGas,proy:renderProy,tienda:renderTienda,set:renderSet})[ui.tab]();
+  ({dash:renderDash,calc:renderCalc,ped:renderPed,wa:renderWa,inv:renderInv,gas:renderGas,proy:renderProy,tienda:renderTienda,set:renderSet})[ui.tab]();
 }
 /* ================= TIENDA (solo cuenta del dueño): editor, dominio y nube ================= */
 const DNS_A='76.76.21.21',DNS_CNAME='cname.vercel-dns.com';
@@ -993,6 +1012,100 @@ document.addEventListener('change',e=>{
   const id=e.target.id;
   if(id==='tiWww'){const t=tiCfg();t.www=e.target.checked;save();tiActDominio()}
   else if(e.target.dataset&&e.target.dataset.paso){const t=tiCfg();t.pasos[e.target.dataset.paso]=e.target.checked;save();const st=e.target.closest('.ti-step');st.classList.toggle('hecho',e.target.checked);st.querySelector('.n').textContent=e.target.checked?'✓':({p1:1,p2:2,p3:3,p4:4,p5:5})[e.target.dataset.paso]}
+});
+/* ================= WHATSAPP WEB: mensajes a clientes con plantillas ================= */
+const WA_DEF=[
+ {id:'confirmar',nombre:'Confirmar pedido',estado:'Pendiente',texto:'Hola {cliente} 👋, te escribimos de {marca}. Recibimos tu pedido de {cantidad} x {producto} por {total}. ¿Nos confirmas tu dirección y que los datos son correctos? ¡Gracias!'},
+ {id:'confirmado',nombre:'Pedido confirmado',estado:'Confirmado',texto:'Hola {cliente}, tu pedido de {producto} está confirmado ✅. Lo estamos preparando y te avisamos apenas salga. Gracias por elegir {marca} 💛'},
+ {id:'enviado',nombre:'Pedido enviado',estado:'Enviado',texto:'Hola {cliente}, tu pedido de {producto} ya fue enviado 🚚. Cualquier consulta escríbenos por aquí. ¡Gracias por tu compra!'},
+ {id:'entregado',nombre:'Gracias por tu compra',estado:'Entregado',texto:'Hola {cliente} 😊, ¿te llegó todo bien con tu {producto}? Si te gustó, nos ayudas muchísimo contándole a una amiga. ¡Gracias por comprar en {marca}!'},
+ {id:'devuelto',nombre:'Consulta por devolución',estado:'Devuelto',texto:'Hola {cliente}, vimos que tu pedido de {producto} fue devuelto. ¿Pasó algo? Cuéntanos para ayudarte, queremos que quedes feliz con {marca}.'},
+ {id:'pago',nombre:'Recordatorio de pago',estado:'',texto:'Hola {cliente}, ¿cómo estás? Te recordamos el pago de tu pedido de {producto} ({total}). Puedes pagar por {pago}. Cuando lo hagas, envíanos la captura 🙌'}
+];
+const WA_VARS=[['{cliente}','primer nombre'],['{nombre}','nombre completo'],['{producto}','prenda, modelo, talla y color'],['{cantidad}','unidades'],['{total}','monto del pedido'],['{pago}','forma de pago'],['{ciudad}','ciudad'],['{fecha}','fecha del pedido'],['{marca}','nombre de tu marca']];
+function waPlant(){const st=S.settings;if(!Array.isArray(st.waPlantillas)||!st.waPlantillas.length)st.waPlantillas=JSON.parse(JSON.stringify(WA_DEF));return st.waPlantillas}
+function waDetalle(o){return [o.producto,o.modelo,o.talla&&'talla '+o.talla,o.color].filter(Boolean).join(' ')}
+function waLlenar(t,o){
+  const q=num(o.cantidad)||1,nom=String(o.cliente||'').trim();
+  const m={cliente:nom.split(/\s+/)[0]||'',nombre:nom,producto:waDetalle(o),cantidad:q,total:fmt(num(o.precio)*q),pago:o.pago||'tu medio de pago',ciudad:o.ciudad||'',fecha:fechaCorta(o.fecha),marca:S.settings.marca||'Yosca Moda'};
+  return String(t||'').replace(/\{(\w+)\}/g,(x,k)=>k in m?m[k]:x);
+}
+const waMovil=()=>/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+function waLink(tel,texto){const n=waNumber(tel);if(!n)return '';return (waMovil()?'https://wa.me/'+n+'?text=':'https://web.whatsapp.com/send?phone='+n+'&text=')+encodeURIComponent(texto)}
+function waPlantDe(o){const l=waPlant();return l.find(p=>p.estado===o.estado)||l.find(p=>!p.estado)||l[0]}
+const WA_EST_ACT=['Pendiente','Confirmado','Enviado'];
+function waCabecera(){
+  const n=String(S.settings.waEmpresa||'').replace(/\D/g,''),sin=S.orders.filter(o=>WA_EST_ACT.includes(o.estado)&&waNumber(o.telefono)&&!o.waAt).length;
+  const tabs=[['clientes','Mensajes a clientes'],['plantillas','Plantillas'],['enlace','Enlace y QR']];
+  $('#waHead').innerHTML=`<div class="card"><div class="ti-top"><span class="ico" style="background:#E3F7EA;color:#128C4A">${icon('chat')}</span><div style="flex:1 1 180px;min-width:0"><h2 style="margin:0">WhatsApp Web</h2><p class="sub" style="margin:2px 0 0">Escribe a tus clientes con un toque, con el mensaje ya armado. Abre WhatsApp Web (en el celular abre la app).</p></div><a class="btn wa" href="https://web.whatsapp.com/" target="_blank" rel="noopener">Abrir WhatsApp Web</a></div>
+  <div class="ti-chips"><span class="ti-chip ${sin?'warn':'ok'}">${sin?sin+' '+(sin===1?'cliente por contactar':'clientes por contactar'):'Todos contactados'}</span><span class="ti-chip ${n?'ok':''}">${n?'Tu WhatsApp: +'+esc(n):'Tu WhatsApp: sin configurar'}</span></div>
+  <div class="seg" id="waSeg" style="display:flex;width:100%">${tabs.map(([k,l])=>`<button type="button" data-wa="${k}" class="${ui.waTab===k?'on':''}" style="flex:1;font-size:12.5px">${l}</button>`).join('')}</div></div>`;
+}
+function waClientes(){
+  const est=ui.waEst||'activos',q=(ui.waQ||'').toLowerCase();
+  const lista=S.orders.filter(o=>(est==='activos'?WA_EST_ACT.includes(o.estado):est==='todos'||o.estado===est)&&(!q||[o.cliente,o.producto,o.ciudad,o.telefono].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  const opts=[['activos','Por atender (Pendiente, Confirmado, Enviado)'],['todos','Todos'],...ESTADOS.map(e=>[e,e])];
+  const filtros=`<div class="card" style="margin-top:12px"><div class="row"><input id="waBuscar" placeholder="Buscar cliente, producto o ciudad…" value="${esc(ui.waQ||'')}" style="flex:1;min-width:150px" aria-label="Buscar"><select id="waEstSel" style="width:auto;max-width:100%" aria-label="Estado">${opts.map(([v,l])=>`<option value="${esc(v)}" ${v===est?'selected':''}>${esc(l)}</option>`).join('')}</select></div></div>`;
+  if(!lista.length){$('#waBody').innerHTML=filtros+`<div class="card" style="margin-top:12px"><div class="empty"><b>No hay pedidos para mostrar</b>Cambia el filtro o registra pedidos con el teléfono del cliente.</div></div>`;return}
+  const plant=waPlant();
+  $('#waBody').innerHTML=filtros+'<div style="margin-top:12px">'+lista.map(o=>{
+    const tel=waNumber(o.telefono),pl=waPlantDe(o),cont=o.waAt?`<span class="wa-chip ok">✓ Contactado ${esc(fechaCorta(new Date(o.waAt).toISOString().slice(0,10)))}</span>`:'<span class="wa-chip pend">Sin contactar</span>';
+    return `<article class="wa-row" data-id="${esc(o.id)}"><div class="top"><div><b>${esc(o.cliente)}</b><div class="sub">${esc([o.ciudad,tel?'+'+tel:'Sin teléfono válido'].filter(Boolean).join(' · '))}</div></div><span class="badge b-${esc(o.estado)}">${esc(o.estado)}</span></div>
+      <div class="ord-meta" style="margin:0">${esc(waDetalle(o))} · ${num(o.cantidad)||1} ${(num(o.cantidad)||1)===1?'unidad':'unidades'} · ${fmt(num(o.precio)*(num(o.cantidad)||1))}</div>${cont}
+      <div class="f"><label>Mensaje</label><select data-wpl="${esc(o.id)}" aria-label="Plantilla">${plant.map(x=>`<option value="${esc(x.id)}" ${x.id===pl.id?'selected':''}>${esc(x.nombre)}</option>`).join('')}</select></div>
+      <textarea data-wtx="${esc(o.id)}" aria-label="Texto del mensaje">${esc(waLlenar(pl.texto,o))}</textarea>
+      <div class="wa-btns">${tel?`<button class="btn wa" type="button" data-wsend="${esc(o.id)}">Enviar por WhatsApp Web</button>`:`<button class="btn" type="button" disabled>Falta el teléfono</button>`}<button class="btn" type="button" data-wcopy="${esc(o.id)}">Copiar mensaje</button>${o.waAt?`<button class="btn" type="button" data-wundo="${esc(o.id)}">Quitar ✓</button>`:`<button class="btn" type="button" data-wdone="${esc(o.id)}">Marcar contactado</button>`}</div></article>`}).join('')+'</div>';
+}
+function waPlantillas(){
+  const l=waPlant(),ej=S.orders[0]||{cliente:'Ana Pérez',producto:'Polo básico',modelo:'Cuello V',talla:'M',color:'Negro',cantidad:2,precio:29.9,pago:'Yape',ciudad:'Lima',fecha:today(),estado:'Pendiente'};
+  $('#waBody').innerHTML=`<div class="card" style="margin-top:12px"><h3>Variables</h3><p class="sub">Toca una para agregarla al mensaje que estás escribiendo. Se reemplazan con los datos de cada pedido.</p><div class="wa-vars" style="margin-top:8px">${WA_VARS.map(([v,d])=>`<button type="button" data-wvar="${esc(v)}" title="${esc(d)}">${esc(v)}</button>`).join('')}</div></div>
+  <div style="margin-top:12px">${l.map((x,i)=>`<div class="card" style="margin-bottom:10px" data-pi="${i}"><div class="form"><div><label>Nombre</label><input data-pf="nombre" value="${esc(x.nombre)}" maxlength="40"></div><div><label>Se sugiere para pedidos en</label><select data-pf="estado"><option value="">Cualquier estado</option>${ESTADOS.map(e=>`<option ${e===x.estado?'selected':''}>${e}</option>`).join('')}</select></div><div class="full"><label>Mensaje</label><textarea data-pf="texto" maxlength="900">${esc(x.texto)}</textarea></div></div>
+  <div class="hint" style="margin-top:8px"><b>Así se verá:</b> <span data-prev>${esc(waLlenar(x.texto,ej))}</span></div><div class="row" style="margin-top:8px"><button class="btn sm del" type="button" data-pdel="${i}">Eliminar</button></div></div>`).join('')}</div>
+  <div class="row"><button class="btn pri" type="button" id="waNueva">+ Nueva plantilla</button><button class="btn" type="button" id="waReset">Restaurar las originales</button></div>`;
+}
+function waEnlace(){
+  const n=String(S.settings.waEmpresa||'').replace(/\D/g,''),msg=ui.waMsg!=null?ui.waMsg:'Hola {marca}, quisiera información sobre sus polos.';
+  const texto=String(msg).replace(/\{marca\}/g,S.settings.marca||'Yosca Moda'),link=n?'https://wa.me/'+n+'?text='+encodeURIComponent(texto):'';
+  $('#waBody').innerHTML=`<div class="card" style="margin-top:12px"><h3>Tu número de WhatsApp</h3><p class="sub">El número de tu negocio, con código de país. Se usa en los mensajes y en este enlace.</p><div class="row" style="margin-top:8px"><input id="waNum" inputmode="tel" placeholder="51960614797" value="${esc(n)}" style="flex:1;min-width:150px"><button class="btn pri" type="button" id="waNumGuardar">Guardar</button></div></div>
+  <div class="card" style="margin-top:12px"><h3>Enlace de WhatsApp para tu tienda y redes</h3><p class="sub">Ponlo en Instagram, TikTok, Facebook o en tus anuncios: quien lo toque te escribe con el mensaje ya puesto.</p>
+  <div class="f" style="margin-top:8px"><label for="waMsg">Mensaje inicial</label><textarea id="waMsg" maxlength="300">${esc(msg)}</textarea><small>Puedes usar {marca}.</small></div>
+  ${link?`<div class="f" style="margin-top:10px"><label>Tu enlace</label><input id="waLinkTxt" readonly value="${esc(link)}"></div><div class="wa-btns" style="margin-top:8px"><button class="btn pri" type="button" id="waCopLink">Copiar enlace</button><a class="btn wa" href="${esc(link)}" target="_blank" rel="noopener">Probar</a></div>
+  <div class="wa-qr" style="margin-top:12px"><img alt="Código QR de tu WhatsApp" width="220" height="220" src="https://api.qrserver.com/v1/create-qr-code/?size=440x440&margin=10&data=${encodeURIComponent(link)}"></div><p class="hint" style="text-align:center">Para imprimirlo en tu empaque o en tu local. El QR se genera con un servicio externo (api.qrserver.com) usando solo este enlace.</p>`:'<div class="alert" style="margin-top:10px">Guarda tu número arriba para generar el enlace y el QR.</div>'}</div>`;
+}
+function renderWa(){
+  if(!ui.waTab)ui.waTab='clientes';
+  const act=document.activeElement;if(act&&act.closest&&act.closest('#v-wa')&&act.matches('input,textarea')&&$('#waHead').innerHTML)return;
+  waCabecera();
+  if(ui.waTab==='clientes')waClientes();else if(ui.waTab==='plantillas')waPlantillas();else waEnlace();
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#v-wa'))return;
+  const t=e.target.closest('button,a');if(!t)return;
+  if(t.dataset.wa){ui.waTab=t.dataset.wa;renderWa();return}
+  const id=t.dataset.wsend||t.dataset.wcopy||t.dataset.wdone||t.dataset.wundo,o=id&&S.orders.find(x=>x.id===id);
+  if(t.dataset.wsend&&o){const tx=document.querySelector('[data-wtx="'+id+'"]').value,u=waLink(o.telefono,tx);if(!u){toast('Ese teléfono no es válido');return}window.open(u,'_blank','noopener');o.waAt=Date.now();save();waCabecera();const r=t.closest('.wa-row');if(r){const ch=r.querySelector('.wa-chip');ch.className='wa-chip ok';ch.textContent='✓ Contactado hoy'}toast('Abriendo WhatsApp… marqué a '+o.cliente+' como contactado');return}
+  if(t.dataset.wcopy&&o){tiCopiar(document.querySelector('[data-wtx="'+id+'"]').value);return}
+  if(t.dataset.wdone&&o){o.waAt=Date.now();save();renderWa();return}
+  if(t.dataset.wundo&&o){delete o.waAt;save();renderWa();return}
+  if(t.dataset.wvar){const ta=document.activeElement&&document.activeElement.matches('#v-wa textarea')?document.activeElement:window.__waUltima;if(!ta){toast('Primero toca dentro del mensaje donde quieres agregarla');return}const a=ta.selectionStart??ta.value.length,b=ta.selectionEnd??a;ta.value=ta.value.slice(0,a)+t.dataset.wvar+ta.value.slice(b);ta.focus();ta.selectionStart=ta.selectionEnd=a+t.dataset.wvar.length;ta.dispatchEvent(new Event('input',{bubbles:true}));return}
+  if(t.dataset.pdel!=null){ask('¿Eliminar esta plantilla?',()=>{waPlant().splice(+t.dataset.pdel,1);save();waPlantillas()});return}
+  if(t.id==='waNueva'){waPlant().push({id:uid(),nombre:'Nueva plantilla',estado:'',texto:'Hola {cliente}, '});save();waPlantillas();return}
+  if(t.id==='waReset'){ask('¿Volver a las plantillas originales? Se pierden las que editaste.',()=>{S.settings.waPlantillas=JSON.parse(JSON.stringify(WA_DEF));save();waPlantillas()});return}
+  if(t.id==='waNumGuardar'){S.settings.waEmpresa=$('#waNum').value.replace(/\D/g,'');save();renderWa();toast('Número guardado');return}
+  if(t.id==='waCopLink')tiCopiar($('#waLinkTxt').value);
+});
+document.addEventListener('focusin',e=>{if(e.target.matches&&e.target.matches('#v-wa textarea'))window.__waUltima=e.target});
+document.addEventListener('input',e=>{
+  const el=e.target;if(!el.closest||!el.closest('#v-wa'))return;
+  if(el.id==='waBuscar'){ui.waQ=el.value;clearTimeout(waClientes.t);waClientes.t=setTimeout(()=>{waClientes();const b=$('#waBuscar');if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length)}},250)}
+  else if(el.id==='waMsg'){ui.waMsg=el.value;const n=String(S.settings.waEmpresa||'').replace(/\D/g,'');if(n){const l='https://wa.me/'+n+'?text='+encodeURIComponent(String(el.value).replace(/\{marca\}/g,S.settings.marca||'Yosca Moda'));const t=$('#waLinkTxt');if(t)t.value=l}}
+  else if(el.dataset&&el.dataset.pf){const c=el.closest('[data-pi]'),i=+c.dataset.pi,x=waPlant()[i];x[el.dataset.pf]=el.value;saveSoon();const pv=c.querySelector('[data-prev]');if(pv)pv.textContent=waLlenar(x.texto,S.orders[0]||{cliente:'Ana Pérez',producto:'Polo básico',cantidad:2,precio:29.9,pago:'Yape',ciudad:'Lima',fecha:today(),estado:'Pendiente'})}
+});
+document.addEventListener('change',e=>{
+  const el=e.target;if(!el.closest||!el.closest('#v-wa'))return;
+  if(el.id==='waEstSel'){ui.waEst=el.value;waClientes()}
+  else if(el.dataset&&el.dataset.wpl){const o=S.orders.find(x=>x.id===el.dataset.wpl),pl=waPlant().find(x=>x.id===el.value);if(o&&pl)document.querySelector('[data-wtx="'+o.id+'"]').value=waLlenar(pl.texto,o)}
+  else if(el.dataset&&el.dataset.pf==='estado'){const c=el.closest('[data-pi]');waPlant()[+c.dataset.pi].estado=el.value;save()}
 });
 function refreshAll(){
   if(!ui.gid||!S.garments.find(g=>g.id===ui.gid))ui.gid=S.garments[0]?.id||null;
@@ -2102,6 +2215,7 @@ const GUIDE=[
  {t:'Calculadora de costos',ic:'calc',pasos:['Crea una prenda con el botón de nueva prenda y ponle nombre. Puedes poner foto.','Tela: elige "Por kilo" (kilos × precio del kilo) o "Por metro". Agrega el % de merma si se desperdicia tela.','Completa hilos, confección (máquina), avíos, etiqueta y empaque. Etiqueta y empaque van por separado.','Con "Agregar costo extra" sumas más categorías (bordado, lavandería, transporte, etc.).','La cuota de gastos fijos (CIF) se suma sola: total de gastos fijos ÷ prendas del mes.','Modo "Por prenda": pones el precio de venta y ves tu ganancia y margen.','Modo "Cuánto quieres ganar": escribes tu meta y la app te dice a cuánto vender (si sabes cuántas prendas) o cuántas prendas necesitas (si sabes el precio).','Packs de 3, 6 o 12: escribe lo que cobras por el pack y la app calcula lo que vale cada prenda.','Guarda cotizaciones para volver a cargarlas después.'],tip:'Margen sano: entre 50% y 65%. Menos de 30% es bajo.',q:'¿A qué precio vendo para ganar S/ 1,000?'},
  {t:'Pedidos',ic:'bag',pasos:['Llena el formulario: cliente, teléfono, ciudad, producto (puedes elegir una prenda de tu catálogo), modelo, talla, color, cantidad, precio, costo, flete, estado y forma de pago.','Para vender en pack (3, 6 o 12), elige el pack y escribe el precio del pack: la app divide el valor por prenda.','Cambia el estado desde la misma tarjeta: Pendiente, Enviado, Entregado, Devuelto o Cancelado.','El icono verde de WhatsApp abre el chat con el cliente con un mensaje listo.','Mira el historial en encuadros o en tabla con el selector de arriba. Busca por cliente, producto o ciudad y filtra por estado.','Editar carga el pedido en el formulario; ✕ lo elimina.','Utilidad: Entregado = (precio − costo) × cantidad − flete. Devuelto = pierdes el flete (por el factor de Ajustes).'],tip:'Escribe el teléfono con o sin 51; la app lo entiende. Configura tu código de país en Ajustes.',q:'¿Qué ciudad me compra más?'},
  {t:'Inventario',ic:'box',pasos:['Toca "+ Registrar producto". Elige si es una prenda terminada o un material (tela, hilos, avíos). ','Si vendes la misma prenda con cuello redondo y cuello V, regístralas como productos separados poniendo el cuello en el nombre (Ej. Polera cuello redondo y Polera cuello V): cada una tiene su propio stock.','Para varias tallas y colores a la vez: toca las tallas (S, M, L…) y escribe los colores (Negro, Blanco), toca "Generar tablero" y pon el stock de cada fila. Cada talla y color tiene su propio inventario. Con "+ Agregar talla o color" sumas más después.','Completa también el mínimo (te avisa cuando quede igual o menos), costo por unidad, SKU y ubicación.','Entrada: suma stock (compra, producción terminada, devolución). Salida: resta stock (venta, uso en producción, merma, muestra). Contar: pones lo que realmente hay y la app registra la diferencia.','Cada producto tiene su Historial con fecha, motivo y saldo de cada movimiento.','Arriba ves productos, unidades, valor a costo, valor de venta, stock bajo y agotados. "Por reponer" lista lo que se acaba, con botón de entrada.','Pedidos: en el formulario elige el \"Producto del inventario\" y la talla y el color se jalan solos con su stock disponible (también puedes escribirlos). Al guardar el pedido se descuenta del inventario; si luego lo cancelas o se devuelve, el stock regresa.','Puedes buscar, filtrar por tipo o por stock bajo/agotado y descargar el inventario en .csv.'],tip:'Pon un mínimo en cada producto para que la app te avise antes de quedarte sin stock.',q:'¿Qué productos tengo con stock bajo?'},
+ {t:'WhatsApp',ic:'chat',pasos:['En "Mensajes a clientes" ves tus pedidos con el mensaje ya armado según su estado (confirmar, enviado, gracias por tu compra…).','Elige otra plantilla si quieres, cambia el texto y toca "Enviar por WhatsApp Web". En computadora abre web.whatsapp.com y en el celular abre la app. El pedido queda marcado como contactado.','En "Plantillas" editas tus mensajes. Usa variables como {cliente}, {producto} y {total}: se reemplazan con los datos de cada pedido. Puedes crear las tuyas.','En "Enlace y QR" guardas el número de tu negocio y generas el enlace de WhatsApp y el QR para tus redes, anuncios o empaques.'],tip:'WhatsApp Web no se puede mostrar dentro de la app: se abre en otra pestaña. La primera vez escaneas el QR con tu celular.',q:'¿Cómo mando un mensaje a mis clientes?'},
  {t:'Gastos',ic:'money',pasos:['Fijos (CIF): alquiler, luz, sueldos, internet… lo que pagas cada mes aunque no vendas.','Variables: gastos del día a día (envíos, publicidad, compras sueltas). Elige la fecha y la categoría.','La "base de prendas por mes" (200, 300, 400, 500 o 600) define cuánto gasto fijo toca a cada prenda: más prendas, menos costo fijo por prenda.','Puedes editar o borrar cualquier gasto.'],tip:'Si cambias la base de prendas, el costo por prenda en la Calculadora se actualiza solo.',q:'¿Cuántas prendas necesito vender para cubrir mis gastos fijos?'},
  {t:'Proyección',ic:'trend',pasos:['Prueba escenarios de producción: conservador, moderado y expansión (puedes cambiar las cantidades).','Elige una prenda y un lote de 25, 50 o 100 para ver inversión, venta estimada y utilidad.','Verás el punto de equilibrio: cuántas prendas debes vender para recuperar lo invertido.'],tip:'Úsala antes de producir un lote grande para saber cuánto necesitas vender.',q:'Revisa mis costos y dime qué mejorar'},
  {t:'Ajustes, importar y respaldo',ic:'gear',pasos:['Ajustes (engranaje): nombre de la marca, tipo de cambio S/ por US$, cuánto cuesta una devolución (× flete), código de país y WhatsApp de la empresa.','Importar pedidos de Shopify: en Shopify ve a Pedidos → Exportar → CSV y sube ese archivo. No duplica pedidos ya importados; el costo lo completas tú.','Respaldo automático: la app guarda una copia cada día (últimas 14). Puedes restaurar o descargar cualquiera.','"Crear respaldo ahora" guarda una copia al momento. También puedes descargar el respaldo .json y los pedidos o gastos en .csv.','Cerrar sesión está en la tarjeta de tu cuenta, en Ajustes.'],tip:'Antes de restaurar, la app guarda una copia de tus datos actuales por si te arrepientes.',q:'¿Cómo restauro un respaldo?'},
