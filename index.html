@@ -602,6 +602,7 @@ summary{cursor:pointer}
       <div class="card" id="accCard" hidden style="margin-bottom:14px">
         <h2>Mi cuenta</h2>
         <p class="sub" id="accInfo"></p>
+        <div id="accDiag" class="hint" hidden style="margin-top:8px"></div>
         <div id="accWarn" class="lmsg ok" hidden style="margin-top:10px"></div>
         <div class="row" style="margin-top:12px"><button class="btn" id="accVerify" type="button" hidden>Reenviar correo de verificación</button><button class="btn del" id="accOut" type="button">Cerrar sesión</button></div>
       </div>
@@ -820,7 +821,7 @@ function attachDb(db,opts={}){
       const same=m.size===remote[name].size&&[...m].every(([k,v])=>remote[name].get(k)===v);
       if(same)return;
       S[name]=list;remote[name]=m;refreshAll();
-    },()=>{}));
+    },e=>{ui.dbErr=(e&&e.code)||'error';renderAccount()}));
   }
   unsubs.push(db.doc('config/settings').onSnapshot(snap=>{
     const first=!seenDb.settings;seenDb.settings=true;
@@ -828,11 +829,11 @@ function attachDb(db,opts={}){
     const j=JSON.stringify({...S.settings,...snap.data()});
     if(j===remote.settings)return;
     S.settings={...S.settings,...snap.data()};remote.settings=JSON.stringify(S.settings);applyTheme();refreshAll();
-  },()=>{}));
+  },e=>{ui.dbErr=(e&&e.code)||'error';renderAccount()}));
   unsubs.push(db.collection('backups').onSnapshot(snap=>{bkSeen=true;BK=snap.docs.map(d=>({...d.data()}));renderBackups()},()=>{}));
   $('#storeInfo').textContent=FB_MODE?'Tus datos se guardan en tu cuenta y los ves igual en cualquier dispositivo donde entres.':'Tus datos se guardan en la nube de esta página y los ves igual en cualquier dispositivo.';
 }
-function detachDb(){BK=[];bkSeen=false;unsubs.forEach(u=>{try{u&&u()}catch(e){}});unsubs.length=0;DB=null;COLS.forEach(c=>seenDb[c]=false);seenDb.settings=false}
+function detachDb(){ui.dbErr="";BK=[];bkSeen=false;unsubs.forEach(u=>{try{u&&u()}catch(e){}});unsubs.length=0;DB=null;COLS.forEach(c=>seenDb[c]=false);seenDb.settings=false}
 async function connectDb(){
   let db=null;
   try{db=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(e){}
@@ -897,6 +898,11 @@ function renderAccount(){
   const u=FB_USER,card=$('#accCard');card.hidden=!u;if(!u)return;
   const viaPass=(u.providerData||[]).some(p=>p.providerId==='password');
   $('#accInfo').textContent=(u.displayName?u.displayName+' · ':'')+(u.email||'')+(viaPass?' · correo y contraseña':' · Google');
+  const dg=$('#accDiag');
+  if(dg){const n=COLS.map(c=>c+': '+(S[c]||[]).length).join(' · ');
+    const rol=ACC.rol==='admin'||puedeTienda()?'Administrador':ACC.rol==='miembro'?(ACC.propio?'Base de datos propia':'Trabaja sobre datos del administrador'):'Sin acceso aprobado';
+    dg.hidden=!FB_MODE;
+    dg.innerHTML=FB_MODE?`<b>Estado de tu cuenta:</b> ${esc(rol)}<br>Datos cargados → ${esc(n)}${ui.dbErr==='permission-denied'?'<br>⚠️ <b>Firebase no te deja leer tus datos</b> (reglas sin publicar o acceso sin «base propia» en Equipo).':ui.dbErr?'<br>⚠️ Error al leer tus datos: '+esc(ui.dbErr):''}<br><small>ID de cuenta: ${esc(u.uid)}</small>`:''}
   const needV=viaPass&&!u.emailVerified;
   $('#accWarn').hidden=!needV;$('#accVerify').hidden=!needV;
   $('#accWarn').textContent=needV?'Verifica tu correo (te enviamos un mensaje). Sin verificarlo no podrás usar el asistente de IA.':'';
