@@ -491,8 +491,9 @@ summary{cursor:pointer}
         <form id="pedForm" class="form" autocomplete="off" style="margin-top:10px">
           <div><label for="p-fecha">Fecha</label><input id="p-fecha" type="date" name="fecha" required></div>
           <div><label for="p-gar">Prenda del catálogo</label><select id="p-gar" name="garmentId"></select></div>
-          <div class="full"><label for="p-invg">Producto del inventario (jala tallas y colores)</label><select id="p-invg"></select></div>
-          <div class="full" id="invChips" hidden><label>Talla (toca las que quieras)</label><div class="tchips ichips" id="icT"></div><label style="margin-top:10px">Color (toca los que quieras)</label><div class="tchips ichips" id="icC"></div></div>
+          <div class="full" id="invProdBox" hidden><label>Producto del inventario (toca uno o dos)</label><div class="tchips ichips" id="invProd"></div></div>
+          <div class="full" style="display:none"><label for="p-invg">Producto del inventario (jala tallas y colores)</label><select id="p-invg"></select></div>
+          <div class="full" id="invChips" hidden><label id="lblT1">Talla (toca las que quieras)</label><div class="tchips ichips" id="icT"></div><label id="lblC1" style="margin-top:10px">Color (toca los que quieras)</label><div class="tchips ichips" id="icC"></div></div>
           <div class="full" id="invQty" hidden></div>
           <div class="full" style="display:none"><label for="p-inv">Variante que se descuenta (se llena sola)</label><select id="p-inv" name="invId"></select></div>
           <div><label for="p-pack">Venta por</label><select id="p-pack" name="pack"><option value="1">Por unidad</option><option value="3">Pack por 3</option><option value="6">Pack por 6</option><option value="12">Pack por 12</option><option value="custom">Personalizado (polos sueltos)</option></select></div>
@@ -505,8 +506,7 @@ summary{cursor:pointer}
           <div id="fTalla"><label for="p-talla">Talla</label><input id="p-talla" name="talla" list="dl-ptalla" placeholder="Elige o escribe"><datalist id="dl-ptalla"></datalist></div>
           <div id="fColor"><label for="p-color">Color</label><input id="p-color" name="color" list="dl-pcolor" placeholder="Elige o escribe"><datalist id="dl-pcolor"></datalist></div>
           <div class="full hint" id="invNota" style="margin:0">📝 <b>Varios colores o tallas:</b> sepáralos con coma, por ejemplo <b>Azul, Blanco, Verde</b> o <b>S, M, L</b>. Al elegir varios aparece una lista para poner la <b>cantidad de cada uno</b> (por ejemplo Azul 2, Blanco 1, Verde 3). La Cantidad de arriba pasa a ser la suma. Escríbelos igual que en el inventario y usa «Por unidad».</div>
-          <div class="full inv2" id="invSec2" hidden><label for="p-invg2">➕ Polos redondos (otro producto del inventario)</label><select id="p-invg2"></select>
-            <div id="inv2Chips" hidden><label style="margin-top:10px">Talla (toca las que quieras)</label><div class="tchips ichips" id="ic2T"></div><label style="margin-top:10px">Color (toca los que quieras)</label><div class="tchips ichips" id="ic2C"></div></div></div>
+          <div class="full" id="invExtras" hidden></div>
           <div class="full alert" id="invHint" style="background:var(--primary-soft)" hidden></div>
           <div><label for="p-cant" id="lblCant">Cantidad</label><input id="p-cant" type="number" name="cantidad" min="1" value="1" required></div>
           <div><label for="p-precio">Precio de venta (unidad, S/)</label><input id="p-precio" type="number" name="precio" min="0" step="any" required></div>
@@ -2221,7 +2221,7 @@ function syncWaForm(){const w=$('#waForm');if(w)w.innerHTML=waBtn(pf.telefono.va
 pf.telefono.addEventListener('input',syncWaForm);pf.cliente.addEventListener('input',syncWaForm);pf.producto.addEventListener('input',syncWaForm);
 function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
 $('#pedNuevo').addEventListener('click',()=>{if($('#pedCard').hidden){resetPed();pedMostrarForm(true)}else pedMostrarForm(false)});
-function resetPed(){ui.pedQty={};ui.pedG2='';ui.pedSel2={t:[],c:[]};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
+function resetPed(){ui.pedQty={};ui.pedProds=[];ui.pedSelX={};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
 pf.addEventListener('submit',e=>{
   e.preventDefault();
   const fd=Object.fromEntries(new FormData(pf));
@@ -2319,10 +2319,11 @@ $('#pedTabla').addEventListener('click',e=>{
   if(b.dataset.ed){const o=S.orders.find(x=>x.id===b.dataset.ed);ui.editOrder=o.id;fillGarmentSelect();
     Object.keys(o).forEach(k=>{if(pf[k]&&k!=='id')pf[k].value=o[k]});
     pf.pack.value=o.lote?'custom':String(o.pack>1?o.pack:1);if(o.pack>1)pf.cantidad.value=o.packs||1;if(o.lote)pf.precioPack.value=o.lote;syncPack();syncWaForm();
-    {const it=o.invId&&invFind(o.invId),m0=Array.isArray(o.multi)&&o.multi.length?invFind(o.multi[0].id):null;pig.value=it?invKey(it):m0?invKey(m0):'';pf.invId.value=it?it.id:'';ui.pedQty={};ui.pedG2='';ui.pedSel2={t:[],c:[]};
-     if(m0){o.multi.forEach(m=>{ui.pedQty[m.id]=m.q});const its=o.multi.map(m=>invFind(m.id)).filter(Boolean),k1=invKey(m0),g1=its.filter(i=>invKey(i)===k1),g2=its.filter(i=>invKey(i)!==k1),u=(a,f)=>[...new Set(a.map(i=>i[f]).filter(Boolean))];
+    {const it=o.invId&&invFind(o.invId),m0=Array.isArray(o.multi)&&o.multi.length?invFind(o.multi[0].id):null;pig.value=it?invKey(it):m0?invKey(m0):'';pf.invId.value=it?it.id:'';ui.pedQty={};ui.pedProds=[];ui.pedSelX={};
+     if(m0){o.multi.forEach(m=>{ui.pedQty[m.id]=m.q});const its=o.multi.map(m=>invFind(m.id)).filter(Boolean),ks=[...new Set(its.map(invKey))],u=(a,f)=>[...new Set(a.map(i=>i[f]).filter(Boolean))];
+       pig.value=ks[0];ui.pedProds=ks.slice(0,2);const g1=its.filter(i=>invKey(i)===ks[0]);
        pf.talla.value=u(g1,'talla').join(', ');pf.color.value=u(g1,'color').join(', ');
-       if(g2.length){ui.pedG2=invKey(g2[0]);ui.pedSel2={t:u(g2,'talla').map(lowS),c:u(g2,'color').map(lowS)}}}
+       ks.slice(1,2).forEach(k=>{const g=its.filter(i=>invKey(i)===k);ui.pedSelX[k]={t:u(g,'talla').map(lowS),c:u(g,'color').map(lowS)}})}
      invRefresh()}
     $('#pedTitle').textContent='Editar pedido';$('#pedCancel').hidden=false;pedMostrarForm(true)}
   if(b.dataset.del)ask('¿Eliminar este pedido?',()=>{const od=S.orders.find(o=>o.id===b.dataset.del);if(od)orderStockRelease(od);S.orders=S.orders.filter(o=>o.id!==b.dataset.del);save();renderPed()});
@@ -2402,31 +2403,28 @@ function invRefresh(op){
      $('#icT').innerHTML=tallas.length?tallas.map(x=>bt('talla',x,tl.includes(lowS(x.v)))).join(''):'<span class="sub">Este producto no tiene tallas en el inventario.</span>';
      $('#icC').innerHTML=colores.length?colores.map(x=>bt('color',x,cl.includes(lowS(x.v)))).join(''):'<span class="sub">Este producto no tiene colores en el inventario.</span>';
    }}
-  // sección 2: polos redondos (otro producto del inventario) con sus propios cuadritos
-  const g2k=ui.pedG2||'',sel2=ui.pedSel2=ui.pedSel2||{t:[],c:[]};ui.pedExtra=[];ui.pedExtraMsg='';
-  {const todos=[...invGroups().entries()].filter(([k])=>k!==pig.value);
-   const box=$('#invSec2'),sl=$('#p-invg2');box.hidden=!todos.length;
-   if(todos.length){
-     todos.sort((a,b)=>(/redond/i.test(b[0])-/redond/i.test(a[0]))||a[0].localeCompare(b[0]));
-     const prev=sl.value;sl.innerHTML='<option value="">— No agregar —</option>'+todos.map(([k,v])=>`<option value="${esc(k)}">${esc(v[0].nombre+(v[0].cuello?' · '+v[0].cuello:''))} (${r2(v.reduce((a,i)=>a+num(i.stock),0))} en stock)</option>`).join('');
-     sl.value=todos.some(([k])=>k===g2k)?g2k:'';if(sl.value!==g2k){ui.pedG2=sl.value;sel2.t=[];sel2.c=[]}
-   }
-   const vs2=ui.pedG2?(invGroups().get(ui.pedG2)||[]):[];
-   $('#inv2Chips').hidden=!vs2.length;
-   if(vs2.length){
-     const t2=sel2.t,c2=sel2.c;
+  // productos elegidos (uno o dos): el primero usa los cuadritos de arriba; el segundo tiene su propio bloque
+  const grupos=[...invGroups().entries()];
+  ui.pedSelX=ui.pedSelX||{};
+  {const ex0=(ui.pedProds||[]).filter(k=>k!==pig.value&&grupos.some(([g])=>g===k));ui.pedProds=pig.value?[pig.value,...ex0]:ex0;
+   const pb=$('#invProdBox');pb.hidden=!grupos.length;
+   $('#invProd').innerHTML=grupos.sort((a,b)=>String(a[1][0].nombre+a[1][0].cuello).localeCompare(String(b[1][0].nombre+b[1][0].cuello))).map(([k,v])=>`<button type="button" class="tchip${ui.pedProds.includes(k)?' on':''}" data-pk="${esc(k)}" aria-pressed="${ui.pedProds.includes(k)}">${esc(v[0].nombre+(v[0].cuello?' · '+v[0].cuello:''))} <small>· ${r2(v.reduce((a,i)=>a+num(i.stock),0))}</small></button>`).join('');
+   const n1=pig.value&&(invGroups().get(pig.value)||[])[0];const t1=n1?' de '+n1.nombre+(n1.cuello?' · '+n1.cuello:''):'';
+   $('#lblT1').textContent='Talla'+t1+' (toca las que quieras)';$('#lblC1').textContent='Color'+t1+' (toca los que quieras)';}
+  ui.pedExtra=[];ui.pedExtraMsg='';
+  {const extras=ui.pedProds.slice(1),ex=$('#invExtras');ex.hidden=!extras.length;
+   ex.innerHTML=extras.map(k=>{
+     const vs2=invGroups().get(k)||[],sel=ui.pedSelX[k]=ui.pedSelX[k]||{t:[],c:[]},t2=sel.t,c2=sel.c,f0=vs2[0]||{};
      const ok2C=i=>!c2.length||c2.includes(lowS(i.color))||!vs2.some(x=>c2.includes(lowS(x.color))),ok2T=i=>!t2.length||t2.includes(lowS(i.talla))||!vs2.some(x=>t2.includes(lowS(x.talla)));
      const ta=agg(vs2.filter(ok2C),'talla').sort((x,y)=>cmpSz(x.v,y.v)),co=agg(vs2.filter(ok2T),'color').sort((x,y)=>x.v.localeCompare(y.v));
-     const bt2=(k,x,on)=>`<button type="button" class="tchip${on?' on':''}${x.st<=0?' zero':''}" data-k2="${k}" data-v="${esc(x.v)}" aria-pressed="${on}">${esc(x.v)} <small>· ${r2(x.st)}</small></button>`;
-     $('#ic2T').innerHTML=ta.length?ta.map(x=>bt2('t',x,t2.includes(lowS(x.v)))).join(''):'<span class="sub">Sin tallas en el inventario.</span>';
-     $('#ic2C').innerHTML=co.length?co.map(x=>bt2('c',x,c2.includes(lowS(x.v)))).join(''):'<span class="sub">Sin colores en el inventario.</span>';
-     const nT=new Set(vs2.map(i=>lowS(i.talla)).filter(Boolean)).size,nC=new Set(vs2.map(i=>lowS(i.color)).filter(Boolean)).size;
-     if((t2.length||c2.length)){
-       if(nT>1&&!t2.length)ui.pedExtraMsg='En los polos redondos falta elegir la talla.';
-       else if(nC>1&&!c2.length)ui.pedExtraMsg='En los polos redondos falta elegir el color.';
-       else ui.pedExtra=vs2.filter(i=>(!t2.length||t2.includes(lowS(i.talla)))&&(!c2.length||c2.includes(lowS(i.color)))).map(i=>i.id);
+     const bt2=(kk,x,on)=>`<button type="button" class="tchip${on?' on':''}${x.st<=0?' zero':''}" data-kx="${esc(k)}" data-k2="${kk}" data-v="${esc(x.v)}" aria-pressed="${on}">${esc(x.v)} <small>· ${r2(x.st)}</small></button>`;
+     const nT=new Set(vs2.map(i=>lowS(i.talla)).filter(Boolean)).size,nC=new Set(vs2.map(i=>lowS(i.color)).filter(Boolean)).size,nom=esc(f0.nombre+(f0.cuello?' · '+f0.cuello:''));
+     if(t2.length||c2.length){
+       if(nT>1&&!t2.length)ui.pedExtraMsg=`En ${f0.nombre+(f0.cuello?' · '+f0.cuello:'')} falta elegir la talla.`;
+       else if(nC>1&&!c2.length)ui.pedExtraMsg=`En ${f0.nombre+(f0.cuello?' · '+f0.cuello:'')} falta elegir el color.`;
+       else vs2.filter(i=>(!t2.length||t2.includes(lowS(i.talla)))&&(!c2.length||c2.includes(lowS(i.color)))).forEach(i=>ui.pedExtra.push(i.id));
      }
-   }
+     return `<div class="inv2"><label>Talla de ${nom} (toca las que quieras)</label><div class="tchips ichips">${ta.length?ta.map(x=>bt2('t',x,t2.includes(lowS(x.v)))).join(''):'<span class="sub">Sin tallas en el inventario.</span>'}</div><label style="margin-top:10px">Color de ${nom} (toca los que quieras)</label><div class="tchips ichips">${co.length?co.map(x=>bt2('c',x,c2.includes(lowS(x.v)))).join(''):'<span class="sub">Sin colores en el inventario.</span>'}</div></div>`}).join('');
   }
   // variante(s) a descontar
   const hasTC=!!(tl.length||cl.length),multiple=tl.length>1||cl.length>1;
@@ -2480,8 +2478,17 @@ function invFromGroup(){
   invRefresh();
 }
 pig.addEventListener('change',()=>{ui.pedQty={};invFromGroup()});
-$('#p-invg2').addEventListener('change',e=>{ui.pedG2=e.target.value;ui.pedSel2={t:[],c:[]};invRefresh()});
-$('#invSec2').addEventListener('click',e=>{const b=e.target.closest('[data-k2]');if(!b)return;const l=(ui.pedSel2=ui.pedSel2||{t:[],c:[]})[b.dataset.k2],v=lowS(b.dataset.v),i=l.indexOf(v);if(i>=0)l.splice(i,1);else l.push(v);invRefresh()});
+$('#invProd').addEventListener('click',e=>{
+  const b=e.target.closest('[data-pk]');if(!b)return;const k=b.dataset.pk;let ps=(ui.pedProds||[]).slice();
+  if(ps.includes(k)){
+    ps=ps.filter(x=>x!==k);delete (ui.pedSelX||{})[k];ui.pedProds=ps;
+    if(pig.value===k){pig.value=ps[0]||'';ui.pedQty={};invFromGroup();return}   // el segundo pasa a ser el principal
+    invRefresh();return}
+  if(ps.length>=2){toast('Puedes elegir uno o dos productos.');return}
+  ps.push(k);ui.pedProds=ps;
+  if(!pig.value){pig.value=k;ui.pedQty={};invFromGroup();return}
+  invRefresh()});
+$('#invExtras').addEventListener('click',e=>{const b=e.target.closest('[data-k2]');if(!b)return;const sel=(ui.pedSelX=ui.pedSelX||{})[b.dataset.kx]=(ui.pedSelX||{})[b.dataset.kx]||{t:[],c:[]},l=sel[b.dataset.k2],v=lowS(b.dataset.v),i=l.indexOf(v);if(i>=0)l.splice(i,1);else l.push(v);invRefresh()});
 $('#invQty').addEventListener('input',e=>{const id=e.target.dataset&&e.target.dataset.iq;if(!id)return;(ui.pedQty=ui.pedQty||{})[id]=Math.max(1,Math.floor(num(e.target.value))||1);invRefresh({sinFilas:true})});
 $('#invChips').addEventListener('click',e=>{const b=e.target.closest('.tchip');if(!b)return;const f=pf[b.dataset.k],v=b.dataset.v,l=listaCSV(f.value),i=l.findIndex(x=>lowS(x)===lowS(v));if(i>=0)l.splice(i,1);else l.push(v);f.value=l.join(', ');invRefresh()});
 ['talla','color'].forEach(n=>{pf[n].addEventListener('input',invRefresh);pf[n].addEventListener('change',invRefresh)});
