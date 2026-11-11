@@ -1287,7 +1287,7 @@ const WA_ETQ=[{id:'nuevo',nombre:'Cliente nuevo',color:'#25D366'},{id:'pedido',n
 function waTabs(){const st=S.settings;if(!Array.isArray(st.waTableros)||!st.waTableros.length)st.waTableros=JSON.parse(JSON.stringify(WA_TAB));return st.waTableros}
 /* Las etiquetas y los tableros son la misma lista: cada tablero es una etiqueta de WhatsApp Business con su mismo nombre. */
 function waEtq(){return waTabs()}
-const WA_COL=['#25D366','#34B7F1','#FFB300','#7E57C2','#2E7D32','#F06292','#FF7043','#26A69A','#8D6E63','#5C6BC0','#EC407A','#9CCC65','#29B6F6','#AB47BC','#FFA726','#66BB6A','#78909C','#D4E157','#EF5350','#BDBDBD'];
+const WA_COL=['#ff9485','#64c4ff','#ffd429','#dfaef0','#99b6c1','#55ccb3','#ff9dff','#d3a91d','#6d7cce','#d7e752','#00d0e2','#ffc5c7','#93ceac','#f74848','#00a0f2','#83e422','#ffaf04','#b5ebff','#9ba6ff','#9368cf'];
 function waAsig(){const st=S.settings;if(!st.waAsig||typeof st.waAsig!=='object')st.waAsig={};return st.waAsig}
 function waDatos(){const st=S.settings;if(!st.waDatos||typeof st.waDatos!=='object')st.waDatos={};return st.waDatos}
 function waSet(tel,k,v){if(k==='e')k='t';const a=waAsig(),prev=(a[tel]||{}).t;a[tel]=a[tel]||{};delete a[tel].e;if(v===''||v==null||v==='_ninguna')delete a[tel][k];else a[tel][k]=v;if(!Object.keys(a[tel]).length)delete a[tel];save();if(k==='t')waPushEtq(tel,prev,(a[tel]||{}).t)}
@@ -1302,11 +1302,14 @@ async function waPushEtq(tel,prev,nuevo){
 /* Trae las etiquetas de WhatsApp Business: crea los tableros que falten y vincula por nombre */
 async function waSyncEtq(){
   try{
-    const r=await waApi('etiquetas'),L=r.etiquetas||[],tabs=waTabs(),nm=x=>String(x||'').trim().toLowerCase();let ch=false;
-    L.forEach(l=>{let t=tabs.find(x=>x.lid===l.id)||tabs.find(x=>!x.lid&&nm(x.nombre)===nm(l.nombre));
-      if(!t){tabs.push({id:uid(),nombre:l.nombre,color:WA_COL[l.color]||'#64748B',lid:l.id});ch=true}else if(t.lid!==l.id){t.lid=l.id;ch=true}});
+    const r=await waApi('etiquetas'),L=r.etiquetas||[],tabs=waTabs(),nm=x=>String(x||'').trim().toLowerCase();
+    const antes=JSON.stringify(tabs),usados=new Set(),orden=[];
+    // Nombre, color y orden salen de WhatsApp Business; los tableros que no existen allá quedan al final
+    L.forEach(l=>{let t=tabs.find(x=>x.lid===l.id)||tabs.find(x=>!x.lid&&nm(x.nombre)===nm(l.nombre)&&!usados.has(x));
+      if(!t)t={id:uid()};t.lid=l.id;t.nombre=l.nombre;t.color=WA_COL[l.color%WA_COL.length]||'#64748B';usados.add(t);orden.push(t)});
+    if(L.length){const resto=tabs.filter(t=>!usados.has(t));tabs.splice(0,tabs.length,...orden,...resto)}
     ui.waEtqOk=true;ui.waEtqN=L.length;
-    if(ch)save();
+    if(JSON.stringify(tabs)!==antes)save();
   }catch(e){ui.waEtqOk=false}
 }
 /* Lo que ya tiene cada chat en WhatsApp manda: se refleja en su tablero */
