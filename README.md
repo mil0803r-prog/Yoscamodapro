@@ -35,7 +35,7 @@ Con esto la app deja de ser abierta: solo entra quien tú apruebes, y cada perso
 3. La persona crea su cuenta (o entra con Google), verifica su correo y toca **Solicitar acceso**. También puedes darle acceso tú escribiendo su correo en **Equipo → Dar acceso a un correo**.
 4. En **Equipo** tocas **Aprobar…**, eliges permisos por sección (hay atajos: *Solo mirar*, *Vendedor*, *Todo editar*) y **Guardar**. Puedes cambiar permisos, suspender o quitar a alguien cuando quieras.
 
-Las personas aprobadas trabajan sobre los datos del administrador (los mismos pedidos, inventario, etc.). Las reglas de Firestore hacen cumplir los permisos en el servidor, no solo en la pantalla. Tienda, Equipo y los respaldos son solo del administrador. En WhatsApp, quien tenga permiso lo usa sin estar en `WA_EMAILS` (se lee su permiso de Firestore; requiere `FIREBASE_PROJECT_ID`), pero conectar o desvincular el número es solo del administrador.
+Si marcas **«Tiene su propia base de datos»** al darle acceso, esa persona conserva sus datos de siempre (los guardados en su cuenta, separados de los tuyos) y trabaja sobre ellos. Si no, las personas aprobadas trabajan sobre los datos del administrador (los mismos pedidos, inventario, etc.). Las reglas de Firestore hacen cumplir los permisos en el servidor, no solo en la pantalla. Tienda, Equipo y los respaldos son solo del administrador. En WhatsApp, quien tenga permiso lo usa sin estar en `WA_EMAILS` (se lee su permiso de Firestore; requiere `FIREBASE_PROJECT_ID`), pero conectar o desvincular el número es solo del administrador.
 
 ### Etiquetas como WhatsApp Web (recomendado: un solo paso)
 

@@ -46,10 +46,20 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Datos del negocio: viven en la cuenta del administrador
+    // Persona aprobada con base de datos propia: dueña de sus datos (users/{su uid})
+    function propia(uid) {
+      return request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/acceso/$(correo()))
+        && ficha().estado == 'activo'
+        && ficha().get('propio', false) == true;
+    }
+
+    // Datos del negocio: viven en la cuenta del administrador (o en la propia de quien tenga base propia)
     match /users/{uid} {
       match /{document=**} {
-        allow read, write: if admin() && request.auth.uid == uid;
+        allow read, write: if (admin() && request.auth.uid == uid) || propia(uid);
       }
       match /orders/{d} {
         allow read: if miembro(uid) && (ve('ped') || ve('wa') || ve('dash') || ve('proy'));

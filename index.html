@@ -956,11 +956,12 @@ function accEntrar(u){
   const em=String(u.email||'').toLowerCase();let a,sol,la=false,ls=false;
   const pintar=()=>{
     if(!la||!ls||!FB_USER||FB_USER.uid!==u.uid)return;
-    if(a&&a.estado==='activo'&&a.duenio){
-      const nuevo=!(ACC.rol==='miembro'&&ACC.duenio===a.duenio);
-      ACC={rol:'miembro',permisos:a.permisos||{},duenio:a.duenio};
+    if(a&&a.estado==='activo'&&(a.duenio||a.propio)){
+      const dueno=a.propio?u.uid:a.duenio;                      // base propia: sus datos de siempre (users/{su uid})
+      const nuevo=!(ACC.rol==='miembro'&&ACC.duenio===dueno);
+      ACC={rol:'miembro',permisos:a.permisos||{},duenio:dueno,propio:!!a.propio};
       $('#lock').hidden=true;hideLogin();
-      if(nuevo){detachDb();resetLocal();attachDb(fsAdapter(YoscaFB.store(a.duenio)),{migrate:false});connectAi()}
+      if(nuevo){detachDb();resetLocal();attachDb(fsAdapter(YoscaFB.store(dueno)),{migrate:false});connectAi()}
       if(nivelSec('wa')!=='no')waHookIniciar();
       pintarNav();renderTab();renderAccount();
     }else{
@@ -994,19 +995,20 @@ function renderEquipo(){
    ${sol.length?sol.map(x=>`<div class="eq-fila"><div class="eq-info"><b>${esc(x.nombre||x.email)}</b><small>${esc(x.email)} · ${esc(waHora(x.fecha))}</small></div><div class="row"><button class="btn sm pri" type="button" data-eq="aprobar" data-e="${esc(x.email)}">Aprobar…</button><button class="btn sm del" type="button" data-eq="rechazar" data-e="${esc(x.email)}">Rechazar</button></div></div>`).join(''):'<p class="hint">No hay solicitudes. Quien quiera entrar crea su cuenta, toca “Solicitar acceso” y aparece aquí.</p>'}
   </div>
   <div class="card" style="margin-top:10px"><div class="row sb"><h3>Personas con acceso</h3><span class="badge">${ac.length}</span></div>
-   ${ac.length?ac.map(x=>`<div class="eq-fila"><div class="eq-info"><b>${esc(x.nombre||x.email)} ${x.estado==='activo'?'':'<span class="badge b-Pendiente">Suspendido</span>'}</b><small>${esc(x.email)}</small><small>${esc(eqResumen(x.permisos))}</small></div><div class="row"><button class="btn sm" type="button" data-eq="editar" data-e="${esc(x.email)}">Permisos</button><button class="btn sm" type="button" data-eq="pausa" data-e="${esc(x.email)}">${x.estado==='activo'?'Suspender':'Reactivar'}</button><button class="btn sm del" type="button" data-eq="quitar" data-e="${esc(x.email)}">Quitar</button></div></div>`).join(''):'<p class="hint">Todavía no has dado acceso a nadie.</p>'}
+   ${ac.length?ac.map(x=>`<div class="eq-fila"><div class="eq-info"><b>${esc(x.nombre||x.email)} ${x.propio?'<span class="badge">Base propia</span>':''} ${x.estado==='activo'?'':'<span class="badge b-Pendiente">Suspendido</span>'}</b><small>${esc(x.email)}</small><small>${esc(eqResumen(x.permisos))}</small></div><div class="row"><button class="btn sm" type="button" data-eq="editar" data-e="${esc(x.email)}">Permisos</button><button class="btn sm" type="button" data-eq="pausa" data-e="${esc(x.email)}">${x.estado==='activo'?'Suspender':'Reactivar'}</button><button class="btn sm del" type="button" data-eq="quitar" data-e="${esc(x.email)}">Quitar</button></div></div>`).join(''):'<p class="hint">Todavía no has dado acceso a nadie.</p>'}
   </div>
   <div class="card" style="margin-top:10px"><h3>Dar acceso a un correo</h3><p class="sub">Escribe el correo de la persona (debe verificarlo al crear su cuenta) y elige qué puede ver.</p>
    <div class="row" style="margin-top:8px"><input id="eqMail" type="email" inputmode="email" placeholder="correo@ejemplo.com" style="flex:1 1 220px" aria-label="Correo de la persona"><button class="btn pri" type="button" data-eq="invitar">Elegir permisos…</button></div></div>`;
 }
 const EQ_PRESETS={ver:['Solo mirar todo',{dash:'ver',calc:'ver',ped:'ver',wa:'ver',inv:'ver',gas:'ver',proy:'ver'}],vend:['Vendedor',{ped:'editar',wa:'editar',inv:'editar'}],todo:['Todo editar',{dash:'editar',calc:'editar',ped:'editar',wa:'editar',inv:'editar',gas:'editar',proy:'editar'}]};
-function eqDialogo(email,nombre,base){
+function eqDialogo(email,nombre,base,propio){
   ui.eqCur={email,nombre};
   const p=base||{};
   dlgOpen(`<h2 style="margin:0 0 4px">Permisos de ${esc(email)}</h2><p class="sub">Elige qué puede hacer en cada sección.</p>
   <div class="row" style="margin:8px 0">${Object.entries(EQ_PRESETS).map(([k,v])=>`<button class="btn sm" type="button" data-eqp="${k}">${v[0]}</button>`).join('')}</div>
   <div class="eq-perm">${Object.entries(SEC_NOM).map(([k,n])=>`<label for="eqp-${k}">${n}</label><select id="eqp-${k}" data-eqs="${k}">${['no','ver','editar'].map(v=>`<option value="${v}"${(p[k]||'no')===v?' selected':''}>${NIV_TXT[v]}</option>`).join('')}</select>`).join('')}</div>
-  <p class="hint">Ajustes solo le muestra su cuenta. Tienda y Equipo son solo tuyos. En WhatsApp, conectar o desvincular el número es solo del administrador.</p>
+  <label style="display:flex;gap:8px;align-items:flex-start;margin:10px 0 4px;font-size:14px;color:var(--on)"><input type="checkbox" id="eqPropio" style="margin-top:3px"${propio?' checked':''}><span><b>Tiene su propia base de datos.</b> Sus datos son suyos y separados de los tuyos (así recupera lo que tenía antes). Si lo dejas sin marcar, trabaja sobre tus datos.</span></label>
+  <p class="hint">Ajustes solo le muestra su cuenta (con base propia, sus ajustes completos). Tienda y Equipo son solo tuyos. En WhatsApp, conectar o desvincular el número es solo del administrador; con base propia deja WhatsApp en «Sin acceso», porque el WhatsApp conectado es el tuyo.</p>
   <div class="row" style="margin-top:10px"><button class="btn pri" type="button" id="eqGuardar">Guardar acceso</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>`);
 }
 document.addEventListener('click',async e=>{
@@ -1016,7 +1018,7 @@ document.addEventListener('click',async e=>{
     const c=ui.eqCur;if(!c||!puedeTienda())return;
     const permisos={};document.querySelectorAll('#dlgBody [data-eqs]').forEach(se=>{if(se.value!=='no')permisos[se.dataset.eqs]=se.value});
     const prev=(ui.eqAcc||[]).find(x=>x.email===c.email);
-    try{await YoscaFB.acc.guardar(c.email,{email:c.email,nombre:c.nombre||'',estado:prev?prev.estado:'activo',duenio:FB_USER.uid,permisos,fecha:Date.now()});
+    try{await YoscaFB.acc.guardar(c.email,{email:c.email,nombre:c.nombre||'',estado:prev?prev.estado:'activo',duenio:FB_USER.uid,propio:!!($('#eqPropio')&&$('#eqPropio').checked),permisos,fecha:Date.now()});
       try{await YoscaFB.acc.quitarSolicitud(c.email)}catch(err){}
       dlgClose();toast('Acceso guardado para '+c.email)}catch(err){toast('No se pudo guardar. ¿Pegaste las reglas de Firestore nuevas?')}
     return}
@@ -1024,7 +1026,7 @@ document.addEventListener('click',async e=>{
   const em=b.dataset.e||'',acc=(ui.eqAcc||[]).find(x=>x.email===em),sol=(ui.eqSol||[]).find(x=>x.email===em);
   switch(b.dataset.eq){
     case 'aprobar':eqDialogo(em,sol&&sol.nombre,EQ_PRESETS.vend[1]);break;
-    case 'editar':eqDialogo(em,acc&&acc.nombre,acc&&acc.permisos);break;
+    case 'editar':eqDialogo(em,acc&&acc.nombre,acc&&acc.permisos,acc&&acc.propio);break;
     case 'invitar':{const m=($('#eqMail').value||'').trim().toLowerCase();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)){toast('Escribe un correo válido.');return}eqDialogo(m,'',EQ_PRESETS.vend[1]);break}
     case 'rechazar':ask('¿Rechazar la solicitud de '+em+'?',async()=>{try{await YoscaFB.acc.quitarSolicitud(em);toast('Solicitud rechazada.')}catch(err){toast('No se pudo rechazar.')}});break;
     case 'pausa':if(acc)try{await YoscaFB.acc.guardar(em,{...acc,estado:acc.estado==='activo'?'suspendido':'activo'});toast(acc.estado==='activo'?'Acceso suspendido.':'Acceso reactivado.')}catch(err){toast('No se pudo cambiar.')}break;
@@ -1070,11 +1072,11 @@ let ACC={rol:'',permisos:{},duenio:''},accUnsub=[];
 const SEC_NOM={dash:'Dashboard',calc:'Calculadora',ped:'Pedidos',wa:'WhatsApp',inv:'Inventario',gas:'Gastos',proy:'Proyección'};
 const nivelSec=t=>{
   if(!FB_MODE||!FB_USER||ACC.rol==='admin'||puedeTienda())return 'editar';
-  if(t==='set')return 'ver';
+  if(t==='set')return ACC.propio?'editar':'ver';
   if(t==='tienda'||t==='equipo')return 'no';
   const v=ACC.permisos&&ACC.permisos[t];return v==='ver'||v==='editar'?v:'no';
 };
-const esMiembro=()=>FB_MODE&&ACC.rol==='miembro';
+const esMiembro=()=>FB_MODE&&ACC.rol==='miembro'&&!ACC.propio;   // con base propia trabaja como dueño de sus datos
 function pestanas(){
   let t=TABS.filter(x=>nivelSec(x[0])!=='no');
   if(puedeTienda()){const n=(ui.eqSol||[]).length;t=[...t,['tienda','Tienda','store'],['equipo','Equipo'+(n?' ('+n+')':''),'users']]}
