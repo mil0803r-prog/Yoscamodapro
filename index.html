@@ -396,6 +396,9 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .ichips .tchip{min-height:40px;padding:6px 14px;font-size:14px}.tchip small{font-weight:600;opacity:.8}.tchip.zero{opacity:.5;text-decoration:line-through}
 .iq-lista{display:flex;flex-direction:column;gap:6px;margin-top:4px}.iq-fila{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--s-low);border:1px solid var(--line);border-radius:12px;padding:6px 10px}
 .iq-fila.sin{border-color:var(--error);background:var(--warn-soft)}.iq-n{display:flex;flex-direction:column;min-width:0}.iq-n small{color:var(--on-var)}.iq-fila input{width:84px;flex:none;text-align:center;font-weight:800}
+.iq-msg{width:100%;line-height:1.5}.iq-res{list-style:none;margin:6px 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.iq-res li{display:flex;justify-content:space-between;gap:12px;background:rgba(255,255,255,.55);border-radius:8px;padding:6px 10px}.iq-res li b{flex:none}
+.iq-tot{font-size:15px;margin-top:2px}.iq-nota{font-size:13px;opacity:.85;margin-top:4px}.iq-ojo{margin-top:6px;font-weight:800;color:var(--error)}
 /* ===== Optimización móvil y PC ===== */
 .kpi small,.scen small,.ord-money small,.vfhead,th,.wa-m small,.chartcard .tbtn{font-size:max(12px,.75rem)}
 @media (max-width:899px),(pointer:coarse){
@@ -488,7 +491,7 @@ summary{cursor:pointer}
           <div><label for="p-fecha">Fecha</label><input id="p-fecha" type="date" name="fecha" required></div>
           <div><label for="p-gar">Prenda del catálogo</label><select id="p-gar" name="garmentId"></select></div>
           <div class="full"><label for="p-invg">Producto del inventario (jala tallas y colores)</label><select id="p-invg"></select></div>
-          <div class="full" id="invChips" hidden><label>Talla (toca para elegir)</label><div class="tchips ichips" id="icT"></div><label style="margin-top:10px">Color (toca para elegir)</label><div class="tchips ichips" id="icC"></div></div>
+          <div class="full" id="invChips" hidden><label>Talla (toca las que quieras)</label><div class="tchips ichips" id="icT"></div><label style="margin-top:10px">Color (toca los que quieras)</label><div class="tchips ichips" id="icC"></div></div>
           <div class="full" id="invQty" hidden></div>
           <div class="full" style="display:none"><label for="p-inv">Variante que se descuenta (se llena sola)</label><select id="p-inv" name="invId"></select></div>
           <div><label for="p-pack">Venta por</label><select id="p-pack" name="pack"><option value="1">Por unidad</option><option value="3">Pack por 3</option><option value="6">Pack por 6</option><option value="12">Pack por 12</option><option value="custom">Personalizado (polos sueltos)</option></select></div>
@@ -498,8 +501,8 @@ summary{cursor:pointer}
           <div><label for="p-tel">Teléfono / WhatsApp</label><div class="pw"><input id="p-tel" name="telefono" inputmode="tel" placeholder="999 111 222"><span id="waForm"></span></div></div>
           <div><label for="p-ciudad">Ciudad</label><input id="p-ciudad" name="ciudad"></div>
           <div><label for="p-prod">Producto</label><input id="p-prod" name="producto" required></div>
-          <div><label for="p-talla">Talla</label><input id="p-talla" name="talla" list="dl-ptalla" placeholder="Elige o escribe"><datalist id="dl-ptalla"></datalist></div>
-          <div><label for="p-color">Color</label><input id="p-color" name="color" list="dl-pcolor" placeholder="Elige o escribe"><datalist id="dl-pcolor"></datalist></div>
+          <div id="fTalla"><label for="p-talla">Talla</label><input id="p-talla" name="talla" list="dl-ptalla" placeholder="Elige o escribe"><datalist id="dl-ptalla"></datalist></div>
+          <div id="fColor"><label for="p-color">Color</label><input id="p-color" name="color" list="dl-pcolor" placeholder="Elige o escribe"><datalist id="dl-pcolor"></datalist></div>
           <div class="full hint" id="invNota" style="margin:0">📝 <b>Varios colores o tallas:</b> sepáralos con coma, por ejemplo <b>Azul, Blanco, Verde</b> o <b>S, M, L</b>. Al elegir varios aparece una lista para poner la <b>cantidad de cada uno</b> (por ejemplo Azul 2, Blanco 1, Verde 3). La Cantidad de arriba pasa a ser la suma. Escríbelos igual que en el inventario y usa «Por unidad».</div>
           <div class="full alert" id="invHint" style="background:var(--primary-soft)" hidden></div>
           <div><label for="p-cant" id="lblCant">Cantidad</label><input id="p-cant" type="number" name="cantidad" min="1" value="1" required></div>
@@ -2386,7 +2389,7 @@ function invRefresh(op){
   $('#dl-ptalla').innerHTML=tallas.map(x=>`<option value="${esc(x.v)}">${r2(x.st)} disponibles</option>`).join('');
   $('#dl-pcolor').innerHTML=colores.map(x=>`<option value="${esc(x.v)}">${r2(x.st)} disponibles</option>`).join('');
   // cuadritos de talla y color (con el stock de cada uno); se pueden marcar varios
-  {const ch=$('#invChips');ch.hidden=!pig.value;
+  {const ch=$('#invChips');ch.hidden=!pig.value;$('#fTalla').hidden=$('#fColor').hidden=!!pig.value;$('#invNota').hidden=!!pig.value;
    if(pig.value){
      const bt=(k,x,on)=>`<button type="button" class="tchip${on?' on':''}${x.st<=0?' zero':''}" data-k="${k}" data-v="${esc(x.v)}" aria-pressed="${on}">${esc(x.v)} <small>· ${r2(x.st)}</small></button>`;
      $('#icT').innerHTML=tallas.length?tallas.map(x=>bt('talla',x,tl.includes(lowS(x.v)))).join(''):'<span class="sub">Este producto no tiene tallas en el inventario.</span>';
@@ -2419,7 +2422,7 @@ function invRefresh(op){
     }else its.forEach(i=>{const r=qb.querySelector('[data-iq="'+i.id+'"]');if(r)r.closest('.iq-fila').classList.toggle('sin',num(ui.pedQty[i.id])>num(i.stock))});
     pf.cantidad.value=total;pf.cantidad.readOnly=true;
     const sinStock=its.filter(i=>num(ui.pedQty[i.id])>num(i.stock));
-    msg=`Se descontará: ${its.map(i=>`<b>${esc(nm(i))}</b> ×${num(ui.pedQty[i.id])}`).join(', ')} (${total} unidades en total). Se descuenta cuando el cliente pasa al tablero «Ya pagó».`+(sinStock.length?` <b>Ojo: no alcanza en ${sinStock.map(i=>esc(nm(i))).join(', ')}.</b>`:'');cls=sinStock.length?'warn':'';
+    msg=`<b>Se descontará del inventario:</b><ul class="iq-res">${its.map(i=>`<li><span>${esc(nm(i))}</span><b>×${num(ui.pedQty[i.id])}</b></li>`).join('')}</ul><div class="iq-tot">Total: <b>${total} unidades</b></div><div class="iq-nota">Se descuenta cuando el cliente pasa al tablero «Ya pagó».</div>`+(sinStock.length?`<div class="iq-ojo">Ojo: no alcanza el stock en ${sinStock.map(i=>esc(nm(i))).join(', ')}.</div>`:'');cls=sinStock.length?'warn':'';
   }else{qb.hidden=true;qb.innerHTML='';pf.cantidad.readOnly=false}
   if(ui.pedMulti){}
   else if(multiple&&faltan.length){msg=`No está en el inventario de este producto: <b>${faltan.map(esc).join(', ')}</b>. Elige de los cuadritos.`;cls='warn'}
@@ -2427,7 +2430,7 @@ function invRefresh(op){
   else if(pig.value&&hasTC&&cand.length){msg=`Falta elegir ${tl.length?'el color':'la talla'} para saber de cuál variante descontar.`}
   else if(pig.value&&hasTC){msg='Esa talla o color no está en el inventario de este producto. Elige uno de los cuadritos.';cls='warn'}
   else if(pig.value){msg='Elige la talla y el color para descontar del inventario.'}
-  h.hidden=!msg;h.innerHTML=msg;h.className='full alert'+(cls?' err':'');h.style.background=cls?'':'var(--primary-soft)';
+  h.hidden=!msg;h.innerHTML=msg?`<div class="iq-msg">${msg}</div>`:'';h.className='full alert'+(cls?' err':'');h.style.background=cls?'':'var(--primary-soft)';
 }
 function invFromGroup(){
   const vs=pig.value?(invGroups().get(pig.value)||[]):[];if(!vs.length){invRefresh();return}
