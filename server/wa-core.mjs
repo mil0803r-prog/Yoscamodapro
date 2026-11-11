@@ -2,6 +2,7 @@
 // La clave del servidor (WA_KEY) vive solo aquí: nunca llega al navegador.
 // Variables: WA_URL, WA_KEY, WA_INSTANCE (por defecto "yosca"), WA_EMAILS (correos con permiso; por defecto el del dueño).
 import { usuarioFirebase } from './asistente-core.mjs';
+import { claveHook } from './wa-hook.mjs';
 
 const LIMITE_POR_MINUTO = 90;
 const MAX_BYTES = 20_000;
@@ -92,7 +93,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
   if (!rawBody || rawBody.length > MAX_BYTES) return { status: 413, body: { error: 'grande' } };
   let p; try { p = JSON.parse(rawBody); } catch { return { status: 400, body: { error: 'json' } }; }
   const I = encodeURIComponent(c.inst);
-  const soloAdmin = ['conectar', 'desvincular'].includes(p.accion), escribe = p.accion === 'enviar' || p.accion === 'etiquetar';
+  const soloAdmin = ['conectar', 'desvincular', 'webhook'].includes(p.accion), escribe = p.accion === 'enviar' || p.accion === 'etiquetar';
   if ((soloAdmin && nivelWa !== 'admin') || (escribe && nivelWa === 'ver')) return { status: 403, body: { error: 'sin_permiso' } };
   try {
     switch (p.accion) {
@@ -151,6 +152,15 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
         }
         salida.sort((a, z) => z.fecha - a.fecha);
         return { status: 200, body: { chats: salida.slice(0, 300) } };
+      }
+      case 'webhook': {
+        // Le pide a Evolution que avise a esta app cada vez que se pone o quita una etiqueta en un chat
+        let o; try { o = new URL(String(p.origen || '')); } catch { return { status: 400, body: { error: 'origen' } }; }
+        if (o.protocol !== 'https:') return { status: 400, body: { error: 'origen' } };
+        const url = `${o.origin}/api/wa-hook?k=${claveHook()}`, events = ['LABELS_ASSOCIATION', 'LABELS_EDIT'];
+        try { await evo(c, '/webhook/set/' + I, 'POST', { webhook: { enabled: true, url, webhookByEvents: false, byEvents: false, webhookBase64: false, base64: false, events } }); }
+        catch (e) { if (e.estado !== 400 && e.estado !== 422) throw e; await evo(c, '/webhook/set/' + I, 'POST', { enabled: true, url, webhookByEvents: false, webhookBase64: false, events }); }
+        return { status: 200, body: { ok: true, cuenta: Boolean(String(process.env.FIREBASE_SERVICE_ACCOUNT || '').trim()) } };
       }
       case 'etiquetas': {
         let j = [], fallo = 0;

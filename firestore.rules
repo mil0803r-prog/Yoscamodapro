@@ -37,6 +37,15 @@ service cloud.firestore {
       allow write: if admin();
     }
 
+    // Etiquetas de WhatsApp por chat: las escribe solo el servidor (cuenta de servicio); las leen el administrador y quien tenga WhatsApp
+    match /waEtq/{id} {
+      allow read: if admin() || (request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/acceso/$(correo()))
+        && ficha().estado == 'activo' && ve('wa'));
+      allow write: if false;
+    }
+
     // Datos del negocio: viven en la cuenta del administrador
     match /users/{uid} {
       match /{document=**} {

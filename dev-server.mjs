@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { handle } from './server/asistente-core.mjs';
 import { handle as handleWa } from './server/wa-core.mjs';
+import { handle as handleHook } from './server/wa-hook.mjs';
 
 const tipos = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
 const raiz = process.cwd();
@@ -15,6 +16,13 @@ createServer(async (req, res) => {
     const chunks = [];
     for await (const c of req) chunks.push(c);
     const r = await handle({ method: req.method, rawBody: Buffer.concat(chunks).toString('utf8'), clave: req.headers['x-asistente-clave'] || '', authorization: req.headers.authorization || '', ip: req.socket.remoteAddress });
+    res.writeHead(r.status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+    return res.end(JSON.stringify(r.body));
+  }
+  if (url.pathname === '/api/wa-hook') {
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    const r = await handleHook({ method: req.method, query: Object.fromEntries(url.searchParams), rawBody: Buffer.concat(chunks).toString('utf8') });
     res.writeHead(r.status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
     return res.end(JSON.stringify(r.body));
   }

@@ -31,6 +31,8 @@ if (cfg && cfg.apiKey) {
     verify: () => (auth.currentUser ? sendEmailVerification(auth.currentUser) : Promise.resolve()),
     out: () => signOut(auth),
     idToken: () => (auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve('')),
+    // Avisos de etiquetas de WhatsApp (los escribe el servidor)
+    etq: (next, err) => onSnapshot(collection(db, 'waEtq'), (s) => next(s.docs.map((d) => { const x = d.data(); return { id: d.id, ids: Array.isArray(x.ids) ? x.ids : [], n: x.n || 0, at: x.at && x.at.toMillis ? x.at.toMillis() : 0 }; })), err),
     // Control de acceso: el administrador aprueba correos y asigna permisos por sección.
     acc: {
       mio: (email, next, err) => onSnapshot(doc(db, 'acceso', email), (s) => next(s.exists() ? s.data() : null), err),

@@ -37,6 +37,17 @@ Con esto la app deja de ser abierta: solo entra quien tú apruebes, y cada perso
 
 Las personas aprobadas trabajan sobre los datos del administrador (los mismos pedidos, inventario, etc.). Las reglas de Firestore hacen cumplir los permisos en el servidor, no solo en la pantalla. Tienda, Equipo y los respaldos son solo del administrador. En WhatsApp, quien tenga permiso lo usa sin estar en `WA_EMAILS` (se lee su permiso de Firestore; requiere `FIREBASE_PROJECT_ID`), pero conectar o desvincular el número es solo del administrador.
 
+### Etiquetas de WhatsApp Business sincronizadas en los dos sentidos
+
+Evolution API **no entrega** qué etiquetas tiene cada chat, así que la app usa los avisos (webhook) de WhatsApp:
+
+1. Firebase → Configuración del proyecto → **Cuentas de servicio → Generar nueva clave privada** (se descarga un `.json`).
+2. En Vercel crea la variable `FIREBASE_SERVICE_ACCOUNT` con **todo** el contenido de ese `.json` (márcala *Sensitive*, sin Development) y haz **Redeploy**.
+3. Publica de nuevo `firestore.rules` (incluye la colección `waEtq`).
+4. En la app: **WhatsApp → Tableros → Activar sincronización desde WhatsApp**. Esto le indica a Evolution que avise a `/api/wa-hook` (protegido con una clave derivada de `WA_KEY`).
+
+Desde ese momento, cada etiqueta que pongas o quites en WhatsApp aparece en el panel al instante, y lo que cambies en el panel se aplica en WhatsApp. Los avisos solo cuentan cambios nuevos: para traer las etiquetas que los chats ya tenían, desvincula y vuelve a escanear el QR una vez (o cambia esas etiquetas).
+
 Respaldos: la app guarda sola una copia al día (últimas 14) en tu cuenta, en `users/{uid}/backups`, y se pueden restaurar o descargar desde Ajustes.
 
 Cada persona ve únicamente sus datos. La primera vez que alguien entra, lo que ya tenía guardado en ese navegador se sube a su cuenta. Al cerrar sesión se borran los datos locales del dispositivo.
