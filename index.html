@@ -490,7 +490,8 @@ summary{cursor:pointer}
       <div class="card" id="pedCard" hidden style="margin-top:14px">
         <h2 id="pedTitle">Registrar pedido</h2>
         <form id="pedForm" class="form" autocomplete="off" style="margin-top:10px">
-          <div class="full" id="pedPegar"><label for="p-pegar">📋 Pega aquí los datos del cliente (se reconocen y se llenan solos)</label><textarea id="p-pegar" rows="4" placeholder="Nombre: Ana Pérez&#10;Celular: 999 111 222&#10;Ciudad: Arequipa&#10;Talla: M&#10;Color: Negro&#10;Cantidad: 2" style="min-height:96px"></textarea><div id="pegarRes" class="hint" hidden></div></div>
+          <div class="full" id="pedPegar"><label for="p-pegar">📋 Pega aquí los datos del cliente (se reconocen y se llenan solos)</label><textarea id="p-pegar" rows="4" placeholder="Nombre: Ana Pérez&#10;Celular: 999 111 222&#10;Ciudad: Arequipa&#10;Talla: M&#10;Color: Negro&#10;Cantidad: 2" style="min-height:96px"></textarea><div id="pegarRes" class="hint" hidden></div>
+            <div class="row" id="pedImgRow" style="margin-top:8px" hidden><button class="btn" type="button" id="pedImgBtn">📷 Subir captura o foto</button><input type="file" id="pedImgIn" accept="image/*" hidden><span class="sub">o pega la imagen aquí con Ctrl + V</span></div></div>
           <div><label for="p-fecha">Fecha</label><input id="p-fecha" type="date" name="fecha" required></div>
           <div><label for="p-gar">Prenda del catálogo</label><select id="p-gar" name="garmentId"></select></div>
           <div class="full" id="invProdBox" hidden><label>Producto del inventario (toca uno o dos)</label><div class="tchips ichips" id="invProd"></div></div>
@@ -1732,6 +1733,20 @@ function waDlgTab(i){const t=waTabs()[i];dlgOpen(`<h2 style="margin:0 0 10px">Ed
 /* Crear pedido desde el chat: lee lo que escribió el cliente y llena el formulario */
 const WA_CIUDADES=['Lima','Arequipa','Cusco','Trujillo','Chiclayo','Piura','Iquitos','Huancayo','Tacna','Puno','Ayacucho','Cajamarca','Pucallpa','Chimbote','Ica','Juliaca','Huaraz','Tarapoto','Moyobamba','Tumbes','Talara','Sullana','Lambayeque','Huanuco','Abancay','Moquegua','Ilo','Callao','Barranca','Huacho','Chincha','Pisco','Jaen','Bagua','Cerro de Pasco','Puerto Maldonado','Tingo Maria','Yurimaguas','Paita','Catacaos','Cañete','Huaral','Satipo','Salaverry','Huamachuco','Chepen','Pacasmayo'];
 const WA_AGENCIAS=['olva','shalom','marvisur','cruz del sur','ormeno','civa','movil bus','flores','itsa','tepsa','turismo','linea','cial','excluciva'];
+function waColoresPorTexto(low){
+  const base=x=>waNrm(x).replace(/\b(cuello|redondo|manga|doblada|corta|larga|v|bb)\b/g,'').replace(/\s+/g,' ').trim().split(' ').filter(w=>w.length>=3);
+  const esta=w=>new RegExp('(^|[^a-z])'+w+'([^a-z]|$)').test(low);
+  const cols=[...new Set(S.inventory.filter(i=>i.tipo==='prenda').map(i=>String(i.color||'').trim()).filter(Boolean))].map(cn=>{const ws=base(cn),n=ws.filter(esta).length;return {cn,n,full:ws.length>0&&n===ws.length}});
+  let hall=cols.filter(x=>x.full).map(x=>x.cn);if(!hall.length)hall=cols.filter(x=>x.n>0).map(x=>x.cn);
+  return hall.join(', ');
+}
+function waGrupoPorTexto(low){
+  const gr=[...invGroups().entries()];let key='';
+  if(gr.length===1)return gr[0][0];
+  const sc=gr.map(([k,v])=>{const cu=waNrm(v[0].cuello||'');let p=0;if(cu&&cu.length>1&&new RegExp('\\b'+cu.split(' ')[0]+'\\b').test(low))p=2;if(/(^| )v( |$)/.test(cu)&&/\bcuello\s*v\b|\bpolo\s*v\b/.test(low))p=3;return [k,p]}).sort((a,b)=>b[1]-a[1]);
+  if(sc[0]&&sc[0][1]>0&&(!sc[1]||sc[1][1]<sc[0][1]))key=sc[0][0];
+  return key;
+}
 function waExtraerChat(msgs,c){
   const cli=msgs.filter(m=>!m.mio&&m.texto).slice(-40).map(m=>m.texto),txt=cli.join('\n'),d=waParsear(txt),low=waNrm(txt);
   d.tel=c.tel;
@@ -1742,17 +1757,9 @@ function waExtraerChat(msgs,c){
   if(!d.agencia){const ag=WA_AGENCIAS.find(x=>new RegExp('\\b'+x+'\\b').test(low));if(ag)d.agencia=ag.charAt(0).toUpperCase()+ag.slice(1)}
   if(!d.talla){const m=low.match(/\btalla\s*:?\s*(xxxl|xxl|xl|xs|s|m|l|\d{2})\b/)||txt.match(/(?:^|[\s,(])(XXXL|XXL|XL|XS)(?=$|[\s,.)])/);if(m)d.talla=m[1].toUpperCase()}
   // colores: se buscan los que existen en tu inventario
-  if(!d.color){
-    const base=x=>waNrm(x).replace(/\b(cuello|redondo|manga|doblada|corta|larga|v|bb)\b/g,'').replace(/\s+/g,' ').trim().split(' ').filter(w=>w.length>=3);
-    const esta=w=>new RegExp('(^|[^a-z])'+w+'([^a-z]|$)').test(low);
-    const cols=[...new Set(S.inventory.filter(i=>i.tipo==='prenda').map(i=>String(i.color||'').trim()).filter(Boolean))].map(cn=>{const ws=base(cn),n=ws.filter(esta).length;return {cn,ws,n,full:ws.length>0&&n===ws.length}});
-    let hall=cols.filter(x=>x.full).map(x=>x.cn);if(!hall.length)hall=cols.filter(x=>x.n>0).map(x=>x.cn);
-    if(hall.length)d.color=hall.join(', ');
-  }
+  if(!d.color){const h=waColoresPorTexto(low);if(h)d.color=h}
   // producto del inventario: por cuello (V o redondo) o el único que exista
-  const gr=[...invGroups().entries()];let key='';
-  if(gr.length===1)key=gr[0][0];
-  else{const sc=gr.map(([k,v])=>{const cu=waNrm(v[0].cuello||'');let p=0;if(cu&&cu.length>1&&new RegExp('\\b'+cu.split(' ')[0]+'\\b').test(low))p=2;if(/(^| )v( |$)/.test(cu)&&/\bcuello\s*v\b|\bpolo\s*v\b/.test(low))p=3;return [k,p]}).sort((a,b)=>b[1]-a[1]);if(sc[0]&&sc[0][1]>0&&(!sc[1]||sc[1][1]<sc[0][1]))key=sc[0][0]}
+  const key=waGrupoPorTexto(low);
   // cliente que repite: ciudad y notas del último pedido
   const ult=S.orders.filter(o=>waNumber(o.telefono)===c.tel).sort((x,y)=>String(y.fecha).localeCompare(String(x.fecha)))[0];
   if(ult){if(!d.ciudad&&ult.ciudad)d.ciudad=ult.ciudad;if(ult.notas)d.notasPrev=ult.notas}
@@ -2328,8 +2335,31 @@ function pedAplicarDatos(d,op){
   const falta=[!d.nombre&&'nombre',!d.tel&&'celular'].filter(Boolean);
   res.innerHTML=ok.length?`✅ ${op.origen||'Reconocí y llené'}: <b>${ok.join(', ')}</b>.${falta.length?` Falta: <b>${falta.join(' y ')}</b>.`:''} Revisa y toca «Guardar pedido».`:'No reconocí datos. Escribe en líneas como <b>Nombre: Ana</b>, <b>Celular: 999 111 222</b>, <b>Ciudad: Lima</b>.';
 }
+/* Leer una captura de chat o una foto con IA (solo cuenta administradora) */
+async function pedLeerImagen(file){
+  const res=$('#pegarRes');res.hidden=false;
+  if(!file||!/^image\//.test(file.type)){res.textContent='Elige una imagen (captura o foto).';return}
+  res.innerHTML='⏳ Leyendo la imagen…';
+  try{
+    const bmp=await createImageBitmap(file),k=Math.min(1,1600/Math.max(bmp.width,bmp.height)),cv=document.createElement('canvas');
+    cv.width=Math.round(bmp.width*k);cv.height=Math.round(bmp.height*k);cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);
+    const b64=cv.toDataURL('image/jpeg',.82).split(',')[1];
+    const tok=FB_USER&&window.YoscaFB?await YoscaFB.idToken().catch(()=>''):'';
+    const colores=[...new Set(S.inventory.filter(i=>i.tipo==='prenda').map(i=>i.color).filter(Boolean))],productos=[...invGroups().values()].map(v=>v[0].nombre+(v[0].cuello?' '+v[0].cuello:''));
+    const r=await fetch('/api/leer-imagen',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+tok},body:JSON.stringify({imagen:b64,mime:'image/jpeg',colores,productos})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){res.innerHTML={no_configurado:'⚠️ Falta la clave de Gemini en Vercel (<b>GEMINI_API_KEY</b>) y <b>FIREBASE_PROJECT_ID</b>.',sin_permiso:'⚠️ Esta función es solo de la cuenta administradora.',cuota:'⚠️ Se acabó la cuota gratis de Gemini por ahora. Inténtalo en unos minutos.',limite:'Vas muy rápido: espera un minuto.',grande:'La imagen es muy grande.',sesion:'Vuelve a iniciar sesión.'}[j.error]||'⚠️ No pude leer la imagen ('+(j.error||r.status)+'). Inténtalo otra vez.';return}
+    const x=j.datos||{},low=waNrm([x.producto,x.color,x.talla].join(' '));
+    const d={nombre:x.nombre,tel:x.celular,ciudad:x.ciudad,dni:x.dni,direccion:x.direccion,agencia:x.agencia,referencia:x.referencia,talla:x.talla,cantidad:x.cantidad||'',producto:x.producto};
+    d.color=waColoresPorTexto(waNrm(x.color))||x.color;
+    pedAplicarDatos(d,{producto:waGrupoPorTexto(low),origen:'Leí la imagen y llené'});
+  }catch(e){res.innerHTML='⚠️ No pude abrir esa imagen. Prueba con otra captura.'}
+}
+$('#pedImgBtn').addEventListener('click',()=>$('#pedImgIn').click());
+$('#pedImgIn').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';pedLeerImagen(f)});
+document.addEventListener('paste',e=>{if($('#pedCard').hidden||!puedeTienda())return;const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(i=>i.kind==='file'&&/^image\//.test(i.type));if(it){e.preventDefault();pedLeerImagen(it.getAsFile())}});
 {let t;$('#p-pegar').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(pedReconocer,350)})}
-function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
+function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;$('#pedImgRow').hidden=!puedeTienda();if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
 $('#pedNuevo').addEventListener('click',()=>{if($('#pedCard').hidden){resetPed();pedMostrarForm(true)}else pedMostrarForm(false)});
 function resetPed(){$('#p-pegar').value='';$('#pegarRes').hidden=true;$('#pedPegar').hidden=false;delete pf.costo.dataset.auto;ui.pedQty={};ui.pedProds=[];ui.pedSelX={};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
 pf.addEventListener('submit',e=>{
