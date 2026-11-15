@@ -1557,7 +1557,7 @@ function waBanner(){
   if(!(FB_USER&&window.YoscaFB))return `<div class="wa-ban"><b>Modo manual</b> ${manual}${web}</div>`;
   const B=(cl,t,x)=>`<div class="wa-ban ${cl}"><b>${t}</b>${x}</div>`;
   switch(c.estado){
-    case 'conectado':return B('ok','🟢 WhatsApp conectado',`<span class="mut">Tus chats llegan solos${ui.waSync?' · sincronizando…':''}.</span><span class="wa-bb"><button class="btn sm" type="button" data-wsync="1">Sincronizar</button><button class="btn sm" type="button" data-wdesv="1">Desvincular</button></span>`);
+    case 'conectado':return B('ok','🟢 WhatsApp conectado',`<span class="mut">${ui.waLive&&!ui.waLive.length&&!ui.waSync?'Conectado. Los chats aparecen cuando se termina de sincronizar el historial (puede tardar varios minutos) o cuando llegue un mensaje nuevo.':'Tus chats llegan solos'+(ui.waSync?' · sincronizando…':'')+'.'}${ui.waOcultos?` <b>${ui.waOcultos}</b> chat(s) sin número visible no se muestran (WhatsApp los oculta por privacidad).`:''}</span><span class="wa-bb"><button class="btn sm" type="button" data-wsync="1">Sincronizar</button><button class="btn sm" type="button" data-wdesv="1">Desvincular</button></span>`);
     case 'conectando':return B('','🟡 Conectando…',`<span class="mut">Escanea el QR con tu celular.</span><span class="wa-bb"><button class="btn sm wa" type="button" data-wconectar="1">Ver QR</button></span>`);
     case 'desconectado':case 'sin_instancia':return B('','⚪ WhatsApp sin conectar',`<span class="mut">Conéctalo para que los chats lleguen solos.</span><span class="wa-bb"><button class="btn sm wa" type="button" data-wconectar="1">Conectar con QR</button><button class="btn sm" type="button" data-wlimpiar="1">Borrar chats anteriores</button></span>`);
     case 'sin_config':return B('','⚪ WhatsApp sin conectar',`<span class="mut">Falta preparar tu servidor (una sola vez).</span><span class="wa-bb"><button class="btn sm wa" type="button" data-wconfig="1">Cómo configurarlo</button></span>`);
@@ -1669,7 +1669,7 @@ async function waEstadoSrv(){
 }
 async function waSincronizar(manual){
   if(ui.waSync)return;ui.waSync=true;if(ui.tab==='wa')waCabecera();
-  try{await waSyncEtq();const r=await waApi('chats');ui.waLive=(r.chats||[]).filter(x=>!x.lid).slice(0,300);ui.waEtqFuente=r.etqFuente||'';ui.waDbError=r.dbError||'';waAplicarEtqChats();try{localStorage.setItem('yosca_wa_live',JSON.stringify(ui.waLive.slice(0,150)))}catch(e){}if(manual)toast(ui.waLive.length+' chats sincronizados')}
+  try{await waSyncEtq();const r=await waApi('chats');ui.waLive=(r.chats||[]).filter(x=>!x.lid).slice(0,300);ui.waEtqFuente=r.etqFuente||'';ui.waOcultos=r.ocultos||0;ui.waDbError=r.dbError||'';waAplicarEtqChats();try{localStorage.setItem('yosca_wa_live',JSON.stringify(ui.waLive.slice(0,150)))}catch(e){}if(manual)toast(ui.waLive.length+' chats sincronizados')}
   catch(e){if(manual)toast('No pude sincronizar: '+(e.detalle||'revisa el servidor'))}
   finally{ui.waSync=false;if(ui.tab==='wa')waRender()}
 }

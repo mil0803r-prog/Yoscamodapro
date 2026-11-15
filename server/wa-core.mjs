@@ -106,7 +106,12 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
         let est = 'sin_instancia';
         try { est = estadoTexto(await evo(c, '/instance/connectionState/' + I)); } catch (e) { if (e.estado !== 404) throw e; }
         if (est === 'conectado') return { status: 200, body: { estado: 'conectado' } };
-        if (est === 'sin_instancia') await evo(c, '/instance/create', 'POST', { instanceName: c.inst, qrcode: true, integration: 'WHATSAPP-BAILEYS' });
+        if (est === 'sin_instancia') {
+          // syncFullHistory: al escanear el QR trae los chats y el historial de ese WhatsApp (si no, solo aparecen chats con mensajes nuevos)
+          const base = { instanceName: c.inst, qrcode: true, integration: 'WHATSAPP-BAILEYS' };
+          try { await evo(c, '/instance/create', 'POST', { ...base, syncFullHistory: true, groupsIgnore: false, readMessages: false, alwaysOnline: false }); }
+          catch (e) { if (e.estado !== 400 && e.estado !== 422) throw e; await evo(c, '/instance/create', 'POST', base); }
+        }
         const q = await evo(c, '/instance/connect/' + I);
         let qr = (q && (q.base64 || (q.qrcode && q.qrcode.base64))) || '';
         if (qr && !/^data:image/.test(qr)) qr = 'data:image/png;base64,' + qr;
@@ -133,6 +138,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
         const delApi = arr.some((x) => x && Object.prototype.hasOwnProperty.call(x, 'labels'));
         const db = await etiquetasPorChat(c.inst);               // estado real de las etiquetas, leído de la base de datos de Evolution
         const conEtq = delApi || db.ok, fuente = db.ok ? 'db' : delApi ? 'api' : 'ninguna';
+        let ocultos = 0;
         const salida = [];
         for (const x of arr) {
           let jid = String(x.remoteJid || x.id || '');
@@ -140,6 +146,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
             const alt = String(x.remoteJidAlt || (x.lastMessage && x.lastMessage.key && x.lastMessage.key.remoteJidAlt) || '');
             if (/^[0-9]{8,15}@s\.whatsapp\.net$/.test(alt)) jid = alt;
           }
+          if (jid.endsWith('@lid')) ocultos++;
           if (!jid || jid === 'status@broadcast' || jid.endsWith('@broadcast') || jid.endsWith('@newsletter')) continue;
           const grupo = jid.endsWith('@g.us');
           const lm = x.lastMessage || (x.messages && x.messages[0]) || null;
@@ -156,7 +163,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
           });
         }
         salida.sort((a, z) => z.fecha - a.fecha);
-        return { status: 200, body: { chats: salida.slice(0, 300), etqFuente: fuente, dbError: db.ok ? '' : (dbConfigurada() ? db.error : '') } };
+        return { status: 200, body: { chats: salida.slice(0, 300), ocultos, etqFuente: fuente, dbError: db.ok ? '' : (dbConfigurada() ? db.error : '') } };
       }
       case 'webhook': {
         // Le pide a Evolution que avise a esta app cada vez que se pone o quita una etiqueta en un chat
