@@ -1,14 +1,11 @@
 {
   "name": "Yosca Moda Pro",
   "short_name": "Yosca Moda",
-  "description": "Panel de gestión de Yosca Moda: pedidos, inventario, WhatsApp y más.",
-  "id": "/",
-  "start_url": "/?app=1",
+  "description": "Panel de gestión de Yosca Moda",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
-  "orientation": "portrait",
-  "background_color": "#161412",
+  "background_color": "#ffffff",
   "theme_color": "#005c3b",
   "lang": "es",
   "icons": [
