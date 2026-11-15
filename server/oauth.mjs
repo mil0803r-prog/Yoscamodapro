@@ -3,7 +3,8 @@
 // Revocar todo: se guarda una fecha en apiConfig/oauth (los tokens emitidos antes dejan de valer).
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { usuarioFirebase } from './asistente-core.mjs';
-import { cuentaServicio, leerDoc } from './fs-admin.mjs';
+import { cuentaServicio, leerDoc, crearDoc } from './fs-admin.mjs';
+import { notificar } from './push.mjs';
 
 const admins = () => String(process.env.ADMIN_EMAILS || process.env.LEER_EMAILS || 'mil0803r@gmail.com').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
 const SCOPES = ['catalogo', 'pedidos', 'consultar'];
@@ -69,6 +70,9 @@ export async function aprobar({ authorization, p }) {
   const sc = [...new Set(['catalogo', 'pedidos', ...pedidos.filter((x) => x === 'consultar')])];
   const code = firmar({ t: 'code', uid: u.uid, cid: sha(p.client_id).toString('hex').slice(0, 16), ru: p.redirect_uri, ch: p.code_challenge, sc, cn: c.n, exp: Date.now() + 5 * 60_000, n: randomBytes(8).toString('hex') });
   const url = new URL(p.redirect_uri); url.searchParams.set('code', code); if (p.state) url.searchParams.set('state', String(p.state).slice(0, 500));
+  // Aviso dentro de la plataforma: queda registrado y llega como notificación
+  try { await crearDoc(`users/${u.uid}/conexiones`, 'c_' + Date.now().toString(36) + randomBytes(3).toString('hex'), { cliente: c.n, creado: Date.now(), tipo: 'oauth' }); } catch { /* opcional */ }
+  await notificar(u.uid, { titulo: 'IA conectada', cuerpo: `${c.n} ahora tiene acceso a tu catálogo y puede dejar pedidos.`, url: '/?ir=integ' }, { espera: 2500 });
   return { estado: 200, body: { redirect: url.toString(), cliente: c.n } };
 }
 

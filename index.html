@@ -1007,6 +1007,7 @@ async function connectFirebase(){
       attachDb(fsAdapter(YoscaFB.store(u.uid)),{migrate:true});
       connectAi();equipoIniciar();waHookIniciar();integIniciar();entrantesIniciar();
       if(/[?&]ir=pedidos/.test(location.search))setTimeout(()=>showTab('ped'),700);
+      if(/[?&]ir=integ/.test(location.search))setTimeout(()=>showTab('integ'),700);
     }else{renderAccount();accEntrar(u)}
   });
   return true;
@@ -1160,6 +1161,7 @@ function renderInteg(){
    <p class="hint" id="integPushEst"></p></div>
   <div class="card" style="margin-top:10px"><h3>Conectar con inicio de sesión (recomendado)</h3>
    <p class="hint">En ChatGPT o Claude: pega la dirección del servidor MCP, deja la autenticación en <b>OAuth</b> y toca <b>Conectar</b>. Se abrirá esta plataforma, inicias sesión con tu cuenta administradora, tocas <b>Permitir</b> y listo. No necesitas copiar ninguna clave.</p>
+   ${(ui.conexiones||[]).length?'<div style="margin:8px 0">'+(ui.conexiones||[]).slice(0,5).map(c=>`<div class="eq-fila"><div class="eq-info"><b>🔗 ${esc(c.cliente||'IA')}</b><small>Conectada hace ${esc(waAgo(c.creado))}</small></div></div>`).join('')+'</div>':''}
    <div class="row" style="margin-top:6px"><button class="btn sm del" type="button" id="integRevoca">Cerrar todas las conexiones de IA</button></div>
    <p class="hint">Esto desconecta a todas las IA conectadas con inicio de sesión; tendrán que volver a pedir permiso.</p></div>
   <div class="card" style="margin-top:10px"><div class="row sb"><h3>Claves de acceso (alternativa)</h3><button class="btn pri sm" type="button" id="integNueva">+ Nueva clave</button></div>
@@ -1212,6 +1214,12 @@ document.addEventListener('click',async e=>{
 function entrantesIniciar(){
   if(!puedeTienda()||ui.entOn||!(window.YoscaFB&&YoscaFB.store))return;ui.entOn=true;
   const st=YoscaFB.store(FB_USER.uid);
+  accUnsub.push(st.colSnap('conexiones',l=>{
+    const antes=new Set((ui.conexiones||[]).map(x=>x.id)),n=l.filter(x=>!antes.has(x.id));
+    ui.conexiones=l.sort((a,b)=>(b.creado||0)-(a.creado||0));
+    if(ui.conexOn&&n.length)toast('🔗 '+(n[0].cliente||'Una IA')+' se conectó con tu cuenta');ui.conexOn=true;
+    if(ui.tab==='integ')renderInteg();
+  },()=>{}));
   accUnsub.push(st.colSnap('entrantes',l=>{
     const pend=l.filter(x=>x.estado==='pendiente').sort((a,b)=>(b.creado||0)-(a.creado||0)),antes=new Set((ui.entrantes||[]).map(x=>x.id));
     const nuevos=ui.entPrimera?pend.filter(x=>!antes.has(x.id)):[];ui.entPrimera=true;
