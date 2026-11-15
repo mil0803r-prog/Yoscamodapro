@@ -37,6 +37,11 @@ Con esto la app deja de ser abierta: solo entra quien tú apruebes, y cada perso
 
 Si marcas **«Tiene su propia base de datos»** al darle acceso, esa persona conserva sus datos de siempre (los guardados en su cuenta, separados de los tuyos) y trabaja sobre ellos. Si no, las personas aprobadas trabajan sobre los datos del administrador (los mismos pedidos, inventario, etc.). Las reglas de Firestore hacen cumplir los permisos en el servidor, no solo en la pantalla. Tienda, Equipo y los respaldos son solo del administrador. En WhatsApp, quien tenga permiso lo usa sin estar en `WA_EMAILS` (se lee su permiso de Firestore; requiere `FIREBASE_PROJECT_ID`), pero conectar o desvincular el número es solo del administrador.
 
+### Clientes que repiten y comprobantes de pago (cuenta administradora)
+
+- **Clientes que repiten:** al escribir o reconocer el celular, o elegir el nombre de la lista, se completan ciudad, DNI/agencia (notas) y nombre del último pedido.
+- **💸 Leer comprobante de pago** (Pedidos): sube la captura de Yape/Plin. Gemini lee monto, pagador y operación; el panel busca el pedido sin pagar que coincide (por monto y nombre) y lo pasa al tablero «Ya pagó» (suma la venta y descuenta el inventario). Avisa si la operación ya se usó.
+
 ### Pedido rápido: dictar con voz
 
 En Pedidos → + Nuevo pedido (cuenta administradora): **🎤 Dictar con voz** usa el reconocimiento de voz del navegador (Chrome/Android; requiere internet y permiso de micrófono). Se dicta algo como «nombre Ana Pérez, celular 999 111 222, ciudad Arequipa, talla M, color negro y rosa, cantidad 2» o una frase libre, y el formulario se llena solo.

@@ -26,6 +26,13 @@ const ESQUEMA = {
     producto: { type: 'STRING' }, talla: { type: 'STRING' }, color: { type: 'STRING' }, cantidad: { type: 'INTEGER' },
   },
 };
+const ESQUEMA_PAGO = {
+  type: 'OBJECT',
+  properties: {
+    esComprobante: { type: 'BOOLEAN' }, monto: { type: 'NUMBER' }, pagador: { type: 'STRING' }, destinatario: { type: 'STRING' },
+    fecha: { type: 'STRING' }, operacion: { type: 'STRING' }, medio: { type: 'STRING' },
+  },
+};
 const limpia = (v, n = 120) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
 
 export async function handle({ method, rawBody, authorization, ip }) {
@@ -45,7 +52,14 @@ export async function handle({ method, rawBody, authorization, ip }) {
   if (!MIMES.includes(mime) || !/^[A-Za-z0-9+/=]+$/.test(img) || img.length < 100 || img.length > MAX_BYTES) return { status: 400, body: { error: 'imagen' } };
   const lista = (a) => (Array.isArray(a) ? a : []).slice(0, 40).map((x) => limpia(x, 40)).filter(Boolean);
   const colores = lista(p.colores), productos = lista(p.productos);
-  const instrucciones = [
+  const pago = p.tipo === 'pago';
+  const instrucciones = pago ? [
+    'Lees la captura de un comprobante de pago (Yape, Plin o transferencia bancaria de Perú).',
+    'esComprobante: true solo si la imagen es de verdad un comprobante de pago; si no, false y deja el resto vacío.',
+    'monto: el monto pagado en soles como número (ej. 90.5). pagador: la persona que envió el dinero (el nombre tal como aparece). destinatario: quien lo recibió.',
+    'fecha: en formato AAAA-MM-DD si se ve la fecha. operacion: el número o código de operación. medio: Yape, Plin, Transferencia u Otro.',
+    'No inventes datos: si algo no se ve, déjalo vacío.',
+  ].join('\n') : [
     'Eres un asistente que lee capturas de chats de WhatsApp o fotos de notas con los datos de un cliente de una tienda de ropa en Perú.',
     'Extrae SOLO lo que se ve escrito en la imagen. Si un dato no aparece, déjalo vacío. No inventes nada.',
     'celular: número peruano de 9 dígitos sin espacios (si trae +51, quítalo). dni: 8 dígitos.',
@@ -56,7 +70,7 @@ export async function handle({ method, rawBody, authorization, ip }) {
   ].filter(Boolean).join('\n');
   const payload = {
     contents: [{ role: 'user', parts: [{ text: instrucciones }, { inlineData: { mimeType: mime, data: img } }] }],
-    generationConfig: { temperature: 0, maxOutputTokens: 700, responseMimeType: 'application/json', responseSchema: ESQUEMA },
+    generationConfig: { temperature: 0, maxOutputTokens: 700, responseMimeType: 'application/json', responseSchema: pago ? ESQUEMA_PAGO : ESQUEMA },
   };
   const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 50_000);
   try {
@@ -75,6 +89,14 @@ export async function handle({ method, rawBody, authorization, ip }) {
     const texto = cand && cand.content && cand.content.parts ? cand.content.parts.filter((x) => typeof x.text === 'string').map((x) => x.text).join('') : '';
     if (!texto) return { status: 502, body: { error: 'bloqueado' } };
     let j; try { j = JSON.parse(texto); } catch { return { status: 502, body: { error: 'formato' } }; }
+    if (pago) {
+      const m = Number(String(j.monto == null ? '' : j.monto).replace(',', '.'));
+      return { status: 200, body: { pago: {
+        esComprobante: j.esComprobante !== false && Number.isFinite(m) && m > 0, monto: Number.isFinite(m) && m > 0 && m < 1_000_000 ? Math.round(m * 100) / 100 : 0,
+        pagador: limpia(j.pagador, 60), destinatario: limpia(j.destinatario, 60), fecha: /^\d{4}-\d{2}-\d{2}$/.test(String(j.fecha || '')) ? String(j.fecha) : '',
+        operacion: limpia(j.operacion, 40), medio: limpia(j.medio, 20),
+      } } };
+    }
     const cel = limpia(j.celular, 30).replace(/[^\d+]/g, '').replace(/^\+?51(?=9\d{8}$)/, '');
     const dni = limpia(j.dni, 20).replace(/\D/g, '');
     return { status: 200, body: { datos: {

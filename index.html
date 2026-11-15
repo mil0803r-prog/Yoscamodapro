@@ -402,6 +402,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .inv2{border-top:2px dashed var(--line);padding-top:12px}
 .ih-var{display:flex;gap:6px;flex-wrap:wrap;margin:3px 0}.ih-row{align-items:flex-start}
 .btn.rec{background:var(--error);color:#fff;animation:recp 1.2s infinite}@keyframes recp{50%{opacity:.7}}
+.pg-lista{display:flex;flex-direction:column;gap:8px}.pg-op{display:flex;gap:10px;align-items:flex-start;background:var(--s-low);border:1px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;margin:0;font-size:14px;color:var(--on)}.pg-op input{margin-top:4px;width:auto;min-height:0}.pg-op span{display:flex;flex-direction:column;gap:2px}.pg-op small{color:var(--on-var);font-size:12.5px}
 /* ===== Optimización móvil y PC ===== */
 .kpi small,.scen small,.ord-money small,.vfhead,th,.wa-m small,.chartcard .tbtn{font-size:max(12px,.75rem)}
 @media (max-width:899px),(pointer:coarse){
@@ -478,7 +479,7 @@ summary{cursor:pointer}
 
     <!-- PEDIDOS -->
     <section id="v-ped" hidden>
-      <div class="row" style="justify-content:flex-end;margin-bottom:10px"><button class="btn pri" id="pedNuevo" type="button">+ Nuevo pedido</button></div>
+      <div class="row" style="justify-content:flex-end;margin-bottom:10px"><button class="btn" id="pedPagoBtn" type="button" hidden>💸 Leer comprobante de pago</button><input type="file" id="pedPagoIn" accept="image/*" hidden><button class="btn pri" id="pedNuevo" type="button">+ Nuevo pedido</button></div>
       <div class="card">
         <div class="row sb" style="margin-bottom:12px"><h3>Historial de pedidos</h3><span class="badge" id="pedCount"></span></div>
         <div class="seg" id="pedViewSeg" style="display:flex;margin-bottom:12px" aria-label="Vista"><button data-v="board" style="flex:1">Tablero</button><button data-v="cards" style="flex:1">Encuadros</button><button data-v="table" style="flex:1">Tabla</button></div>
@@ -491,6 +492,7 @@ summary{cursor:pointer}
       <div class="card" id="pedCard" hidden style="margin-top:14px">
         <h2 id="pedTitle">Registrar pedido</h2>
         <form id="pedForm" class="form" autocomplete="off" style="margin-top:10px">
+          <div class="full hint" id="pedRepite" hidden style="margin:0 0 4px"></div>
           <div class="full" id="pedPegar"><label for="p-pegar">📋 Pega aquí los datos del cliente (se reconocen y se llenan solos)</label><textarea id="p-pegar" rows="4" placeholder="Nombre: Ana Pérez&#10;Celular: 999 111 222&#10;Ciudad: Arequipa&#10;Talla: M&#10;Color: Negro&#10;Cantidad: 2" style="min-height:96px"></textarea><div id="pegarRes" class="hint" hidden></div>
             <div class="row" id="pedImgRow" style="margin-top:8px" hidden><button class="btn pri" type="button" id="pedVozBtn">🎤 Dictar con voz</button><button class="btn" type="button" id="pedImgBtn">📷 Subir captura o foto</button><input type="file" id="pedImgIn" accept="image/*" hidden><span class="sub">También puedes pegar la imagen con Ctrl + V.</span></div></div>
           <div><label for="p-fecha">Fecha</label><input id="p-fecha" type="date" name="fecha" required></div>
@@ -503,7 +505,7 @@ summary{cursor:pointer}
           <div><label for="p-pack">Venta por</label><select id="p-pack" name="pack"><option value="1">Por unidad</option><option value="custom">Personalizado (polos sueltos)</option></select></div>
           <div id="packBox" hidden><label for="p-pp" id="lblPP">Precio del pack completo (S/)</label><input id="p-pp" type="number" name="precioPack" min="0" step="any"></div>
           <div class="full alert" id="packHint" style="background:var(--primary-soft)" hidden></div>
-          <div><label for="p-cliente">Cliente</label><input id="p-cliente" name="cliente" required></div>
+          <div><label for="p-cliente">Cliente</label><input id="p-cliente" name="cliente" required list="dl-pcli" autocomplete="off"><datalist id="dl-pcli"></datalist></div>
           <div><label for="p-tel">Teléfono / WhatsApp</label><div class="pw"><input id="p-tel" name="telefono" inputmode="tel" placeholder="999 111 222"><span id="waForm"></span></div></div>
           <div><label for="p-ciudad">Ciudad</label><input id="p-ciudad" name="ciudad"></div>
           <div><label for="p-prod">Producto</label><input id="p-prod" name="producto" required></div>
@@ -2375,30 +2377,110 @@ function pedAplicarDatos(d,op){
   if(nota){pf.notas.value=nota;ok.push('Notas')}
   // varios colores: reparte la cantidad pedida entre ellos
   if(ui.pedMulti&&ui.pedMulti.length>1&&d.cantidad){const q=Math.max(1,parseInt(d.cantidad)||1),k=ui.pedMulti.length;if(q>=k){ui.pedQty={};ui.pedMulti.forEach((id,i)=>{ui.pedQty[id]=Math.floor(q/k)+(i<q%k?1:0)});invRefresh();ok.push('Cantidad por color')}}
+  pedClienteCompletar();
   res.hidden=false;
   const falta=[!d.nombre&&'nombre',!d.tel&&'celular'].filter(Boolean);
   res.innerHTML=ok.length?`✅ ${op.origen||'Reconocí y llené'}: <b>${ok.join(', ')}</b>.${falta.length?` Falta: <b>${falta.join(' y ')}</b>.`:''} Revisa y toca «Guardar pedido».`:'No reconocí datos. Escribe en líneas como <b>Nombre: Ana</b>, <b>Celular: 999 111 222</b>, <b>Ciudad: Lima</b>.';
 }
 /* Leer una captura de chat o una foto con IA (solo cuenta administradora) */
+/* Envía una imagen a la IA (reducida en el celular) y devuelve la respuesta del servidor */
+async function iaImagen(file,extra){
+  const bmp=await createImageBitmap(file),k=Math.min(1,1600/Math.max(bmp.width,bmp.height)),cv=document.createElement('canvas');
+  cv.width=Math.round(bmp.width*k);cv.height=Math.round(bmp.height*k);cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);
+  const b64=cv.toDataURL('image/jpeg',.82).split(',')[1];
+  const tok=FB_USER&&window.YoscaFB?await YoscaFB.idToken().catch(()=>''):'';
+  const r=await fetch('/api/leer-imagen',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+tok},body:JSON.stringify({imagen:b64,mime:'image/jpeg',...extra})});
+  const j=await r.json().catch(()=>({}));
+  return {ok:r.ok,j,estado:r.status};
+}
+const IA_ERR={no_configurado:'⚠️ Falta la clave de Gemini en Vercel (<b>GEMINI_API_KEY</b>) y <b>FIREBASE_PROJECT_ID</b>.',sin_permiso:'⚠️ Esta función es solo de la cuenta administradora.',cuota:'⚠️ Se acabó la cuota gratis de Gemini por ahora. Inténtalo en unos minutos.',limite:'Vas muy rápido: espera un minuto.',grande:'La imagen es muy grande.',sesion:'Vuelve a iniciar sesión.'};
 async function pedLeerImagen(file){
   const res=$('#pegarRes');res.hidden=false;
   if(!file||!/^image\//.test(file.type)){res.textContent='Elige una imagen (captura o foto).';return}
   res.innerHTML='⏳ Leyendo la imagen…';
   try{
-    const bmp=await createImageBitmap(file),k=Math.min(1,1600/Math.max(bmp.width,bmp.height)),cv=document.createElement('canvas');
-    cv.width=Math.round(bmp.width*k);cv.height=Math.round(bmp.height*k);cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);
-    const b64=cv.toDataURL('image/jpeg',.82).split(',')[1];
-    const tok=FB_USER&&window.YoscaFB?await YoscaFB.idToken().catch(()=>''):'';
     const colores=[...new Set(S.inventory.filter(i=>i.tipo==='prenda').map(i=>i.color).filter(Boolean))],productos=[...invGroups().values()].map(v=>v[0].nombre+(v[0].cuello?' '+v[0].cuello:''));
-    const r=await fetch('/api/leer-imagen',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+tok},body:JSON.stringify({imagen:b64,mime:'image/jpeg',colores,productos})});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok){res.innerHTML={no_configurado:'⚠️ Falta la clave de Gemini en Vercel (<b>GEMINI_API_KEY</b>) y <b>FIREBASE_PROJECT_ID</b>.',sin_permiso:'⚠️ Esta función es solo de la cuenta administradora.',cuota:'⚠️ Se acabó la cuota gratis de Gemini por ahora. Inténtalo en unos minutos.',limite:'Vas muy rápido: espera un minuto.',grande:'La imagen es muy grande.',sesion:'Vuelve a iniciar sesión.'}[j.error]||'⚠️ No pude leer la imagen ('+(j.error||r.status)+'). Inténtalo otra vez.';return}
+    const {ok,j,estado}=await iaImagen(file,{colores,productos});
+    if(!ok){res.innerHTML=IA_ERR[j.error]||'⚠️ No pude leer la imagen ('+(j.error||estado)+'). Inténtalo otra vez.';return}
     const x=j.datos||{},low=waNrm([x.producto,x.color,x.talla].join(' '));
     const d={nombre:x.nombre,tel:x.celular,ciudad:x.ciudad,dni:x.dni,direccion:x.direccion,agencia:x.agencia,referencia:x.referencia,talla:x.talla,cantidad:x.cantidad||'',producto:x.producto};
     d.color=waColoresPorTexto(waNrm(x.color))||x.color;
     pedAplicarDatos(d,{producto:waGrupoPorTexto(low),origen:'Leí la imagen y llené'});
   }catch(e){res.innerHTML='⚠️ No pude abrir esa imagen. Prueba con otra captura.'}
 }
+/* ---- Clientes que repiten: al reconocer el celular o el nombre se completan sus datos ---- */
+function pedClientesMapa(){
+  const m=new Map();
+  S.orders.forEach(o=>{const n=waNumber(o.telefono);if(!n)return;let c=m.get(n);if(!c){c={tel:n,telRaw:o.telefono,nombre:'',ciudad:'',notas:'',fecha:'',n:0};m.set(n,c)}
+    c.n++;if(!c.fecha||String(o.fecha)>=c.fecha){c.fecha=String(o.fecha);c.nombre=o.cliente||c.nombre;c.ciudad=o.ciudad||c.ciudad;c.notas=o.notas||c.notas;c.telRaw=o.telefono||c.telRaw}});
+  return m;
+}
+function pedClientesLista(){
+  const l=$('#dl-pcli');if(!l)return;
+  l.innerHTML=puedeTienda()?[...pedClientesMapa().values()].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,300).map(c=>`<option value="${esc(c.nombre)}" label="${esc([c.telRaw,c.ciudad].filter(Boolean).join(' · '))}"></option>`).join(''):'';
+}
+function pedClienteCompletar(){
+  const box=$('#pedRepite');if(!box)return;
+  if(!puedeTienda()||ui.editOrder){box.hidden=true;return}
+  const m=pedClientesMapa(),n=waNumber(pf.telefono.value),nom=waNrm(pf.cliente.value).trim();
+  let c=n&&m.get(n);
+  if(!c&&nom.length>=4)c=[...m.values()].find(x=>waNrm(x.nombre).trim()===nom);
+  if(!c){box.hidden=true;return}
+  const ok=[];
+  const fill=(el,v,et)=>{if(v&&!String(el.value||'').trim()){el.value=v;['input','change'].forEach(ev=>el.dispatchEvent(new Event(ev,{bubbles:true})));ok.push(et)}};
+  fill(pf.cliente,c.nombre,'Nombre');fill(pf.telefono,c.telRaw,'Celular');fill(pf.ciudad,c.ciudad,'Ciudad');fill(pf.notas,c.notas,'Notas (DNI, agencia)');
+  box.hidden=false;
+  box.innerHTML=`🔁 <b>Cliente que repite:</b> ${esc(c.nombre)} · ${c.n} ${c.n===1?'pedido':'pedidos'} · el último ${esc(fechaCorta(c.fecha))}.${ok.length?` Completé: <b>${ok.join(', ')}</b>.`:' Sus datos ya estaban llenos.'}`;
+}
+{let t;const dz=()=>{clearTimeout(t);t=setTimeout(pedClienteCompletar,450)};pf.telefono.addEventListener('input',dz);pf.cliente.addEventListener('change',pedClienteCompletar);pf.cliente.addEventListener('blur',pedClienteCompletar)}
+/* ---- Comprobante de pago (Yape/Plin): se lee y se pasa el pedido a «Ya pagó» ---- */
+const tokNom=x=>waNrm(x).replace(/[^a-z\s]/g,' ').split(/\s+/).filter(w=>w.length>=3);
+function pedPagosCandidatos(x){
+  const pt=tokNom(x.pagador),pend=S.orders.filter(o=>o.estado!=='Cancelado'&&o.estado!=='Devuelto'&&!pedPagado(o));
+  return pend.map(o=>{
+    const ot=tokNom(o.cliente),inter=pt.filter(w=>ot.some(z=>z===w||(w.length>=4&&z.length>=4&&(z.startsWith(w)||w.startsWith(z))))).length;
+    const total=num(o.precio)*(num(o.cantidad)||1),dif=Math.abs(total-num(x.monto));
+    const sN=pt.length&&ot.length?inter/Math.min(pt.length,ot.length):0,sM=x.monto>0&&dif<.01?1:(x.monto>0&&dif<=1?.6:0);
+    return {o,total,dif,sN,sM,score:sN*.6+sM*.4+(sM===1?.2:0)};
+  }).sort((a,b)=>b.score-a.score||String(b.o.fecha).localeCompare(String(a.o.fecha)));
+}
+async function pedLeerPago(file){
+  if(!file||!/^image\//.test(file.type)){toast('Elige la captura del comprobante.');return}
+  toast('⏳ Leyendo el comprobante…');
+  try{
+    const {ok,j,estado}=await iaImagen(file,{tipo:'pago'});
+    if(!ok){toast((IA_ERR[j.error]||'No pude leer el comprobante ('+(j.error||estado)+')').replace(/<[^>]+>/g,''));return}
+    const x=j.pago||{};
+    if(!x.esComprobante){toast('Esa imagen no parece un comprobante de pago. Prueba con la captura de Yape o Plin.');return}
+    pedDlgPago(x);
+  }catch(e){toast('No pude abrir esa imagen.')}
+}
+function pedDlgPago(x){
+  const cand=pedPagosCandidatos(x),mejor=cand[0]&&cand[0].score>=.5?cand[0]:null,usado=x.operacion&&(S.settings.pagosOps||[]).includes(x.operacion);
+  ui.pagoCur=x;
+  const fila=(r,i)=>`<label class="pg-op"><input type="radio" name="pgSel" value="${esc(r.o.id)}" ${mejor?(mejor===r?'checked':''):(i===0&&cand.length===1?'checked':'')}><span><b>${esc(r.o.cliente||'Sin nombre')}</b> · ${esc(r.o.producto||'')} ×${num(r.o.cantidad)||1}<small>Total ${fmt(r.total)} · ${esc(fechaCorta(r.o.fecha))}${r.sM===1?' · <b class="pos">coincide el monto</b>':r.dif>0&&x.monto?` · difiere ${fmt(r.dif)}`:''}${r.sN>=.5?' · <b class="pos">coincide el nombre</b>':''}</small></span></label>`;
+  dlgOpen(`<h2 style="margin:0 0 6px">💸 Comprobante leído</h2>
+  <div class="alert" style="margin:6px 0;background:var(--primary-soft);display:block"><b>${fmt(x.monto)}</b>${x.medio?' · '+esc(x.medio):''}${x.pagador?' · de <b>'+esc(x.pagador)+'</b>':''}${x.fecha?' · '+esc(fechaCorta(x.fecha)):''}${x.operacion?' · Op. '+esc(x.operacion):''}</div>
+  ${usado?'<div class="alert err" style="margin:6px 0">⚠️ Este comprobante (operación '+esc(x.operacion)+') ya se usó antes.</div>':''}
+  ${cand.length?`<p class="sub" style="margin:8px 0 4px">${mejor?'Encontré este pedido:':'Elige a qué pedido corresponde:'}</p><div class="pg-lista">${(mejor?[mejor,...cand.filter(r=>r!==mejor).slice(0,4)]:cand.slice(0,8)).map(fila).join('')}</div>`:'<div class="alert" style="margin:8px 0">No hay pedidos sin pagar para asignar este pago.</div>'}
+  <div class="row" style="margin-top:12px">${cand.length?'<button class="btn pri" type="button" id="pgOk">Marcar como pagado</button>':''}<button class="btn" type="button" data-dlg-x>Cancelar</button></div>`);
+}
+function pedMarcarPagado(oid){
+  const o=S.orders.find(z=>z.id===oid),x=ui.pagoCur;if(!o||!x)return;
+  let tab=waTabs().find(esTabPagado);if(!tab){tab={id:'pagado',nombre:'Ya pagó',color:'#14B8A6'};waTabs().push(tab)}
+  const n=waNumber(o.telefono);
+  if(n)waEtqAdd(n,tab.id);else{o.ts=[...new Set([...(o.ts||[]),tab.id])];orderStockSync(o)}
+  if(/yape|plin/i.test(x.medio||''))o.pago='Yape / Plin';else if(/transf/i.test(x.medio||''))o.pago='Transferencia';
+  o.pagoMonto=x.monto;if(x.operacion)o.pagoOp=x.operacion;if(x.fecha)o.pagoFecha=x.fecha;
+  if(x.operacion){const l=S.settings.pagosOps=S.settings.pagosOps||[];if(!l.includes(x.operacion))l.push(x.operacion);S.settings.pagosOps=l.slice(-300)}
+  save();dlgClose();renderPed();
+  const total=num(o.precio)*(num(o.cantidad)||1);
+  toast(x.monto&&Math.abs(total-x.monto)>=.01?`Pagado. Ojo: pagó ${fmt(x.monto)} y el pedido es ${fmt(total)}.`:`✅ ${o.cliente||'Pedido'} pasó a «Ya pagó».`);
+}
+document.addEventListener('click',e=>{if(e.target.id==='pgOk'){const r=document.querySelector('#dlgBody input[name=pgSel]:checked');if(!r){toast('Elige el pedido.');return}pedMarcarPagado(r.value)}});
+$('#pedPagoBtn').addEventListener('click',()=>$('#pedPagoIn').click());
+$('#pedPagoIn').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';pedLeerPago(f)});
+
 /* Dictado por voz (Chrome/Android): se escucha, se escribe en el cuadro y se reconocen los datos */
 let pedRec=null,pedDictando=false;
 function pedDictar(){
@@ -2415,11 +2497,11 @@ function pedDictar(){
 $('#pedVozBtn').addEventListener('click',pedDictar);
 $('#pedImgBtn').addEventListener('click',()=>$('#pedImgIn').click());
 $('#pedImgIn').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';pedLeerImagen(f)});
-document.addEventListener('paste',e=>{if($('#pedCard').hidden||!puedeTienda())return;const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(i=>i.kind==='file'&&/^image\//.test(i.type));if(it){e.preventDefault();pedLeerImagen(it.getAsFile())}});
+document.addEventListener('paste',e=>{if(ui.tab!=='ped'||!puedeTienda())return;const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(i=>i.kind==='file'&&/^image\//.test(i.type));if(it){e.preventDefault();if($('#pedCard').hidden)pedLeerPago(it.getAsFile());else pedLeerImagen(it.getAsFile())}});
 {let t;$('#p-pegar').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(pedReconocer,350)})}
-function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;$('#pedImgRow').hidden=!puedeTienda();if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
+function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;$('#pedImgRow').hidden=!puedeTienda();if(v)pedClientesLista();if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
 $('#pedNuevo').addEventListener('click',()=>{if($('#pedCard').hidden){resetPed();pedMostrarForm(true)}else pedMostrarForm(false)});
-function resetPed(){$('#p-pegar').value='';$('#pegarRes').hidden=true;$('#pedPegar').hidden=false;delete pf.costo.dataset.auto;ui.pedQty={};ui.pedProds=[];ui.pedSelX={};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
+function resetPed(){{const r=$('#pedRepite');if(r)r.hidden=true}$('#p-pegar').value='';$('#pegarRes').hidden=true;$('#pedPegar').hidden=false;delete pf.costo.dataset.auto;ui.pedQty={};ui.pedProds=[];ui.pedSelX={};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
 pf.addEventListener('submit',e=>{
   e.preventDefault();
   const fd=Object.fromEntries(new FormData(pf));
@@ -2447,6 +2529,7 @@ pf.addEventListener('submit',e=>{
 $('#pedCancel').addEventListener('click',resetPed);
 const fechaCorta=f=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(f||''));return m?`${+m[3]} ${MESES[+m[2]-1]} ${m[1]}`:esc(f||'')};
 function renderPed(){
+  {const b=$('#pedPagoBtn');if(b)b.hidden=!puedeTienda()}
   if(!ui.editOrder)fillGarmentSelect();
   const q=$('#pedBuscar').value.toLowerCase(),f=$('#pedFiltro').value;
   const rows=S.orders.filter(o=>(!f||o.estado===f)&&(!q||[o.cliente,o.producto,o.ciudad,o.telefono].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
