@@ -184,6 +184,28 @@ select{appearance:none;-webkit-appearance:none;padding-right:34px;background:#ff
 #disp{background:#fff;border:1px solid var(--linea);border-radius:10px;padding:3px;gap:2px}
 #disp button{border:0;background:transparent;border-radius:8px;padding:6px 12px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
 #disp button.on{background:var(--tinta)}
+#guia{display:flex;align-items:center;gap:12px;margin:0 12px 10px;padding:11px 12px 11px 14px;background:#fff;border:1px solid var(--linea);border-left:4px solid var(--terra);border-radius:12px;box-shadow:var(--sombra);font-size:13px;position:relative}
+#guia .gi{width:36px;height:36px;border-radius:10px;background:var(--arena);color:var(--terra);display:grid;place-items:center;flex:none}
+#guia .gi svg{width:20px;height:20px}
+#guia .gt{flex:1;min-width:0}
+#guia .gt b{display:block;font-size:14px;font-weight:700;margin-bottom:6px;color:var(--tinta)}
+#guia ol{list-style:none;display:flex;flex-wrap:wrap;gap:6px 14px;color:var(--txt2);font-size:12.5px}
+#guia li{display:flex;align-items:center;gap:6px}
+#guia li i{font-style:normal;width:18px;height:18px;border-radius:50%;background:var(--terra);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;flex:none}
+#guia .ga{flex:none;text-align:right;background:var(--arena);border-radius:10px;padding:7px 11px;max-width:150px}
+#guia .ga small{display:block;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--terra);font-weight:700}
+#guia .ga b{display:block;font-size:13px;color:var(--cafe);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#guia .ga.pop{animation:pop .5s ease-out}
+@keyframes pop{0%{transform:scale(.9);opacity:.4}60%{transform:scale(1.06)}100%{transform:none;opacity:1}}
+#guiaX{position:absolute;top:6px;right:8px;border:0;background:none;font-size:20px;line-height:1;color:#A99B91;cursor:pointer;padding:2px 6px;border-radius:6px}
+#guiaX:hover{background:var(--suave);color:var(--tinta)}
+#guia .ga{margin-right:18px}
+.gbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--campo);background:#fff;border-radius:99px;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:600;color:var(--txt2);cursor:pointer}
+.gbtn[aria-pressed=true]{background:var(--arena);border-color:#E3C9B8;color:var(--cafe)}
+.gbtn svg{width:15px;height:15px}
+body.singuia #guia{display:none}
+@keyframes destello{0%{box-shadow:0 0 0 0 rgba(156,92,64,.6)}35%{box-shadow:0 0 0 7px rgba(156,92,64,.3)}100%{box-shadow:var(--sombra)}}
+.destello{animation:destello 2s ease-out 1;border-color:var(--terra)!important}
 #toast{border-radius:12px;padding:11px 18px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 @media(max-width:1020px){
  #app{grid-template-columns:200px minmax(0,1fr)}
@@ -197,7 +219,8 @@ select{appearance:none;-webkit-appearance:none;padding-right:34px;background:#ff
  /* cabecera en una sola fila */
  header{padding:7px 10px;gap:6px;flex-wrap:nowrap}
  .marca{min-width:0;flex:1;gap:6px}.marca>div{display:none}.marca .lp{font-size:18px;flex:none}.marca b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.marca small{display:none}
- #estado{gap:0;flex:none}#contador{display:none}#estado i{width:10px;height:10px}
+ #estado{gap:0;flex:none;padding:7px 9px}
+ body.soloprevia #btnAbrir,body.soloprevia #btnDeshacer{display:none}#contador{display:none}#estado i{width:10px;height:10px}
  .bt{padding:0;width:40px;height:40px;justify-content:center;font-size:17px;border-radius:10px;flex:none}
  .lbl,.lbl-pc{display:none}
  .lbl-cel{display:inline}
@@ -232,6 +255,7 @@ select{appearance:none;-webkit-appearance:none;padding-right:34px;background:#ff
  .cab .chev{grid-area:chev;font-size:20px;padding:6px}
  #toast{bottom:76px;max-width:90vw;text-align:center}
  body.soloprevia #app{grid-template-rows:minmax(0,1fr)}
+ #guia{margin:0 10px 8px;padding:9px 10px 9px 12px}#guia ol{display:none}#guia .gt b{margin:0;font-size:13px}#guia .gi{width:30px;height:30px}#guia .ga{display:none}
  #lienzo[data-disp=cel] #vista iframe{width:100%;border:0;border-radius:0;box-shadow:none}
  #disp button{padding:8px 11px}
 }
@@ -247,7 +271,12 @@ select{appearance:none;-webkit-appearance:none;padding-right:34px;background:#ff
 <div id="app">
 <nav id="menu" aria-label="Secciones"></nav>
 <section id="editor" aria-live="polite"></section>
-<section id="lienzo" data-disp="pc"><div id="barraV"><span id="txtPrev">Así se ve tu tienda</span><div id="disp"><button class="on" data-d="pc" type="button"><span class="ico" data-ib="pc"></span>Computadora</button><button data-d="cel" type="button"><span class="ico" data-ib="cel"></span>Celular</button></div></div>
+<section id="lienzo" data-disp="pc"><div id="barraV"><button type="button" id="btnGuia" class="gbtn" aria-pressed="true"><span class="ico" data-ib="ayuda"></span> Guía</button><div id="disp"><button class="on" data-d="pc" type="button"><span class="ico" data-ib="pc"></span>Computadora</button><button data-d="cel" type="button"><span class="ico" data-ib="cel"></span>Celular</button></div></div>
+<div id="guia" role="note"><span class="gi" data-ib="clic"></span>
+<div class="gt"><b>Toca cualquier parte de la tienda para editarla</b>
+<ol><li><i>1</i>Toca una parte</li><li><i>2</i>Se abre su sección aquí al lado</li><li><i>3</i>Cámbiala y guarda</li></ol></div>
+<div class="ga" id="guiaAhora" hidden><small>Editando ahora</small><b></b></div>
+<button type="button" id="guiaX" aria-label="Ocultar guía">×</button></div>
 <div id="vista"><iframe id="marco" title="Vista previa de la tienda" src="./index.html?vista=previa"></iframe></div></section>
 </div>
 <div id="toast" hidden></div>
@@ -398,7 +427,9 @@ const IB={
  deshacer:ic('<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>'),
  guardar:ic('<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>'),
  pc:ic('<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>'),
- cel:ic('<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>')
+ cel:ic('<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>'),
+ ayuda:ic('<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>'),
+ clic:ic('<path d="M14 4.1 12 6"/><path d="m5.1 8-2.9-.8"/><path d="m6 12-1.9 2"/><path d="M7.2 2.2 8 5.1"/><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z"/>')
 };
 const NAV=[['TU CATÁLOGO',['prendas','🛍️'],['categorias','🗂️'],['packs','🎁']],['TU PÁGINA',['portada','🏠'],['anuncio','📣'],['comprar','🛒'],['tallas','📏'],['faq','❓']],['AJUSTES',['contacto','💬'],['marca','🎨'],['publicar','💾']]];
 function menu(){
@@ -421,6 +452,27 @@ function paraPrevia(){const c=JSON.parse(JSON.stringify(D));const f=x=>FOTOS[x]|
 function previa(){if(marco.contentWindow&&lista)marco.contentWindow.postMessage({tipo:'yosca-datos',datos:paraPrevia()},'*')}
 function irA(id){if(marco.contentWindow&&lista&&id)marco.contentWindow.postMessage({tipo:'yosca-ir',id},'*')}
 window.addEventListener('message',e=>{if(e.data&&e.data.tipo==='yosca-lista'){lista=true;previa()}});
+/* Tocar la vista previa lleva a la sección y la tarjeta exacta del editor */
+const GK='yosca_guia_oculta';
+function guiaEstado(oc){document.body.classList.toggle('singuia',oc);$('#btnGuia').setAttribute('aria-pressed',String(!oc))}
+try{guiaEstado(localStorage.getItem(GK)==='1')}catch(e){}
+$('#guiaX').addEventListener('click',()=>{guiaEstado(true);try{localStorage.setItem(GK,'1')}catch(e){}});
+$('#btnGuia').addEventListener('click',()=>{const oc=!document.body.classList.contains('singuia');guiaEstado(oc);try{localStorage.setItem(GK,oc?'1':'0')}catch(e){}});
+function guiaAhora(t){const g=$('#guiaAhora');g.hidden=!t;if(t){g.querySelector('b').textContent=t;g.classList.remove('pop');void g.offsetWidth;g.classList.add('pop')}}
+function irDesdePrevia(m){
+  if(document.body.classList.contains('soloprevia')){document.body.classList.remove('soloprevia');$('#btnPrev').innerHTML=IB.ojo+'<span class="lbl"> Vista previa</span>'}
+  const fila=Number.isInteger(m.fila)?m.fila:-1;
+  if(m.pagina==='prendas'&&fila>=0)filasAbiertas.add(fila);
+  pagina=m.pagina;dibujar();
+  const on=$('#menu .on'),mn=$('#menu');if(on&&mn&&mn.scrollWidth>mn.clientWidth)mn.scrollTo({left:on.offsetLeft-(mn.clientWidth-on.offsetWidth)/2,behavior:'smooth'});
+  let el=null;
+  if(m.pagina==='prendas'&&fila>=0)el=document.querySelector('.fila[data-i="'+fila+'"]');
+  else{const cs=$('#editor').querySelectorAll('.card');if(cs.length)el=cs[Math.min(Math.max(parseInt(m.ficha,10)||0,0),cs.length-1)]}
+  if(el){const ed=$('#editor'),a=ed.getBoundingClientRect(),r=el.getBoundingClientRect();ed.scrollTo({top:Math.max(0,ed.scrollTop+(r.top-a.top)-(ed.clientHeight-r.height)/2),behavior:'smooth'});el.classList.remove('destello');void el.offsetWidth;el.classList.add('destello')}
+  else $('#editor').scrollTop=0;
+  const et=String(m.etiqueta||P[m.pagina].t).slice(0,40);guiaAhora(et);toast('Editando: '+et);
+}
+window.addEventListener('message',e=>{if(e.source!==marco.contentWindow)return;const m=e.data;if(m&&m.tipo==='yosca-editar'&&typeof m.pagina==='string'&&Object.prototype.hasOwnProperty.call(P,m.pagina))irDesdePrevia(m)});
 function estado(){const c=JSON.stringify(D)!==BASE;$('#contador').textContent=c?'Cambios sin guardar':'Sin cambios';$('#btnGuardar').disabled=!c;$('#btnDeshacer').disabled=!pila.length;document.body.classList.toggle('sucio',c);const a=$('#avisoGuardar');if(a)a.textContent=c?'Tienes cambios sin guardar.':'No hay cambios pendientes.'}
 
 /* ---------- cambios ---------- */
@@ -456,7 +508,7 @@ ed.addEventListener('click',e=>{
   if(e.target.id==='btnNube')guardarNube();
 });
 ed.addEventListener('input',e=>{if(e.target.id==='buscar'){const q=e.target.value.trim().toLowerCase();ed.querySelectorAll('.fila').forEach(f=>f.style.display=!q||f.dataset.q.includes(q)?'':'none')}});
-$('#menu').addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(b){irPagina(b.dataset.pg);const on=$('#menu .on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}});
+$('#menu').addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(b){irPagina(b.dataset.pg);guiaAhora(P[b.dataset.pg].t);const on=$('#menu .on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='s'){e.preventDefault();irPagina('publicar')}});
 window.addEventListener('beforeunload',e=>{if(JSON.stringify(D)!==BASE){e.preventDefault();e.returnValue=''}});
 $('#btnDeshacer').addEventListener('click',()=>{if(!pila.length)return;D=JSON.parse(pila.pop());dibujar();previa();estado()});

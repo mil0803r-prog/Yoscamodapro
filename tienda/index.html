@@ -690,7 +690,7 @@ function pintarTodo(){
       <div class="etiqueta"><div><h3>${esc(c.nombre)}</h3><span>${esc(c.detalle)}</span></div><span>Ver →</span></div>
     </a>`);
   if(D.tarjetaPacks && D.tarjetaPacks.mostrar && hayPacks) tarjetas.push(`
-    <a href="#packs" class="categoria revelar">
+    <a href="#packs" class="categoria revelar" data-tarjeta="1">
       ${fotoHTML(D.tarjetaPacks.foto, D.tarjetaPacks.titulo, 'loading="lazy"')}
       <div class="etiqueta"><div><h3>${esc(D.tarjetaPacks.titulo)}</h3><span>${esc(D.tarjetaPacks.detalle)}</span></div><span>Ver →</span></div>
     </a>`);
@@ -708,7 +708,7 @@ function pintarTodo(){
   $("#menuPacks").style.display = hayPacks ? "" : "none";
   $("#heroBtnPacks").style.display = hayPacks ? "" : "none";
   $("#listaPacks").innerHTML = packsVisibles().map(k => `
-    <div class="pack ${k.destacado ? "destacado" : ""} revelar">
+    <div class="pack ${k.destacado ? "destacado" : ""} revelar" data-i="${D.packs.indexOf(k)}">
       ${k.etiqueta ? `<span class="tag">${esc(k.etiqueta)}</span>` : ""}
       <h3>${esc(k.nombre)}</h3><div class="cant">${esc(k.subtitulo)}</div>
       <div class="monto">${montoCorto(k.precio)}</div>
@@ -938,6 +938,70 @@ if(PREVIA){
     if(m.tipo === "yosca-ir"){ const el = document.getElementById(m.id); if(el) el.scrollIntoView({ behavior:"smooth", block:"start" }); }
   });
   try { parent.postMessage({ tipo:"yosca-lista" }, "*"); } catch(e) {}
+
+  /* Indicador: tocar cualquier parte lleva al lugar exacto del Editor (y no ejecuta el botón/enlace) */
+  const idx = (el, sel) => [...document.querySelectorAll(sel)].indexOf(el);
+  const ZONAS = [
+    [".producto[data-id]", "prendas", "Prenda", el => ({ fila: D.productos.findIndex(p => String(p.id) === el.dataset.id) })],
+    [".categoria", "categorias", "Categoría", el => ({ ficha: el.dataset.tarjeta ? D.categorias.length + 1 : D.categorias.findIndex(c => c.id === el.dataset.ir) + 1 })],
+    [".pack", "packs", "Pack", el => ({ ficha: +el.dataset.i + 1 })],
+    [".paso", "comprar", "Paso para comprar", el => ({ ficha: idx(el, ".paso") + 1 })],
+    ["#listaFaq details", "faq", "Pregunta frecuente", el => ({ ficha: idx(el, "#listaFaq details") + 1 })],
+    [".beneficio", "anuncio", "Beneficio", el => ({ ficha: idx(el, ".beneficio") + 1 })],
+    [".anuncio", "anuncio", "Barra de anuncios", () => ({ ficha: 0 })],
+    [".beneficios", "anuncio", "Beneficios", () => ({ ficha: 1 })],
+    ["#inicio .btn, #inicio .sello, #inicio .marco", "portada", "Botones y sello de portada", () => ({ ficha: 1 })],
+    ["#inicio", "portada", "Portada", () => ({ ficha: 0 })],
+    ["#comoMedir", "tallas", "¿Cómo medir?", () => ({ ficha: 2 })],
+    ["#tallas table", "tallas", "Tabla de medidas", () => ({ ficha: 1 })],
+    ["#tallas", "tallas", "Guía de tallas", () => ({ ficha: 0 })],
+    ["#colecciones", "categorias", "Categorías", () => ({ ficha: 0 })],
+    ["#tienda", "prendas", "Prendas", () => ({})],
+    ["#packs", "packs", "Packs", () => ({ ficha: 0 })],
+    ["#comprar", "comprar", "Cómo comprar", () => ({ ficha: 0 })],
+    ["#ayuda", "faq", "Preguntas frecuentes", () => ({ ficha: 0 })],
+    ["#redes", "contacto", "Redes sociales", () => ({ ficha: 2 })],
+    [".wa-flotante", "contacto", "WhatsApp", () => ({ ficha: 0 })],
+    ["footer", "marca", "Pie de página", () => ({ ficha: 3 })],
+    ["header", "marca", "Logo y nombre", () => ({ ficha: 2 })]
+  ];
+  const zonaDe = t => {
+    if(!(t instanceof Element)) return null;
+    for(const [sel, pagina, etiqueta, datos] of ZONAS){
+      const el = t.closest(sel);
+      if(el) return { el, pagina, etiqueta, ...datos(el) };
+    }
+    return null;
+  };
+  const marco = document.createElement("div"), chip = document.createElement("span");
+  marco.id = "ind-editar"; marco.appendChild(chip); document.body.appendChild(marco);
+  const st = document.createElement("style");
+  st.textContent = `html.previa,html.previa *{cursor:pointer!important}
+  #ind-editar{position:fixed;z-index:99999;pointer-events:none;display:none;border:2px solid #9C5C40;background:rgba(156,92,64,.09);border-radius:8px;box-shadow:0 0 0 1px #fff inset;transition:all .08s}
+  #ind-editar span{position:absolute;left:-2px;top:-26px;background:#6E3F2C;color:#fff;font:600 12px/1 system-ui,sans-serif;padding:6px 10px;border-radius:7px 7px 7px 0;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  #ind-editar.abajo span{top:auto;bottom:-26px;border-radius:0 7px 7px 7px}`;
+  document.head.appendChild(st);
+  let ultima = null;
+  const mostrar = z => {
+    ultima = z;
+    if(!z){ marco.style.display = "none"; return; }
+    const r = z.el.getBoundingClientRect();
+    if(r.bottom < 0 || r.top > innerHeight){ marco.style.display = "none"; return; }
+    const t = Math.max(r.top, 0), b = Math.min(r.bottom, innerHeight);
+    Object.assign(marco.style, { display:"block", left:r.left + "px", top:t + "px", width:r.width + "px", height:Math.max(b - t, 4) + "px" });
+    marco.classList.toggle("abajo", t < 30);
+    chip.textContent = "✎ Editar: " + z.etiqueta;
+  };
+  document.addEventListener("mouseover", e => mostrar(zonaDe(e.target)));
+  document.addEventListener("mouseleave", () => mostrar(null));
+  addEventListener("scroll", () => ultima && mostrar(ultima), { passive:true });
+  document.addEventListener("click", e => {
+    const z = zonaDe(e.target);
+    if(!z) return;
+    e.preventDefault(); e.stopPropagation();
+    const { el, ...msg } = z;
+    try { parent.postMessage({ tipo:"yosca-editar", ...msg }, "*"); } catch(err) {}
+  }, true);
 }
 
 /* --- Datos desde la nube (Supabase). Si falla, se usa datos.js --- */
