@@ -15,6 +15,21 @@
 <script src="firebase-config.js"></script>
 <script>if(window.YOSCA_FIREBASE&&window.YOSCA_FIREBASE.apiKey)document.documentElement.classList.add('fb')</script>
 <script type="module" src="firebase-boot.js"></script>
+<script>
+(function(){
+  var ev=null,card=function(){return document.getElementById('instCard')};
+  var standalone=function(){return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true};
+  function mostrar(){var c=card();if(!c)return;if(standalone()){c.hidden=true;return}
+    var ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+    if(ev){c.hidden=false;document.getElementById('instBtn').hidden=false}
+    else{c.hidden=false;document.getElementById('instBtn').hidden=true;document.getElementById('instTxt').innerHTML=ios?'En Safari toca <b>Compartir</b> y luego <b>Agregar a pantalla de inicio</b>. Se abrirá a pantalla completa, sin la barra del navegador.':'En Chrome toca los tres puntitos <b>⋮</b> y elige <b>Instalar aplicación</b>. Se abrirá a pantalla completa, sin la barra del navegador. (La barra verde que ves ahora es el navegador: solo desaparece al abrirla desde el icono instalado.)'}
+  }
+  addEventListener('beforeinstallprompt',function(e){e.preventDefault();ev=e;mostrar()});
+  addEventListener('appinstalled',function(){ev=null;mostrar()});
+  document.addEventListener('click',function(e){if(e.target&&e.target.id==='instBtn'&&ev){ev.prompt();ev.userChoice.finally(function(){ev=null;mostrar()})}});
+  addEventListener('load',function(){setTimeout(mostrar,800)});
+})();
+</script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -645,6 +660,11 @@ summary{cursor:pointer}
       </div>
     </section>
     <section id="v-set" hidden>
+      <div class="card" id="instCard" hidden style="margin-bottom:14px">
+        <h2>📲 Instalar como app</h2>
+        <p class="sub" id="instTxt">Instálala en tu celular para usarla a pantalla completa, sin la barra del navegador.</p>
+        <div class="row" style="margin-top:8px"><button class="btn pri" type="button" id="instBtn">Instalar app</button></div>
+      </div>
       <div class="card" id="accCard" hidden style="margin-bottom:14px">
         <h2>Mi cuenta</h2>
         <p class="sub" id="accInfo"></p>
