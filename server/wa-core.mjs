@@ -113,8 +113,10 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
         return { status: 200, body: { estado: 'conectando', qr, codigo: (q && (q.pairingCode || '')) || '' } };
       }
       case 'desvincular': {
-        try { await evo(c, '/instance/logout/' + I, 'DELETE'); } catch (e) { if (e.estado !== 404 && e.estado !== 400) throw e; }
-        return { status: 200, body: { estado: 'desconectado' } };
+        try { await evo(c, '/instance/logout/' + I, 'DELETE'); } catch (e) { if (e.estado !== 404 && e.estado !== 400 && e.estado !== 500) throw e; }
+        // se borra la instancia completa para que no queden chats ni etiquetas del número anterior (al conectar se crea una limpia)
+        try { await evo(c, '/instance/delete/' + I, 'DELETE'); } catch (e) { if (e.estado !== 404 && e.estado !== 400) throw e; }
+        return { status: 200, body: { estado: 'sin_instancia' } };
       }
       case 'chats': {
         const j = await evo(c, '/chat/findChats/' + I, 'POST', {});

@@ -1387,7 +1387,7 @@ const waEtqDel=(tel,id)=>waEtqSet(tel,waEtqDe(tel).filter(x=>x!==id));
 const waEtqMove=(tel,from,to)=>{let l=waEtqDe(tel);if(from&&from!=='_ninguna')l=l.filter(x=>x!==from);if(to&&to!=='_ninguna'&&!l.includes(to))l.push(to);waEtqSet(tel,l)};
 /* Al desvincular: se borra todo lo que venía de ese WhatsApp para que no se mezcle con otro número */
 function waLimpiarVinculo(){
-  ui.waConn={estado:'desconectado'};ui.waLive=[];ui.waMsgs={};ui.waDb=null;ui.waHook=null;ui.waSel=null;ui.waEtqOk=false;ui.waEtqN=0;ui.waEtqFuente='';
+  ui.waConn={estado:'sin_instancia'};ui.waLive=[];ui.waMsgs={};ui.waDb=null;ui.waHook=null;ui.waSel=null;ui.waEtqOk=false;ui.waEtqN=0;ui.waEtqFuente='';
   try{localStorage.removeItem('yosca_wa_live')}catch(e){}
   const st=S.settings,conPedido=new Set(S.orders.map(o=>waNumber(o.telefono)).filter(Boolean));
   st.waContactos=[];st.waDatos={};st.waCorte=Date.now();
@@ -1523,7 +1523,8 @@ function waContactos(){
   lv.forEach(x=>{if(!x.tel||m.has(x.tel)||x.lid)return;if(!x.grupo&&!waNumber(x.tel))return;m.set(x.tel,{tel:x.tel,nombre:x.nombre||(x.grupo?'Grupo':'+'+x.tel),ped:0,total:0,ult:null,manual:false,live:x,grupo:!!x.grupo})});
   return [...m.values()];
 }
-function waLiveGet(){if(!ui.waLive){try{ui.waLive=JSON.parse(localStorage.getItem('yosca_wa_live'))||[]}catch(e){ui.waLive=[]}}return ui.waLive}
+function waLiveGet(){if(ui.waConn&&['desconectado','sin_instancia','conectando'].includes(ui.waConn.estado))return [];   // sin conexión no se muestran chats guardados de antes
+  if(!ui.waLive){try{ui.waLive=JSON.parse(localStorage.getItem('yosca_wa_live'))||[]}catch(e){ui.waLive=[]}}return ui.waLive}
 function waLista(){
   const as=waAsig(),da=waDatos();
   return waContactos().map(c=>{const a=as[c.tel]||{};c.ts=waEtqDe(c.tel);c.t=c.ts[0]||'';c.n=a.n||'';c.at=a.at||0;c.datos=da[c.tel]||null;return c})
@@ -1558,7 +1559,7 @@ function waBanner(){
   switch(c.estado){
     case 'conectado':return B('ok','🟢 WhatsApp conectado',`<span class="mut">Tus chats llegan solos${ui.waSync?' · sincronizando…':''}.</span><span class="wa-bb"><button class="btn sm" type="button" data-wsync="1">Sincronizar</button><button class="btn sm" type="button" data-wdesv="1">Desvincular</button></span>`);
     case 'conectando':return B('','🟡 Conectando…',`<span class="mut">Escanea el QR con tu celular.</span><span class="wa-bb"><button class="btn sm wa" type="button" data-wconectar="1">Ver QR</button></span>`);
-    case 'desconectado':case 'sin_instancia':return B('','⚪ WhatsApp sin conectar',`<span class="mut">Conéctalo para que los chats lleguen solos.</span><span class="wa-bb"><button class="btn sm wa" type="button" data-wconectar="1">Conectar con QR</button></span>`);
+    case 'desconectado':case 'sin_instancia':return B('','⚪ WhatsApp sin conectar',`<span class="mut">Conéctalo para que los chats lleguen solos.</span><span class="wa-bb"><button class="btn sm wa" type="button" data-wconectar="1">Conectar con QR</button><button class="btn sm" type="button" data-wlimpiar="1">Borrar chats anteriores</button></span>`);
     case 'sin_config':return B('','⚪ WhatsApp sin conectar',`<span class="mut">Falta preparar tu servidor (una sola vez).</span><span class="wa-bb"><button class="btn sm wa" type="button" data-wconfig="1">Cómo configurarlo</button></span>`);
     case 'sin_permiso':return B('','🔒 Sin permiso',`<span class="mut">Esta cuenta no puede conectar WhatsApp.</span>`);
     case 'error':return B('','⚠️ No pude hablar con el servidor',`<span class="mut">Revisa el servidor en Railway.</span><span class="wa-bb"><button class="btn sm" type="button" data-wreint="1">Reintentar</button><button class="btn sm" type="button" data-wconfig="1">Ayuda</button></span>`);
@@ -1835,6 +1836,7 @@ document.addEventListener('click',e=>{
   if(D.wsync){waSincronizar(true);return}
   if(D.wreint){ui.waConnTs=0;ui.waConn=null;waCabecera();waEstadoSrv();return}
   if(D.wdesv){ask('¿Desvincular este WhatsApp? Se borrarán de aquí sus chats, contactos, notas y etiquetas. Tus pedidos NO se borran. Para volver tendrás que escanear el QR.',async()=>{try{await waApi('desvincular');waLimpiarVinculo();waRender();toast('WhatsApp desvinculado y contactos borrados')}catch(e){toast('No se pudo desvincular: '+(e.detalle||'error'))}});return}
+  if(D.wlimpiar){ask('¿Borrar todos los chats y contactos del WhatsApp anterior? Tus pedidos NO se borran.',async()=>{try{await waApi('desvincular')}catch(e){}waLimpiarVinculo();waRender();toast('Chats anteriores borrados. Ya puedes conectar otro WhatsApp.')});return}
   if(D.wapi){waEnviarApi(D.wapi);return}
   if(D.wsel&&!e.target.closest('select')){ui.waSel=D.wsel;ui.waTab='chats';renderWa();setTimeout(()=>waCargarMsgs(D.wsel),30);return}
   if(D.wabrir){waSet(D.wabrir,'at',Date.now());setTimeout(waCabecera,50);return}
