@@ -42,7 +42,7 @@ Si marcas **«Tiene su propia base de datos»** al darle acceso, esa persona con
 Para que un cliente pueda pedir hablando con una IA (Claude, ChatGPT, Gemini, n8n, Make…). La IA ve el catálogo y deja el pedido; **queda pendiente en Pedidos → «Pedidos entrantes»** hasta que lo aceptes (no toca ventas ni inventario).
 
 **Puesta en marcha (cuenta administradora)**
-1. Variable `FIREBASE_SERVICE_ACCOUNT` en Vercel (la misma de las etiquetas) y **republica `firestore.rules`** (incluye `apiKeys`).
+1. Variable `FIREBASE_SERVICE_ACCOUNT` en Vercel (la misma de las etiquetas) y Redeploy. **No hace falta cambiar las reglas de Firestore**: las claves las guarda el servidor (`/api/claves`, solo para el administrador con sesión verificada).
 2. Panel → **Integraciones → + Nueva clave**. Se muestra la clave una sola vez, con todo listo para copiar.
 3. Conecta tu IA:
    - **MCP** (`/api/mcp`, Streamable HTTP, sin sesión): Claude.ai/ChatGPT → conector personalizado con la URL `https://TU-APP/api/mcp?key=yk_…`; Claude Code: `claude mcp add --transport http yosca-pedidos https://TU-APP/api/mcp --header "Authorization: Bearer yk_…"`; Cursor y otros: JSON con `url` y `headers`.

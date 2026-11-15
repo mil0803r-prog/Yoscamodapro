@@ -72,3 +72,4 @@ export async function actualizarDoc(ruta, datos) {
   const mask = campos.map((c) => 'updateMask.fieldPaths=' + encodeURIComponent(c)).join('&');
   return llamar('PATCH', enc(ruta) + '?' + mask, { fields: aFs(datos).mapValue.fields });
 }
+export async function borrarDoc(ruta) { await llamar('DELETE', enc(ruta)); }

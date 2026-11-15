@@ -1113,12 +1113,19 @@ document.addEventListener('click',async e=>{
 
 /* ================= INTEGRACIONES: API y MCP de pedidos para cualquier IA (solo administrador) ================= */
 const API_SCOPES={catalogo:'Ver catálogo y precios',pedidos:'Crear pedidos',consultar:'Consultar estado de pedidos de un celular'};
-async function sha256Hex(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
-function claveNueva(){const a=new Uint8Array(24);crypto.getRandomValues(a);return 'yk_'+btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
-function integIniciar(){
-  if(!puedeTienda()||ui.integOn||!(window.YoscaFB&&YoscaFB.keys))return;ui.integOn=true;
-  accUnsub.push(YoscaFB.keys.lista(l=>{ui.apiKeys=l.sort((a,b)=>(b.creado||0)-(a.creado||0));if(ui.tab==='integ')renderInteg()},()=>{}));
+async function claveApi(cuerpo){
+  const tok=FB_USER&&window.YoscaFB?await YoscaFB.idToken().catch(()=>''):'';
+  const r=await fetch('/api/claves',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+tok},body:JSON.stringify(cuerpo)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw Object.assign(new Error(j.error||'error'),{codigo:j.error,estado:r.status});
+  return j;
 }
+async function integCargar(){
+  try{const j=await claveApi({accion:'listar'});ui.apiKeys=j.claves||[];ui.integErr=''}
+  catch(e){ui.integErr=e.codigo==='no_configurado'?'falta':'error'}
+  if(ui.tab==='integ')renderInteg();
+}
+function integIniciar(){if(!puedeTienda()||ui.integOn)return;ui.integOn=true;integCargar()}
 async function integEstadoServidor(){
   try{const r=await fetch('/api/v1/catalogo');ui.integSrv=r.status===401?'ok':r.status===503?'falta':'error'}catch(e){ui.integSrv='error'}
   if(ui.tab==='integ')renderInteg();
@@ -1128,7 +1135,7 @@ function renderInteg(){
   integIniciar();if(!ui.integSrv)integEstadoServidor();
   const ks=ui.apiKeys||[],o=location.origin;
   const est={ok:'<span class="badge b-Entregado">✅ Servidor listo</span>',falta:'<span class="badge b-Pendiente">⚠️ Falta FIREBASE_SERVICE_ACCOUNT en Vercel</span>',error:'<span class="badge b-Devuelto">No pude comprobar el servidor</span>'}[ui.integSrv]||'<span class="badge">Revisando…</span>';
-  el.innerHTML=`<div class="card"><div class="row sb"><h2 style="margin:0">Conecta cualquier IA</h2>${est}</div>
+  el.innerHTML=`<div class="card"><div class="row sb"><h2 style="margin:0">Conecta cualquier IA</h2>${ui.integErr==='falta'?'<span class="badge b-Pendiente">⚠️ Falta FIREBASE_SERVICE_ACCOUNT en Vercel</span>':est}</div>
    <p class="sub" style="margin-top:6px">Una IA (Claude, ChatGPT, Gemini, n8n…) atiende al cliente, ve tu catálogo y deja el pedido <b>listo para que tú lo confirmes</b>. Los pedidos llegan a <b>Pedidos → Pedidos entrantes</b> y no tocan tus ventas ni tu inventario hasta que los aceptes.</p>
    <div class="eq-fila" style="border-top:0"><div class="eq-info"><b>Servidor MCP</b><small style="word-break:break-all">${esc(o)}/api/mcp</small></div><button class="btn sm" type="button" data-cp="${esc(o)}/api/mcp">Copiar</button></div>
    <div class="eq-fila"><div class="eq-info"><b>API REST (OpenAPI)</b><small style="word-break:break-all">${esc(o)}/api/openapi.json</small></div><button class="btn sm" type="button" data-cp="${esc(o)}/api/openapi.json">Copiar</button></div></div>
@@ -1145,10 +1152,11 @@ function integDlgNueva(){
   <div class="row" style="margin-top:10px"><button class="btn pri" type="button" id="ikCrear">Crear clave</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>`);
 }
 async function integCrear(){
-  const nom=limpioTxt($('#ikNom').value)||'Integración',sc=['catalogo',...[...document.querySelectorAll('#dlgBody [data-ikp]:checked')].map(x=>x.dataset.ikp).filter(x=>x!=='catalogo')];
-  const clave=claveNueva(),huella=await sha256Hex(clave);
-  try{await YoscaFB.keys.guardar(huella,{nombre:nom,activa:true,adminUid:FB_USER.uid,scopes:sc,creado:Date.now(),ultimoUso:0,prefijo:clave.slice(0,7)+'…'+clave.slice(-4)})}
-  catch(e){toast('No se pudo crear la clave. ¿Publicaste las reglas de Firestore nuevas?');return}
+  const nom=limpioTxt($('#ikNom').value)||'Integración',sc=[...document.querySelectorAll('#dlgBody [data-ikp]:checked')].map(x=>x.dataset.ikp);
+  let clave;
+  try{const j=await claveApi({accion:'crear',nombre:nom,scopes:sc});clave=j.clave}
+  catch(e){toast(e.codigo==='no_configurado'?'Falta la variable FIREBASE_SERVICE_ACCOUNT en Vercel (y hacer Redeploy).':'No se pudo crear la clave ('+(e.codigo||e.estado)+').');const b=$('#ikCrear');if(b)b.disabled=false;return}
+  integCargar();
   const o=location.origin,mcpUrl=`${o}/api/mcp?key=${clave}`;
   const cfg=JSON.stringify({mcpServers:{'yosca-pedidos':{url:`${o}/api/mcp`,headers:{Authorization:'Bearer '+clave}}}},null,2);
   const prompt=`Eres el asistente de ventas de la tienda. Atiende al cliente en español, con amabilidad. Usa ver_catalogo para mostrar productos, tallas, colores y precios reales (nunca inventes). Para vender necesitas: nombre completo, celular de 9 dígitos, ciudad y los productos con talla, color y cantidad (pide DNI y agencia de envío si los da). Antes de registrar, repite el resumen y el total (calcular_pedido) y pide confirmación. Luego usa crear_pedido y dile al cliente que la tienda lo confirmará.`;
@@ -1169,8 +1177,8 @@ document.addEventListener('click',async e=>{
   if(t.dataset&&t.dataset.cp){try{await navigator.clipboard.writeText(t.dataset.cp);toast('Copiado')}catch(x){toast('No pude copiar: selecciónalo y copia a mano')}return}
   if(t.dataset&&t.dataset.ik&&puedeTienda()){
     const k=(ui.apiKeys||[]).find(x=>x.id===t.dataset.id);if(!k)return;
-    if(t.dataset.ik==='del')ask('¿Eliminar la clave «'+(k.nombre||'')+'»? La IA que la use dejará de funcionar.',async()=>{try{await YoscaFB.keys.quitar(k.id);toast('Clave eliminada')}catch(x){toast('No se pudo eliminar')}});
-    else try{const {id,...d}=k;await YoscaFB.keys.guardar(k.id,{...d,activa:t.dataset.ik==='on'});toast(t.dataset.ik==='on'?'Clave activada':'Clave desactivada')}catch(x){toast('No se pudo cambiar')}
+    if(t.dataset.ik==='del')ask('¿Eliminar la clave «'+(k.nombre||'')+'»? La IA que la use dejará de funcionar.',async()=>{try{await claveApi({accion:'eliminar',id:k.id});toast('Clave eliminada');integCargar()}catch(x){toast('No se pudo eliminar')}});
+    else try{await claveApi({accion:'activar',id:k.id,activa:t.dataset.ik==='on'});toast(t.dataset.ik==='on'?'Clave activada':'Clave desactivada');integCargar()}catch(x){toast('No se pudo cambiar')}
   }
 });
 

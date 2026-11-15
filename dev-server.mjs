@@ -8,6 +8,7 @@ import { handle as handleWa } from './server/wa-core.mjs';
 import { handle as handleHook } from './server/wa-hook.mjs';
 import { handle as handleImg } from './server/leer-imagen.mjs';
 import { handle as handlePed } from './server/pedidos-api.mjs';
+import { handle as handleClaves } from './server/claves-api.mjs';
 
 const tipos = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
 const raiz = process.cwd();
@@ -27,6 +28,13 @@ createServer(async (req, res) => {
     const r = await handlePed({ method: req.method, ruta: url.pathname.replace(/^\/api\//, ''), query: Object.fromEntries(url.searchParams), headers: req.headers, rawBody: Buffer.concat(chunks).toString('utf8'), ip: req.socket.remoteAddress, origen: 'http://' + req.headers.host });
     res.writeHead(r.status, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store', ...(r.headers || {}) });
     return res.end(r.body === null || r.body === undefined ? undefined : JSON.stringify(r.body));
+  }
+  if (url.pathname === '/api/claves') {
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    const r = await handleClaves({ method: req.method, rawBody: Buffer.concat(chunks).toString('utf8'), authorization: req.headers.authorization || '' });
+    res.writeHead(r.status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+    return res.end(JSON.stringify(r.body));
   }
   if (url.pathname === '/api/leer-imagen') {
     const chunks = [];
