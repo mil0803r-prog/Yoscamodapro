@@ -1435,7 +1435,7 @@ function waAplicarEtqChats(){
   const cola=[];let ch=false;
   const live=new Map((ui.waLive||[]).map(x=>[x.tel,x])),hook=ui.waHook||new Map(),dbm=ui.waDb||new Map();
   const conPed=new Set(S.orders.map(o=>waNumber(o.telefono)).filter(Boolean)),ok=t=>live.has(t)||conPed.has(t);
-  const tels=new Set([...dbm.keys(),...hook.keys(),...(ui.waLive||[]).filter(x=>x.conEtq).map(x=>x.tel)].filter(ok));
+  const tels=new Set([...[...dbm.keys()].filter(ok),...hook.keys(),...(ui.waLive||[]).filter(x=>x.conEtq).map(x=>x.tel)]);
   tels.forEach(tel=>{
     if(Date.now()-((ui.waReciente||{})[tel]||0)<25000)return;   // cambio recién hecho aquí: se espera a que WhatsApp lo refleje
     const x=live.get(tel)||{tel,jid:tel.endsWith('@g.us')?tel:tel+'@s.whatsapp.net'};
