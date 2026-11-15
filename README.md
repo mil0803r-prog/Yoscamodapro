@@ -98,6 +98,10 @@ Cada persona ve únicamente sus datos. La primera vez que alguien entra, lo que 
 - **Avisos push**: Integraciones → *Activar avisos en este dispositivo*. Cada pedido nuevo de una IA envía una notificación (claves VAPID generadas solas y guardadas en `apiConfig/vapid`; suscripciones en `pushSubs`). En iPhone hay que agregar la app a la pantalla de inicio.
 - Las claves `yk_…` siguen funcionando como alternativa.
 
+### Herramientas nuevas por permiso
+
+Cada mejora nueva se activa **por correo** en *Equipo y permisos → Herramientas nuevas* (hoy: **Integraciones** y **Pedidos con IA**). El administrador siempre las tiene. «Integraciones» exige *base propia*, así cada persona tiene sus claves, sus pedidos entrantes y sus avisos. Para sumar una herramienta nueva: agregarla a `HERRAMIENTAS` en `index.html` y a `server/permisos.mjs`; el servidor la verifica con `puede(usuario, 'clave')`. Quitar el permiso corta también las conexiones de IA de esa persona.
+
 ## Asistente de IA con Gemini (fuera de Claude)
 
 El asistente usa un pequeño servicio propio (`/api/asistente`) que guarda tu clave de Gemini en el servidor. La clave **nunca** va dentro de la página ni del repositorio.

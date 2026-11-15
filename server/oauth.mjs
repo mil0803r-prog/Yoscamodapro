@@ -5,6 +5,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { usuarioFirebase } from './asistente-core.mjs';
 import { cuentaServicio, leerDoc, crearDoc } from './fs-admin.mjs';
 import { notificar } from './push.mjs';
+import { puede } from './permisos.mjs';
 
 const admins = () => String(process.env.ADMIN_EMAILS || process.env.LEER_EMAILS || 'mil0803r@gmail.com').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
 const SCOPES = ['catalogo', 'pedidos', 'consultar'];
@@ -22,11 +23,12 @@ export function verificar(str) {
 }
 
 const usados = new Map(); // códigos ya canjeados (por instancia; el PKCE y los 5 min cubren el resto)
-let desdeCache = { v: 0, vence: 0 };
-async function revocadoDesde() {
-  if (Date.now() < desdeCache.vence) return desdeCache.v;
-  let v = 0; try { const d = await leerDoc('apiConfig/oauth'); v = Number(d && d.desde) || 0; } catch { /* sin revocación */ }
-  desdeCache = { v, vence: Date.now() + 30_000 };
+const desdeCache = new Map();
+async function revocadoDesde(uid) {
+  const c = desdeCache.get(uid);
+  if (c && Date.now() < c.vence) return c.v;
+  let v = 0; try { const d = await leerDoc('apiConfig/oauth_' + uid); v = Number(d && d.desde) || 0; } catch { /* sin revocación */ }
+  desdeCache.set(uid, { v, vence: Date.now() + 30_000 }); if (desdeCache.size > 500) desdeCache.clear();
   return v;
 }
 /** Valida un access token «ya_…»: devuelve { uid, scopes } o null. */
@@ -34,7 +36,8 @@ export async function verificarAcceso(token) {
   if (!/^ya_/.test(token || '')) return null;
   const o = verificar(String(token).slice(3));
   if (!o || o.t !== 'at' || !o.uid) return null;
-  if ((o.iat || 0) < (await revocadoDesde())) return null;
+  if ((o.iat || 0) < (await revocadoDesde(String(o.uid)))) return null;
+  if (!(await puede({ email: o.em, verificado: true }, 'integ'))) return null;
   return { uid: String(o.uid), scopes: Array.isArray(o.sc) && o.sc.length ? o.sc : ['catalogo', 'pedidos'], cliente: String(o.cn || '') };
 }
 
@@ -61,14 +64,14 @@ export async function aprobar({ authorization, p }) {
   const b = /^Bearer\s+(.+)$/i.exec(authorization || '');
   const u = b && (await usuarioFirebase(b[1]));
   if (!u) return err(401, 'sesion', 'Inicia sesión.');
-  if (!u.verificado || !admins().includes(u.email)) return err(403, 'sin_permiso', 'Solo la cuenta administradora puede conectar una IA.');
+  if (!(await puede(u, 'integ'))) return err(403, 'sin_permiso', 'Esta cuenta no tiene permiso para conectar una IA.');
   const c = verificar(p.client_id);
   if (!c || c.t !== 'c') return err(400, 'invalid_client', 'Cliente no reconocido.');
   if (!c.uris.includes(String(p.redirect_uri || ''))) return err(400, 'invalid_redirect_uri', 'La dirección de retorno no coincide con la registrada.');
   if (p.code_challenge_method !== 'S256' || !/^[A-Za-z0-9_-]{43,128}$/.test(String(p.code_challenge || ''))) return err(400, 'invalid_request', 'Falta PKCE (S256).');
   const pedidos = String(p.scope || '').split(/[\s,]+/).filter((x) => SCOPES.includes(x));
   const sc = [...new Set(['catalogo', 'pedidos', ...pedidos.filter((x) => x === 'consultar')])];
-  const code = firmar({ t: 'code', uid: u.uid, cid: sha(p.client_id).toString('hex').slice(0, 16), ru: p.redirect_uri, ch: p.code_challenge, sc, cn: c.n, exp: Date.now() + 5 * 60_000, n: randomBytes(8).toString('hex') });
+  const code = firmar({ t: 'code', uid: u.uid, em: u.email, cid: sha(p.client_id).toString('hex').slice(0, 16), ru: p.redirect_uri, ch: p.code_challenge, sc, cn: c.n, exp: Date.now() + 5 * 60_000, n: randomBytes(8).toString('hex') });
   const url = new URL(p.redirect_uri); url.searchParams.set('code', code); if (p.state) url.searchParams.set('state', String(p.state).slice(0, 500));
   // Aviso dentro de la plataforma: queda registrado y llega como notificación
   try { await crearDoc(`users/${u.uid}/conexiones`, 'c_' + Date.now().toString(36) + randomBytes(3).toString('hex'), { cliente: c.n, creado: Date.now(), tipo: 'oauth' }); } catch { /* opcional */ }
@@ -78,9 +81,9 @@ export async function aprobar({ authorization, p }) {
 
 /** Intercambio de código o de refresh token por un access token. */
 export async function token(p) {
-  const emitir = (uid, sc, cn, cid) => {
+  const emitir = (uid, sc, cn, cid, em) => {
     const iat = Date.now();
-    return { estado: 200, body: { access_token: 'ya_' + firmar({ t: 'at', uid, sc, cn, iat, exp: iat + 3600_000 }), token_type: 'Bearer', expires_in: 3600, refresh_token: 'yr_' + firmar({ t: 'rt', uid, sc, cn, cid, iat, exp: iat + 60 * 864e5 }), scope: sc.join(' ') } };
+    return { estado: 200, body: { access_token: 'ya_' + firmar({ t: 'at', uid, em, sc, cn, iat, exp: iat + 3600_000 }), token_type: 'Bearer', expires_in: 3600, refresh_token: 'yr_' + firmar({ t: 'rt', uid, em, sc, cn, cid, iat, exp: iat + 60 * 864e5 }), scope: sc.join(' ') } };
   };
   if (p.grant_type === 'authorization_code') {
     const c = verificar(p.code);
@@ -89,13 +92,14 @@ export async function token(p) {
     if (b64(sha(String(p.code_verifier || ''))) !== c.ch) return err(400, 'invalid_grant', 'PKCE no coincide.');
     if (usados.has(c.n)) return err(400, 'invalid_grant', 'El código ya fue usado.');
     usados.set(c.n, c.exp); for (const [k, v] of usados) if (v < Date.now()) usados.delete(k);
-    return emitir(c.uid, c.sc, c.cn, c.cid);
+    return emitir(c.uid, c.sc, c.cn, c.cid, c.em);
   }
   if (p.grant_type === 'refresh_token') {
     const r = verificar(String(p.refresh_token || '').replace(/^yr_/, ''));
     if (!r || r.t !== 'rt') return err(400, 'invalid_grant', 'Refresh token inválido o vencido.');
-    if ((r.iat || 0) < (await revocadoDesde())) return err(400, 'invalid_grant', 'El acceso fue revocado. Vuelve a conectar.');
-    return emitir(r.uid, r.sc, r.cn, r.cid);
+    if ((r.iat || 0) < (await revocadoDesde(String(r.uid)))) return err(400, 'invalid_grant', 'El acceso fue revocado. Vuelve a conectar.');
+    if (!(await puede({ email: r.em, verificado: true }, 'integ'))) return err(400, 'invalid_grant', 'Esta cuenta ya no tiene permiso.');
+    return emitir(r.uid, r.sc, r.cn, r.cid, r.em);
   }
   return err(400, 'unsupported_grant_type', 'grant_type no soportado.');
 }

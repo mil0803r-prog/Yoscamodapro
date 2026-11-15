@@ -1,6 +1,7 @@
 // Lee una captura de chat o una foto con Gemini y devuelve los datos del cliente (nombre, celular, ciudad…).
 // Usa la misma clave del asistente (GEMINI_API_KEY). La imagen no se guarda: solo pasa por aquí hacia Gemini.
 import { usuarioFirebase } from './asistente-core.mjs';
+import { puede } from './permisos.mjs';
 
 const MODELO_PRINCIPAL = 'gemini-3.8-flash';
 const MODELO_RESPALDO = 'gemini-2.5-flash';
@@ -44,7 +45,7 @@ export async function handle({ method, rawBody, authorization, ip }) {
   if (!b) return { status: 401, body: { error: 'sesion' } };
   const u = await usuarioFirebase(b[1]);
   if (!u) return { status: 401, body: { error: 'sesion' } };
-  if (!u.verificado || !permitidos().includes(u.email)) return { status: 403, body: { error: 'sin_permiso' } };
+  if (!u.verificado || !(permitidos().includes(u.email) || (await puede(u, 'ped_ia')))) return { status: 403, body: { error: 'sin_permiso' } };
   if (superaLimite('u:' + u.uid)) return { status: 429, body: { error: 'limite' } };
   if (!rawBody || rawBody.length > MAX_BYTES * 1.4) return { status: 413, body: { error: 'grande' } };
   let p; try { p = JSON.parse(rawBody); } catch { return { status: 400, body: { error: 'json' } }; }

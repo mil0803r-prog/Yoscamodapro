@@ -1,5 +1,6 @@
 // Gestión de las claves de la API/MCP desde el panel. Solo el administrador (con sesión verificada).
 // El servidor las guarda con la cuenta de servicio, así que NO hace falta tocar las reglas de Firestore.
+import { puede } from './permisos.mjs';
 import { vapid, suscribir, quitar, notificar } from './push.mjs';
 import { createHash, randomBytes } from 'node:crypto';
 import { usuarioFirebase } from './asistente-core.mjs';
@@ -17,7 +18,7 @@ export async function handle({ method, rawBody, authorization }) {
   const b = /^Bearer\s+(.+)$/i.exec(authorization || '');
   const u = b && (await usuarioFirebase(b[1]));
   if (!u) return { status: 401, body: { error: 'sesion' } };
-  if (!u.verificado || !admins().includes(u.email)) return { status: 403, body: { error: 'sin_permiso' } };
+  if (!(await puede(u, 'integ'))) return { status: 403, body: { error: 'sin_permiso' } };
   const ahora = Date.now(), l = (golpes.get(u.uid) || []).filter((t) => ahora - t < 60_000); l.push(ahora); golpes.set(u.uid, l);
   if (l.length > 30) return { status: 429, body: { error: 'limite' } };
   let p; try { p = JSON.parse(rawBody || '{}'); } catch { return { status: 400, body: { error: 'json' } }; }
@@ -33,7 +34,7 @@ export async function handle({ method, rawBody, authorization }) {
       await crearDoc('apiKeys', id, { nombre, activa: true, adminUid: u.uid, scopes: [...new Set(scopes)], creado: Date.now(), ultimoUso: 0, prefijo: clave.slice(0, 7) + '…' + clave.slice(-4) });
       return { status: 200, body: { clave, id, nombre, scopes: [...new Set(scopes)] } };
     }
-    if (p.accion === 'revocar_oauth') { await actualizarDoc('apiConfig/oauth', { desde: Date.now() }); return { status: 200, body: { ok: true } }; }
+    if (p.accion === 'revocar_oauth') { await actualizarDoc('apiConfig/oauth_' + u.uid, { desde: Date.now() }); return { status: 200, body: { ok: true } }; }
     if (p.accion === 'push_clave') { const v = await vapid(); return { status: 200, body: { publica: v.publica } }; }
     if (p.accion === 'push_suscribir') { const ok = await suscribir(u.uid, p.sub); return ok ? { status: 200, body: { ok: true } } : { status: 400, body: { error: 'suscripcion' } }; }
     if (p.accion === 'push_quitar') { await quitar(String((p.sub && p.sub.endpoint) || '')); return { status: 200, body: { ok: true } }; }

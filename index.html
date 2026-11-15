@@ -1041,6 +1041,7 @@ function accEntrar(u){
       $('#lock').hidden=true;hideLogin();
       if(nuevo){detachDb();resetLocal();attachDb(fsAdapter(YoscaFB.store(dueno)),{migrate:false});connectAi()}
       if(nivelSec('wa')!=='no')waHookIniciar();
+      if(puedeHerr('integ')){integIniciar();entrantesIniciar()}
       pintarNav();renderTab();renderAccount();
     }else{
       if(ACC.rol==='miembro'){detachDb();resetLocal();ACC={rol:'',permisos:{},duenio:''};refreshAll()}
@@ -1085,6 +1086,8 @@ function eqDialogo(email,nombre,base,propio=true){
   dlgOpen(`<h2 style="margin:0 0 4px">Permisos de ${esc(email)}</h2><p class="sub">Elige qué puede hacer en cada sección.</p>
   <div class="row" style="margin:8px 0">${Object.entries(EQ_PRESETS).map(([k,v])=>`<button class="btn sm" type="button" data-eqp="${k}">${v[0]}</button>`).join('')}</div>
   <div class="eq-perm">${Object.entries(SEC_NOM).map(([k,n])=>`<label for="eqp-${k}">${n}</label><select id="eqp-${k}" data-eqs="${k}">${['no','ver','editar'].map(v=>`<option value="${v}"${(p[k]||'no')===v?' selected':''}>${NIV_TXT[v]}</option>`).join('')}</select>`).join('')}</div>
+  <h4 style="margin:14px 0 4px">Herramientas nuevas</h4><p class="hint" style="margin:0 0 4px">Cada mejora nueva aparecerá aquí. Márcala solo para quien quieras que la use.</p>
+  ${Object.entries(HERRAMIENTAS).map(([k,h])=>`<label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:14px;color:var(--on)"><input type="checkbox" data-eqh="${k}" ${p[k]==='editar'?'checked':''} style="margin-top:3px;width:auto;min-height:0"><span><b>${esc(h[0])}</b><br><span class="hint">${esc(h[1])}</span></span></label>`).join('')}
   <label style="display:flex;gap:8px;align-items:flex-start;margin:10px 0 4px;font-size:14px;color:var(--on)"><input type="checkbox" id="eqPropio" style="margin-top:3px"${propio?' checked':''}><span><b>Solo ve sus propios datos (recomendado).</b> Cada correo tiene su base de datos separada: no ve nada de otros correos ni de los tuyos, y recupera lo que ya tenía. Tú solo decides qué secciones puede usar. Si la desmarcas, trabajará sobre TUS datos.</span></label>
   <p class="hint">Ajustes solo le muestra su cuenta (con base propia, sus ajustes completos). Tienda y Equipo son solo tuyos. En WhatsApp, conectar o desvincular el número es solo del administrador; con base propia deja WhatsApp en «Sin acceso», porque el WhatsApp conectado es el tuyo.</p>
   <div class="row" style="margin-top:10px"><button class="btn pri" type="button" id="eqGuardar">Guardar acceso</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>`);
@@ -1095,6 +1098,7 @@ document.addEventListener('click',async e=>{
   if(e.target.closest('#eqGuardar')){
     const c=ui.eqCur;if(!c||!puedeTienda())return;
     const permisos={};document.querySelectorAll('#dlgBody [data-eqs]').forEach(se=>{if(se.value!=='no')permisos[se.dataset.eqs]=se.value});
+    document.querySelectorAll('#dlgBody [data-eqh]:checked').forEach(c2=>{permisos[c2.dataset.eqh]='editar'});
     const prev=(ui.eqAcc||[]).find(x=>x.email===c.email);
     try{await YoscaFB.acc.guardar(c.email,{email:c.email,nombre:c.nombre||'',estado:prev?prev.estado:'activo',duenio:FB_USER.uid,propio:!!($('#eqPropio')&&$('#eqPropio').checked),permisos,fecha:Date.now()});
       try{await YoscaFB.acc.quitarSolicitud(c.email)}catch(err){}
@@ -1141,13 +1145,13 @@ async function integCargar(){
   catch(e){ui.integErr=e.codigo==='no_configurado'?'falta':'error'}
   if(ui.tab==='integ')renderInteg();
 }
-function integIniciar(){if(!puedeTienda()||ui.integOn)return;ui.integOn=true;integCargar()}
+function integIniciar(){if(!puedeHerr('integ')||ui.integOn)return;ui.integOn=true;integCargar()}
 async function integEstadoServidor(){
   try{const r=await fetch('/api/v1/catalogo');ui.integSrv=r.status===401?'ok':r.status===503?'falta':'error'}catch(e){ui.integSrv='error'}
   if(ui.tab==='integ')renderInteg();
 }
 function renderInteg(){
-  const el=$('#v-integ');if(!puedeTienda()){el.innerHTML='';return}
+  const el=$('#v-integ');if(!puedeHerr('integ')){el.innerHTML='';return}
   integIniciar();if(!ui.integSrv)integEstadoServidor();
   const ks=ui.apiKeys||[],o=location.origin;
   const est={ok:'<span class="badge b-Entregado">✅ Servidor listo</span>',falta:'<span class="badge b-Pendiente">⚠️ Falta FIREBASE_SERVICE_ACCOUNT en Vercel</span>',error:'<span class="badge b-Devuelto">No pude comprobar el servidor</span>'}[ui.integSrv]||'<span class="badge">Revisando…</span>';
@@ -1199,11 +1203,11 @@ document.addEventListener('click',async e=>{
   const t=e.target;
   if(t.id==='integNueva'){integDlgNueva();return}
   if(t.id==='ikCrear'){t.disabled=true;await integCrear();return}
-  if(t.id==='integPush'&&puedeTienda()){pushActivar();return}
-  if(t.id==='integPushProbar'&&puedeTienda()){claveApi({accion:'push_probar'}).then(()=>toast('Prueba enviada')).catch(()=>toast('No se pudo enviar'));return}
-  if(t.id==='integRevoca'&&puedeTienda()){ask('¿Cerrar todas las conexiones de IA hechas con inicio de sesión?',async()=>{try{await claveApi({accion:'revocar_oauth'});toast('Conexiones cerradas')}catch(x){toast('No se pudo cerrar')}});return}
+  if(t.id==='integPush'&&puedeHerr('integ')){pushActivar();return}
+  if(t.id==='integPushProbar'&&puedeHerr('integ')){claveApi({accion:'push_probar'}).then(()=>toast('Prueba enviada')).catch(()=>toast('No se pudo enviar'));return}
+  if(t.id==='integRevoca'&&puedeHerr('integ')){ask('¿Cerrar todas las conexiones de IA hechas con inicio de sesión?',async()=>{try{await claveApi({accion:'revocar_oauth'});toast('Conexiones cerradas')}catch(x){toast('No se pudo cerrar')}});return}
   if(t.dataset&&t.dataset.cp){try{await navigator.clipboard.writeText(t.dataset.cp);toast('Copiado')}catch(x){toast('No pude copiar: selecciónalo y copia a mano')}return}
-  if(t.dataset&&t.dataset.ik&&puedeTienda()){
+  if(t.dataset&&t.dataset.ik&&puedeHerr('integ')){
     const k=(ui.apiKeys||[]).find(x=>x.id===t.dataset.id);if(!k)return;
     if(t.dataset.ik==='del')ask('¿Eliminar la clave «'+(k.nombre||'')+'»? La IA que la use dejará de funcionar.',async()=>{try{await claveApi({accion:'eliminar',id:k.id});toast('Clave eliminada');integCargar()}catch(x){toast('No se pudo eliminar')}});
     else try{await claveApi({accion:'activar',id:k.id,activa:t.dataset.ik==='on'});toast(t.dataset.ik==='on'?'Clave activada':'Clave desactivada');integCargar()}catch(x){toast('No se pudo cambiar')}
@@ -1212,8 +1216,8 @@ document.addEventListener('click',async e=>{
 
 /* ---------- Pedidos entrantes (llegan por la API/MCP) ---------- */
 function entrantesIniciar(){
-  if(!puedeTienda()||ui.entOn||!(window.YoscaFB&&YoscaFB.store))return;ui.entOn=true;
-  const st=YoscaFB.store(FB_USER.uid);
+  if(!puedeHerr('integ')||ui.entOn||!(window.YoscaFB&&YoscaFB.store))return;ui.entOn=true;
+  const st=YoscaFB.store(datosUid());
   accUnsub.push(st.colSnap('conexiones',l=>{
     const antes=new Set((ui.conexiones||[]).map(x=>x.id)),n=l.filter(x=>!antes.has(x.id));
     ui.conexiones=l.sort((a,b)=>(b.creado||0)-(a.creado||0));
@@ -1231,7 +1235,7 @@ function entrantesIniciar(){
 }
 function renderEntrantes(){
   const box=$('#pedEntrantes');if(!box)return;
-  const l=puedeTienda()?(ui.entrantes||[]):[];box.hidden=!l.length;if(!l.length){box.innerHTML='';return}
+  const l=puedeHerr('integ')?(ui.entrantes||[]):[];box.hidden=!l.length;if(!l.length){box.innerHTML='';return}
   box.innerHTML=`<div class="row sb"><h3 style="margin:0">📥 Pedidos entrantes</h3><span class="badge">${l.length}</span></div><p class="sub" style="margin:4px 0 8px">Los dejó una IA o un servicio conectado. Revísalos y acéptalos para pasarlos a tus pedidos.</p>`+
   l.map(e=>{const c=e.cliente||{};return `<div class="ent-fila"><div class="row sb"><b>${esc(c.nombre||'Sin nombre')}</b><b>${fmt(num(e.total))}</b></div>
    <div class="sub">${esc([c.celular,c.ciudad,c.agencia&&'Agencia: '+c.agencia,c.dni&&'DNI '+c.dni].filter(Boolean).join(' · '))}</div>
@@ -1251,9 +1255,9 @@ function entranteAOrden(e){
   return o;
 }
 document.addEventListener('click',async e=>{
-  const b=e.target.closest&&e.target.closest('[data-ent]');if(!b||!puedeTienda())return;
+  const b=e.target.closest&&e.target.closest('[data-ent]');if(!b||!puedeHerr('integ'))return;
   const x=(ui.entrantes||[]).find(z=>z.id===b.dataset.id);if(!x)return;
-  const st=YoscaFB.store(FB_USER.uid);
+  const st=YoscaFB.store(datosUid());
   if(b.dataset.ent==='ok'){
     const o=entranteAOrden(x);S.orders.unshift(o);orderStockSync(o);save();
     try{await st.set('entrantes',x.id,limpio({...x,estado:'aceptado',ordenId:o.id}))}catch(err){toast('El pedido se creó, pero no pude marcarlo como aceptado.')}
@@ -1298,16 +1302,22 @@ const puedeTienda=()=>!!(FB_USER&&String(FB_USER.email||'').toLowerCase()===TIEN
 /* Acceso privado: el administrador aprueba correos y asigna permisos por sección ('no' | 'ver' | 'editar') */
 let ACC={rol:'',permisos:{},duenio:''},accUnsub=[];
 const SEC_NOM={dash:'Dashboard',calc:'Calculadora',ped:'Pedidos',wa:'WhatsApp',inv:'Inventario',gas:'Gastos',proy:'Proyección'};
+/* Herramientas nuevas: cada mejora se activa por correo en «Equipo y permisos». Para añadir una: sumarla aquí y en server/permisos.mjs */
+const HERRAMIENTAS={integ:['Integraciones','Conectar ChatGPT/Claude con tu inicio de sesión, claves, pedidos entrantes y avisos. Exige base propia.',true],ped_ia:['Pedidos con IA','Pegar texto, dictar por voz, leer capturas y comprobantes de pago, clientes recurrentes y «Crear pedido desde este chat».',false]};
+const puedeHerr=k=>{if(puedeTienda())return true;const h=HERRAMIENTAS[k];return !!(h&&FB_MODE&&FB_USER&&FB_USER.emailVerified&&ACC.rol==='miembro'&&ACC.permisos&&ACC.permisos[k]==='editar'&&(!h[2]||ACC.propio))};
+const datosUid=()=>ACC.rol==='miembro'?ACC.duenio:FB_USER.uid;
 const nivelSec=t=>{
   if(!FB_MODE||!FB_USER||ACC.rol==='admin'||puedeTienda())return 'editar';
+  if(t==='integ')return puedeHerr('integ')?'editar':'no';
   if(t==='set')return ACC.propio?'editar':'ver';
-  if(t==='tienda'||t==='equipo'||t==='integ')return 'no';
+  if(t==='tienda'||t==='equipo')return 'no';
   const v=ACC.permisos&&ACC.permisos[t];return v==='ver'||v==='editar'?v:'no';
 };
 const esMiembro=()=>FB_MODE&&ACC.rol==='miembro'&&!ACC.propio;   // con base propia trabaja como dueño de sus datos
 function pestanas(){
   let t=TABS.filter(x=>nivelSec(x[0])!=='no');
-  if(puedeTienda()){const n=(ui.eqSol||[]).length;t=[...t,['tienda','Tienda','store'],['equipo','Equipo'+(n?' ('+n+')':''),'users'],['integ','Integraciones','spark']];const ne=(ui.entrantes||[]).length;if(ne){const i=t.findIndex(x=>x[0]==='ped');if(i>=0)t[i]=[t[i][0],t[i][1]+' ('+ne+')',t[i][2]]}}
+  if(puedeTienda()){const n=(ui.eqSol||[]).length;t=[...t,['tienda','Tienda','store'],['equipo','Equipo'+(n?' ('+n+')':''),'users']]}
+  if(puedeHerr('integ')){t.push(['integ','Integraciones','spark']);const ne=(ui.entrantes||[]).length;if(ne){const i=t.findIndex(x=>x[0]==='ped');if(i>=0)t[i]=[t[i][0],t[i][1]+' ('+ne+')',t[i][2]]}}
   return t;
 }
 function pintarNav(){
@@ -1750,7 +1760,7 @@ function waFicha(c){
   const d=c.datos,dl=d?[['Nombre',d.nombre],['Celular',d.tel],['Ciudad',d.ciudad],['Producto',d.producto],['Talla',d.talla],['Color',d.color],['Cantidad',d.cantidad],['DNI',d.dni],['Dirección',d.direccion],['Agencia / sede',d.agencia]].filter(x=>x[1]):[];
   return `<button class="btn sm wa2-back" type="button" data-wback="1">← Volver a los chats</button>
   <div class="wa2-h"><span class="av g">${esc(waIni(c))}</span><div style="flex:1;min-width:0"><b style="font-size:17px">${esc(c.nombre)}</b><div class="sub">${esc(waTelTxt(c))}${c.ped?' · '+c.ped+(c.ped===1?' pedido':' pedidos')+' · '+fmt(c.total):''}${c.at?' · ✓ contactado '+waHace(c.at):''}</div></div>${c.grupo?'':`<a class="btn wa" href="${esc(waLink(c.tel,''))}" target="_blank" rel="noopener" data-wabrir="${esc(c.tel)}">💬 Abrir chat</a>`}</div>
-  ${puedeTienda()&&!c.grupo?`<div class="row" style="margin-top:12px"><button class="btn pri" type="button" data-wcrear="${esc(c.tel)}" style="width:100%;min-height:48px">⚡ Crear pedido desde este chat</button></div>`:''}
+  ${puedeHerr('ped_ia')&&!c.grupo?`<div class="row" style="margin-top:12px"><button class="btn pri" type="button" data-wcrear="${esc(c.tel)}" style="width:100%;min-height:48px">⚡ Crear pedido desde este chat</button></div>`:''}
   <div class="form" style="margin-top:12px"><div class="full" style="grid-column:1/-1"><label>Etiquetas (tableros) · tócalas para poner o quitar, igual que en WhatsApp Business</label><div class="wa-fil" style="flex-wrap:wrap;overflow:visible">${waTabs().map(t=>`<button type="button" class="${c.ts.includes(t.id)?'on':''}" data-wtog="${esc(c.tel)}" data-wid="${esc(t.id)}" style="${c.ts.includes(t.id)?'border-color:'+esc(t.color)+';background:'+esc(t.color)+'22':''}"><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(t.color)};margin:0 5px 0 0"></i>${esc(t.nombre)}</button>`).join('')}</div></div>
    <div class="full"><label>Nota</label><input data-knota="${esc(c.tel)}" maxlength="120" placeholder="Ej. prefiere pagar por Yape" value="${esc(c.n)}"></div></div>
   ${dl.length?`<div class="card" style="margin-top:12px;background:var(--primary-soft)"><h3 style="font-size:15px">📦 Datos del pedido</h3><div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:6px;font-size:13.5px">${dl.map(([k,v])=>`<span class="sub">${k}</span><b>${esc(v)}</b>`).join('')}</div>${c.ped?'':`<button class="btn pri" type="button" data-wpasar="${esc(c.tel)}" style="margin-top:10px">Pasar a Pedidos</button>`}</div>`:''}
@@ -2571,11 +2581,11 @@ function pedClientesMapa(){
 }
 function pedClientesLista(){
   const l=$('#dl-pcli');if(!l)return;
-  l.innerHTML=puedeTienda()?[...pedClientesMapa().values()].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,300).map(c=>`<option value="${esc(c.nombre)}" label="${esc([c.telRaw,c.ciudad].filter(Boolean).join(' · '))}"></option>`).join(''):'';
+  l.innerHTML=puedeHerr('ped_ia')?[...pedClientesMapa().values()].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,300).map(c=>`<option value="${esc(c.nombre)}" label="${esc([c.telRaw,c.ciudad].filter(Boolean).join(' · '))}"></option>`).join(''):'';
 }
 function pedClienteCompletar(){
   const box=$('#pedRepite');if(!box)return;
-  if(!puedeTienda()||ui.editOrder){box.hidden=true;return}
+  if(!puedeHerr('ped_ia')||ui.editOrder){box.hidden=true;return}
   const m=pedClientesMapa(),n=waNumber(pf.telefono.value),nom=waNrm(pf.cliente.value).trim();
   let c=n&&m.get(n);
   if(!c&&nom.length>=4)c=[...m.values()].find(x=>waNrm(x.nombre).trim()===nom);
@@ -2651,9 +2661,9 @@ function pedDictar(){
 $('#pedVozBtn').addEventListener('click',pedDictar);
 $('#pedImgBtn').addEventListener('click',()=>$('#pedImgIn').click());
 $('#pedImgIn').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';pedLeerImagen(f)});
-document.addEventListener('paste',e=>{if(ui.tab!=='ped'||!puedeTienda())return;const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(i=>i.kind==='file'&&/^image\//.test(i.type));if(it){e.preventDefault();if($('#pedCard').hidden)pedLeerPago(it.getAsFile());else pedLeerImagen(it.getAsFile())}});
+document.addEventListener('paste',e=>{if(ui.tab!=='ped'||!puedeHerr('ped_ia'))return;const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(i=>i.kind==='file'&&/^image\//.test(i.type));if(it){e.preventDefault();if($('#pedCard').hidden)pedLeerPago(it.getAsFile());else pedLeerImagen(it.getAsFile())}});
 {let t;$('#p-pegar').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(pedReconocer,350)})}
-function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;$('#pedImgRow').hidden=!puedeTienda();if(v)pedClientesLista();if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
+function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;$('#pedImgRow').hidden=!puedeHerr('ped_ia');if(v)pedClientesLista();if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
 $('#pedNuevo').addEventListener('click',()=>{if($('#pedCard').hidden){resetPed();pedMostrarForm(true)}else pedMostrarForm(false)});
 function resetPed(){{const r=$('#pedRepite');if(r)r.hidden=true}$('#p-pegar').value='';$('#pegarRes').hidden=true;$('#pedPegar').hidden=false;delete pf.costo.dataset.auto;ui.pedQty={};ui.pedProds=[];ui.pedSelX={};$('#pedCard').hidden=true;pf.reset();syncPack();syncWaForm();pf.fecha.value=today();ui.editOrder=null;$('#pedTitle').textContent='Registrar pedido';$('#pedCancel').hidden=true;fillGarmentSelect()}
 pf.addEventListener('submit',e=>{
@@ -2684,7 +2694,7 @@ $('#pedCancel').addEventListener('click',resetPed);
 const fechaCorta=f=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(f||''));return m?`${+m[3]} ${MESES[+m[2]-1]} ${m[1]}`:esc(f||'')};
 function renderPed(){
   renderEntrantes();
-  {const b=$('#pedPagoBtn');if(b)b.hidden=!puedeTienda()}
+  {const b=$('#pedPagoBtn');if(b)b.hidden=!puedeHerr('ped_ia')}
   if(!ui.editOrder)fillGarmentSelect();
   const q=$('#pedBuscar').value.toLowerCase(),f=$('#pedFiltro').value;
   const rows=S.orders.filter(o=>(!f||o.estado===f)&&(!q||[o.cliente,o.producto,o.ciudad,o.telefono].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
