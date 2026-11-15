@@ -1574,6 +1574,7 @@ function waFicha(c){
   const d=c.datos,dl=d?[['Nombre',d.nombre],['Celular',d.tel],['Ciudad',d.ciudad],['Producto',d.producto],['Talla',d.talla],['Color',d.color],['Cantidad',d.cantidad],['DNI',d.dni],['Dirección',d.direccion],['Agencia / sede',d.agencia]].filter(x=>x[1]):[];
   return `<button class="btn sm wa2-back" type="button" data-wback="1">← Volver a los chats</button>
   <div class="wa2-h"><span class="av g">${esc(waIni(c))}</span><div style="flex:1;min-width:0"><b style="font-size:17px">${esc(c.nombre)}</b><div class="sub">+${esc(c.tel)}${c.ped?' · '+c.ped+(c.ped===1?' pedido':' pedidos')+' · '+fmt(c.total):''}${c.at?' · ✓ contactado '+waHace(c.at):''}</div></div>${c.grupo?'':`<a class="btn wa" href="${esc(waLink(c.tel,''))}" target="_blank" rel="noopener" data-wabrir="${esc(c.tel)}">💬 Abrir chat</a>`}</div>
+  ${puedeTienda()&&!c.grupo?`<div class="row" style="margin-top:12px"><button class="btn pri" type="button" data-wcrear="${esc(c.tel)}" style="width:100%;min-height:48px">⚡ Crear pedido desde este chat</button></div>`:''}
   <div class="form" style="margin-top:12px"><div class="full" style="grid-column:1/-1"><label>Etiquetas (tableros) · tócalas para poner o quitar, igual que en WhatsApp Business</label><div class="wa-fil" style="flex-wrap:wrap;overflow:visible">${waTabs().map(t=>`<button type="button" class="${c.ts.includes(t.id)?'on':''}" data-wtog="${esc(c.tel)}" data-wid="${esc(t.id)}" style="${c.ts.includes(t.id)?'border-color:'+esc(t.color)+';background:'+esc(t.color)+'22':''}"><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(t.color)};margin:0 5px 0 0"></i>${esc(t.nombre)}</button>`).join('')}</div></div>
    <div class="full"><label>Nota</label><input data-knota="${esc(c.tel)}" maxlength="120" placeholder="Ej. prefiere pagar por Yape" value="${esc(c.n)}"></div></div>
   ${dl.length?`<div class="card" style="margin-top:12px;background:var(--primary-soft)"><h3 style="font-size:15px">📦 Datos del pedido</h3><div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:6px;font-size:13.5px">${dl.map(([k,v])=>`<span class="sub">${k}</span><b>${esc(v)}</b>`).join('')}</div>${c.ped?'':`<button class="btn pri" type="button" data-wpasar="${esc(c.tel)}" style="margin-top:10px">Pasar a Pedidos</button>`}</div>`:''}
@@ -1728,6 +1729,46 @@ function waDlgPegar(d,txt){
   <div class="row full"><button class="btn pri" type="submit">Guardar el chat</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div></form>`);
 }
 function waDlgTab(i){const t=waTabs()[i];dlgOpen(`<h2 style="margin:0 0 10px">Editar tablero</h2><form id="waFTab" class="form" data-i="${i}" autocomplete="off"><div class="full"><label>Nombre</label><input name="nombre" required maxlength="30" value="${esc(t.nombre)}"></div><div class="full"><label>Color</label><input name="color" type="color" value="${esc(t.color)}" style="height:44px;padding:3px"></div><div class="row full"><button class="btn pri" type="submit">Guardar</button><button class="btn del" type="button" id="waTabDel" data-i="${i}">Eliminar</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div></form>`)}
+/* Crear pedido desde el chat: lee lo que escribió el cliente y llena el formulario */
+const WA_CIUDADES=['Lima','Arequipa','Cusco','Trujillo','Chiclayo','Piura','Iquitos','Huancayo','Tacna','Puno','Ayacucho','Cajamarca','Pucallpa','Chimbote','Ica','Juliaca','Huaraz','Tarapoto','Moyobamba','Tumbes','Talara','Sullana','Lambayeque','Huanuco','Abancay','Moquegua','Ilo','Callao','Barranca','Huacho','Chincha','Pisco','Jaen','Bagua','Cerro de Pasco','Puerto Maldonado','Tingo Maria','Yurimaguas','Paita','Catacaos','Cañete','Huaral','Satipo','Salaverry','Huamachuco','Chepen','Pacasmayo'];
+const WA_AGENCIAS=['olva','shalom','marvisur','cruz del sur','ormeno','civa','movil bus','flores','itsa','tepsa','turismo','linea','cial','excluciva'];
+function waExtraerChat(msgs,c){
+  const cli=msgs.filter(m=>!m.mio&&m.texto).slice(-40).map(m=>m.texto),txt=cli.join('\n'),d=waParsear(txt),low=waNrm(txt);
+  d.tel=c.tel;
+  if(!d.nombre&&c.nombre&&!/^\+?\d/.test(c.nombre)&&c.nombre!=='Sin nombre'&&c.nombre!=='Grupo')d.nombre=c.nombre;
+  if(!d.cantidad){const m=low.match(/\b(\d{1,3})\s*(polos?|poleras?|prendas?|unidades?|und|pzs?|piezas?)\b/);if(m)d.cantidad=m[1]}
+  if(!d.dni){const m=txt.match(/(?<![\d])\d{8}(?![\d])/);if(m)d.dni=m[0]}
+  if(!d.ciudad){const ci=WA_CIUDADES.find(x=>new RegExp('\\b'+waNrm(x)+'\\b').test(low));if(ci)d.ciudad=ci;else{const m=txt.match(/\b(?:soy de|vivo en|estoy en|envio a|enviar a|envíen a|desde)\s+([A-ZÁÉÍÓÚÑ][\p{L}]+(?:\s+[A-ZÁÉÍÓÚÑ][\p{L}]+)?)/u);if(m)d.ciudad=m[1]}}
+  if(!d.agencia){const ag=WA_AGENCIAS.find(x=>new RegExp('\\b'+x+'\\b').test(low));if(ag)d.agencia=ag.charAt(0).toUpperCase()+ag.slice(1)}
+  if(!d.talla){const m=low.match(/\btalla\s*:?\s*(xxxl|xxl|xl|xs|s|m|l|\d{2})\b/)||txt.match(/(?:^|[\s,(])(XXXL|XXL|XL|XS)(?=$|[\s,.)])/);if(m)d.talla=m[1].toUpperCase()}
+  // colores: se buscan los que existen en tu inventario
+  if(!d.color){
+    const base=x=>waNrm(x).replace(/\b(cuello|redondo|manga|doblada|corta|larga|v|bb)\b/g,'').replace(/\s+/g,' ').trim().split(' ').filter(w=>w.length>=3);
+    const esta=w=>new RegExp('(^|[^a-z])'+w+'([^a-z]|$)').test(low);
+    const cols=[...new Set(S.inventory.filter(i=>i.tipo==='prenda').map(i=>String(i.color||'').trim()).filter(Boolean))].map(cn=>{const ws=base(cn),n=ws.filter(esta).length;return {cn,ws,n,full:ws.length>0&&n===ws.length}});
+    let hall=cols.filter(x=>x.full).map(x=>x.cn);if(!hall.length)hall=cols.filter(x=>x.n>0).map(x=>x.cn);
+    if(hall.length)d.color=hall.join(', ');
+  }
+  // producto del inventario: por cuello (V o redondo) o el único que exista
+  const gr=[...invGroups().entries()];let key='';
+  if(gr.length===1)key=gr[0][0];
+  else{const sc=gr.map(([k,v])=>{const cu=waNrm(v[0].cuello||'');let p=0;if(cu&&cu.length>1&&new RegExp('\\b'+cu.split(' ')[0]+'\\b').test(low))p=2;if(/(^| )v( |$)/.test(cu)&&/\bcuello\s*v\b|\bpolo\s*v\b/.test(low))p=3;return [k,p]}).sort((a,b)=>b[1]-a[1]);if(sc[0]&&sc[0][1]>0&&(!sc[1]||sc[1][1]<sc[0][1]))key=sc[0][0]}
+  // cliente que repite: ciudad y notas del último pedido
+  const ult=S.orders.filter(o=>waNumber(o.telefono)===c.tel).sort((x,y)=>String(y.fecha).localeCompare(String(x.fecha)))[0];
+  if(ult){if(!d.ciudad&&ult.ciudad)d.ciudad=ult.ciudad;if(ult.notas)d.notasPrev=ult.notas}
+  return {d,key,leidos:cli.length,txt};
+}
+async function waCrearPedido(tel){
+  const c=waLista().find(x=>x.tel===tel);if(!c)return;
+  if(!(ui.waConn&&ui.waConn.estado==='conectado')){toast('Primero conecta tu WhatsApp para leer el chat.');return}
+  const b=document.querySelector('[data-wcrear="'+tel+'"]');if(b){b.disabled=true;b.textContent='Leyendo el chat…'}
+  try{await waCargarMsgs(tel)}catch(e){}
+  if(b){b.disabled=false;b.textContent='⚡ Crear pedido desde este chat'}
+  const msgs=(ui.waMsgs||{})[tel]||[],R=waExtraerChat(msgs,c);
+  showTab('ped');resetPed();pedMostrarForm(true);
+  $('#p-pegar').value=R.txt;   // se muestra lo que se leyó del chat
+  pedAplicarDatos(R.d,{producto:R.key,origen:`Leí ${R.leidos} mensaje(s) del chat y llené`});
+}
 function waPasarAPedidos(c){
   const d=c.datos||{};showTab('ped');
   const set=(n,v)=>{if(v!=null&&v!==''&&pf[n]){pf[n].value=v;pf[n].dispatchEvent(new Event('input',{bubbles:true}))}};
@@ -1776,6 +1817,7 @@ document.addEventListener('click',e=>{
   if(D.wabrir){waSet(D.wabrir,'at',Date.now());setTimeout(waCabecera,50);return}
   if(D.wsend){const c=waLista().find(x=>x.tel===D.wsend);if(!c)return;const tx=document.querySelector('[data-wtx="'+D.wsend+'"]').value,u=waLink(c.tel,tx);window.open(u,'_blank','noopener');waSet(c.tel,'at',Date.now());waChats();toast('Abriendo WhatsApp… marqué a '+c.nombre+' como contactado');return}
   if(D.wcopy){tiCopiar(document.querySelector('[data-wtx="'+D.wcopy+'"]').value);return}
+  if(D.wcrear){waCrearPedido(D.wcrear);return}
   if(D.wpasar){const c=waLista().find(x=>x.tel===D.wpasar);if(c)waPasarAPedidos(c);return}
   if(D.kdel){ask('¿Quitar este chat de la lista?',()=>{S.settings.waContactos=(S.settings.waContactos||[]).filter(x=>x.id!==D.kdel);ui.waSel='';save();waRefrescar()});return}
   if(D.tbmv){const [i,d]=D.tbmv.split(':').map(Number),l=waTabs(),j=i+d;if(j<0||j>=l.length)return;[l[i],l[j]]=[l[j],l[i]];save();waTableros();return}
@@ -2267,16 +2309,24 @@ pf.telefono.addEventListener('input',syncWaForm);pf.cliente.addEventListener('in
 /* Reconocer datos pegados: llena el formulario solo */
 function pedReconocer(){
   const t=$('#p-pegar').value,res=$('#pegarRes');if(!t.trim()){res.hidden=true;return}
-  const d=waParsear(t),ok=[];
+  pedAplicarDatos(waParsear(t));
+}
+function pedAplicarDatos(d,op){
+  op=op||{};const res=$('#pegarRes'),ok=[];
   const set=(n,v,et)=>{if(v!=null&&v!==''&&pf[n]){pf[n].value=v;['input','change'].forEach(ev=>pf[n].dispatchEvent(new Event(ev,{bubbles:true})));ok.push(et)}};
+  if(op.producto&&invGroups().has(op.producto)&&pig.value!==op.producto){ui.pedProds=[op.producto];pig.value=op.producto;ui.pedQty={};ui.pedSelX={};invFromGroup();ok.push('Producto')}
   set('cliente',d.nombre,'Cliente');set('telefono',d.tel,'Celular');set('ciudad',d.ciudad,'Ciudad');
   if(!pig.value)set('producto',d.producto,'Producto');
   set('talla',d.talla,'Talla');set('color',d.color,'Color');
   if(d.cantidad&&!pf.cantidad.readOnly){const q=Math.max(1,parseInt(d.cantidad)||1);set('cantidad',q,'Cantidad')}
-  const nota=[d.dni&&'DNI '+d.dni,d.direccion&&'Dirección: '+d.direccion,d.agencia&&'Agencia: '+d.agencia,d.referencia&&'Ref.: '+d.referencia].filter(Boolean).join(' · ');
+  let nota=[d.dni&&'DNI '+d.dni,d.direccion&&'Dirección: '+d.direccion,d.agencia&&'Agencia: '+d.agencia,d.referencia&&'Ref.: '+d.referencia].filter(Boolean).join(' · ');
+  if(!nota&&d.notasPrev)nota=d.notasPrev;
   if(nota){pf.notas.value=nota;ok.push('Notas')}
+  // varios colores: reparte la cantidad pedida entre ellos
+  if(ui.pedMulti&&ui.pedMulti.length>1&&d.cantidad){const q=Math.max(1,parseInt(d.cantidad)||1),k=ui.pedMulti.length;if(q>=k){ui.pedQty={};ui.pedMulti.forEach((id,i)=>{ui.pedQty[id]=Math.floor(q/k)+(i<q%k?1:0)});invRefresh();ok.push('Cantidad por color')}}
   res.hidden=false;
-  res.innerHTML=ok.length?`✅ Reconocí y llené: <b>${ok.join(', ')}</b>.${d.nombre&&d.tel?'':` Falta: <b>${[!d.nombre&&'nombre',!d.tel&&'celular'].filter(Boolean).join(' y ')}</b>.`} Revisa y toca «Guardar pedido».`:'No reconocí datos. Escribe en líneas como <b>Nombre: Ana</b>, <b>Celular: 999 111 222</b>, <b>Ciudad: Lima</b>.';
+  const falta=[!d.nombre&&'nombre',!d.tel&&'celular'].filter(Boolean);
+  res.innerHTML=ok.length?`✅ ${op.origen||'Reconocí y llené'}: <b>${ok.join(', ')}</b>.${falta.length?` Falta: <b>${falta.join(' y ')}</b>.`:''} Revisa y toca «Guardar pedido».`:'No reconocí datos. Escribe en líneas como <b>Nombre: Ana</b>, <b>Celular: 999 111 222</b>, <b>Ciudad: Lima</b>.';
 }
 {let t;$('#p-pegar').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(pedReconocer,350)})}
 function pedMostrarForm(v=true){const c=$('#pedCard');if(c)c.hidden=!v;if(v){c.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{try{pf.cliente.focus({preventScroll:true})}catch(e){}},300)}}
