@@ -60,6 +60,10 @@
       "destination": "/api/pedidos?ruta=wk-servidor"
     },
     {
+      "source": "/.well-known/openid-configuration",
+      "destination": "/api/pedidos?ruta=wk-openid"
+    },
+    {
       "source": "/oauth/register",
       "destination": "/api/pedidos?ruta=oauth/register"
     },

@@ -7,7 +7,8 @@ export default async function handler(req, res) {
   const query = Object.fromEntries(url.searchParams);
   const ruta = query.ruta || url.pathname.replace(/^\/api\//, '');
   delete query.ruta;
-  const rawBody = req.method === 'POST' ? (typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {})) : '';
+  const form = String(req.headers['content-type'] || '').includes('x-www-form-urlencoded');
+  const rawBody = req.method === 'POST' ? (typeof req.body === 'string' ? req.body : form ? new URLSearchParams(req.body || {}).toString() : JSON.stringify(req.body || {})) : '';
   const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || (req.socket && req.socket.remoteAddress) || '?';
   const origen = 'https://' + (req.headers['x-forwarded-host'] || req.headers.host || '');
   const r = await handle({ method: req.method, ruta, query, headers: req.headers, rawBody, ip, origen });

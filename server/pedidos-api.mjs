@@ -223,14 +223,14 @@ export async function handle({ method, ruta, query = {}, headers = {}, rawBody =
     if (!cuentaServicio()) return res(503, { ok: false, error: { codigo: 'no_configurado', mensaje: 'El servidor no tiene FIREBASE_SERVICE_ACCOUNT.' } });
     if (limite(golpes, 'ip:' + ip, 90)) throw new ErrorApi(429, 'limite', 'Demasiadas solicitudes. Espera un minuto.');
     if (ruta === 'wk-recurso') return res(200, oauth.metadatosRecurso(origen));
-    if (ruta === 'wk-servidor') return res(200, oauth.metadatosServidor(origen));
+    if (ruta === 'wk-servidor' || ruta === 'wk-openid') return res(200, oauth.metadatosServidor(origen));
     if (ruta.startsWith('oauth/')) {
       if (method !== 'POST') return res(405, { error: 'metodo' }, { allow: 'POST, OPTIONS' });
       if (limite(golpes, 'oa:' + ip, 40)) return res(429, { error: 'slow_down', error_description: 'Demasiadas solicitudes.' });
       if (rawBody.length > MAX_BYTES) return res(413, { error: 'invalid_request' });
       let p = {};
       const ct = String((headers['content-type'] || '')).toLowerCase();
-      try { p = ct.includes('json') ? JSON.parse(rawBody || '{}') : Object.fromEntries(new URLSearchParams(rawBody)); } catch { return res(400, { error: 'invalid_request' }); }
+      try { p = /^\s*\{/.test(rawBody) || ct.includes('json') ? JSON.parse(rawBody || '{}') : Object.fromEntries(new URLSearchParams(rawBody)); } catch { return res(400, { error: 'invalid_request' }); }
       let r;
       if (ruta === 'oauth/register') r = oauth.registrar(p);
       else if (ruta === 'oauth/token') r = await oauth.token(p);
