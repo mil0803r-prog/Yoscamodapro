@@ -17,6 +17,27 @@
 <script type="module" src="firebase-boot.js"></script>
 <script>
 (function(){
+  var el=document.documentElement,pide=el.requestFullscreen||el.webkitRequestFullscreen;
+  var activa=function(){return !!(document.fullscreenElement||document.webkitFullscreenElement)};
+  var pref=function(){try{return localStorage.getItem('yosca_fs')==='1'}catch(e){return false}};
+  function entrar(){if(activa()||!pide)return;try{var r=pide.call(el,{navigationUI:'hide'});if(r&&r.catch)r.catch(function(){})}catch(e){}}
+  function salir(){var f=document.exitFullscreen||document.webkitExitFullscreen;if(activa()&&f)try{f.call(document)}catch(e){}}
+  function pintar(){var c=document.getElementById('fsCard');if(!c)return;
+    if(!pide||matchMedia('(display-mode: standalone)').matches||navigator.standalone===true){c.hidden=true;return}
+    c.hidden=false;document.getElementById('fsAuto').checked=pref();document.getElementById('fsBtn').textContent=activa()?'Salir de pantalla completa':'Poner pantalla completa ahora'}
+  document.addEventListener('click',function(e){var t=e.target;
+    if(t&&t.id==='fsBtn'){activa()?salir():entrar();setTimeout(pintar,300);return}
+    if(t&&t.id==='fsAuto'){try{localStorage.setItem('yosca_fs',t.checked?'1':'0')}catch(x){}return}
+  });
+  // Los navegadores exigen un toque del usuario: se activa con el primer toque si así lo elegiste
+  var uno=function(){if(pref())entrar();document.removeEventListener('pointerup',uno,true)};
+  document.addEventListener('pointerup',uno,true);
+  document.addEventListener('fullscreenchange',pintar);document.addEventListener('webkitfullscreenchange',pintar);
+  addEventListener('load',function(){setTimeout(pintar,900)});
+})();
+</script>
+<script>
+(function(){
   var ev=null,card=function(){return document.getElementById('instCard')};
   var standalone=function(){return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true};
   function mostrar(){var c=card();if(!c)return;if(standalone()){c.hidden=true;return}
@@ -664,6 +685,12 @@ summary{cursor:pointer}
         <h2>📲 Instalar como app</h2>
         <p class="sub" id="instTxt">Instálala en tu celular para usarla a pantalla completa, sin la barra del navegador.</p>
         <div class="row" style="margin-top:8px"><button class="btn pri" type="button" id="instBtn">Instalar app</button></div>
+      </div>
+      <div class="card" id="fsCard" hidden style="margin-bottom:14px">
+        <h2>🖥️ Pantalla completa (sin instalar nada)</h2>
+        <p class="sub">Oculta la barra del navegador y usa toda la pantalla, como una app. Funciona directo desde la página web. Para salir, desliza desde arriba o usa el gesto de atrás.</p>
+        <label style="display:flex;gap:8px;align-items:center;margin:8px 0;font-size:14px"><input type="checkbox" id="fsAuto" style="width:auto;min-height:0"> Activarla sola cada vez que abra la página</label>
+        <div class="row"><button class="btn pri" type="button" id="fsBtn">Poner pantalla completa ahora</button></div>
       </div>
       <div class="card" id="accCard" hidden style="margin-bottom:14px">
         <h2>Mi cuenta</h2>
