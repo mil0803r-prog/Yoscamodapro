@@ -1006,6 +1006,7 @@ async function connectFirebase(){
       hideLogin();renderAccount();pintarNav();
       attachDb(fsAdapter(YoscaFB.store(u.uid)),{migrate:true});
       connectAi();equipoIniciar();waHookIniciar();integIniciar();entrantesIniciar();
+      setTimeout(herrAvisar,2500);
       if(/[?&]ir=pedidos/.test(location.search))setTimeout(()=>showTab('ped'),700);
       if(/[?&]ir=integ/.test(location.search))setTimeout(()=>showTab('integ'),700);
     }else{renderAccount();accEntrar(u)}
@@ -1065,11 +1066,16 @@ function equipoIniciar(){
   accUnsub.push(YoscaFB.acc.listaAcceso(l=>{ui.eqAcc=l.sort((x,y)=>String(x.email).localeCompare(String(y.email)));if(ui.tab==='equipo')renderEquipo()},()=>{}));
 }
 const NIV_TXT={no:'Sin acceso',ver:'Solo ver',editar:'Ver y editar'};
-const eqResumen=p=>{const l=Object.keys(SEC_NOM).filter(k=>p&&(p[k]==='ver'||p[k]==='editar')).map(k=>SEC_NOM[k]+(p[k]==='ver'?' (ver)':''));return l.length?l.join(' · '):'Ningún permiso'};
+const eqResumen=p=>{const l=Object.keys(SEC_NOM).filter(k=>p&&(p[k]==='ver'||p[k]==='editar')).map(k=>SEC_NOM[k]+(p[k]==='ver'?' (ver)':''));const h=Object.keys(HERRAMIENTAS).filter(k=>p&&p[k]==='editar').map(k=>'🆕 '+HERRAMIENTAS[k][0]);const t=[...l,...h];return t.length?t.join(' · '):'Ningún permiso'};
 function renderEquipo(){
   const el=$('#v-equipo');if(!puedeTienda()){el.innerHTML='';return}
   const sol=ui.eqSol||[],ac=ui.eqAcc||[];
+  herrMarcar();setTimeout(pintarNav,0);
   el.innerHTML=`<div class="card"><h2>Acceso privado</h2><p class="sub">Solo tú (${esc(TIENDA_EMAIL)}) ves esta sección y la Tienda. Nadie entra a los datos del taller hasta que tú lo apruebes aquí.</p></div>
+  <div class="card" style="margin-top:10px;border-color:var(--ac,#00a86b)"><div class="row sb"><h3>🆕 Herramientas nuevas</h3><span class="badge">${Object.keys(HERRAMIENTAS).length}</span></div>
+   <p class="sub">Cada mejora nueva aparece aquí. Tú decides a qué correos se las das; por defecto solo la tienes tú.</p>
+   ${Object.entries(HERRAMIENTAS).map(([k,h])=>{const q=ac.filter(x=>x.permisos&&x.permisos[k]==='editar');return `<div class="eq-fila"><div class="eq-info"><b>${esc(h[0])}</b><small>${esc(h[1])}</small><small>${q.length?'Acceso: '+q.map(x=>esc(x.email)).join(', '):'Solo tú (nadie más tiene acceso)'}</small></div><div class="row"><button class="btn sm pri" type="button" data-eqherr="${k}">Dar o quitar acceso…</button></div></div>`}).join('')}
+  </div>
   <div class="card" style="margin-top:10px"><div class="row sb"><h3>Solicitudes pendientes</h3><span class="badge">${sol.length}</span></div>
    ${sol.length?sol.map(x=>`<div class="eq-fila"><div class="eq-info"><b>${esc(x.nombre||x.email)}</b><small>${esc(x.email)} · ${esc(waHora(x.fecha))}</small></div><div class="row"><button class="btn sm pri" type="button" data-eq="aprobar" data-e="${esc(x.email)}">Aprobar…</button><button class="btn sm del" type="button" data-eq="rechazar" data-e="${esc(x.email)}">Rechazar</button></div></div>`).join(''):'<p class="hint">No hay solicitudes. Quien quiera entrar crea su cuenta, toca “Solicitar acceso” y aparece aquí.</p>'}
   </div>
@@ -1079,6 +1085,38 @@ function renderEquipo(){
   <div class="card" style="margin-top:10px"><h3>Dar acceso a un correo</h3><p class="sub">Escribe el correo de la persona (debe verificarlo al crear su cuenta) y elige qué puede ver.</p>
    <div class="row" style="margin-top:8px"><input id="eqMail" type="email" inputmode="email" placeholder="correo@ejemplo.com" style="flex:1 1 220px" aria-label="Correo de la persona"><button class="btn pri" type="button" data-eq="invitar">Elegir permisos…</button></div></div>`;
 }
+const herrVistas=()=>{try{return JSON.parse(localStorage.getItem('yosca_herr_vistas')||'[]')}catch(e){return[]}};
+const herrNuevas=()=>puedeTienda()?Object.keys(HERRAMIENTAS).filter(k=>!herrVistas().includes(k)):[];
+function herrMarcar(){if(ui.tab!=='equipo')return;try{localStorage.setItem('yosca_herr_vistas',JSON.stringify(Object.keys(HERRAMIENTAS)))}catch(e){}}
+function herrAvisar(){const n=herrNuevas();if(n.length)toast('🆕 Herramienta nueva: '+n.map(k=>HERRAMIENTAS[k][0]).join(', ')+'. Dale acceso a un correo en «Equipo».')}
+function eqHerrDialogo(k){
+  const h=HERRAMIENTAS[k];if(!h)return;ui.eqHerr=k;const ac=ui.eqAcc||[];
+  dlgOpen(`<h2 style="margin:0 0 4px">${esc(h[0])}</h2><p class="sub">${esc(h[1])}</p>
+  <div style="margin:10px 0">${ac.length?ac.map(x=>`<label style="display:flex;gap:8px;align-items:center;margin:7px 0;font-size:14px;color:var(--on)"><input type="checkbox" data-eqhp="${esc(x.email)}" ${x.permisos&&x.permisos[k]==='editar'?'checked':''} style="width:auto;min-height:0"><span>${esc(x.nombre||x.email)} <span class="hint">${esc(x.email)}${h[2]&&!x.propio?' · necesita base propia':''}</span></span></label>`).join(''):'<p class="hint">Aún no hay personas con acceso. Agrega un correo abajo.</p>'}</div>
+  <div class="f"><label for="eqhMail">Dar acceso a otro correo</label><input id="eqhMail" type="email" inputmode="email" placeholder="correo@ejemplo.com"></div>
+  <div class="row" style="margin-top:10px"><button class="btn pri" type="button" id="eqhGuardar">Guardar</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>`);
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest&&e.target.closest('[data-eqherr]');if(b&&puedeTienda()){eqHerrDialogo(b.dataset.eqherr);return}
+  if(!e.target.closest||!e.target.closest('#eqhGuardar')||!puedeTienda())return;
+  const k=ui.eqHerr,ac=ui.eqAcc||[];if(!k)return;let n=0;
+  try{
+    for(const c of document.querySelectorAll('#dlgBody [data-eqhp]')){
+      const x=ac.find(z=>z.email===c.dataset.eqhp);if(!x)continue;const tiene=!!(x.permisos&&x.permisos[k]==='editar');if(c.checked===tiene)continue;
+      const pm={...(x.permisos||{})};if(c.checked)pm[k]='editar';else delete pm[k];
+      await YoscaFB.acc.guardar(x.email,limpio({...x,permisos:pm,fecha:Date.now()}));n++;
+    }
+    const em=String(($('#eqhMail')||{}).value||'').trim().toLowerCase();
+    if(em){
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){toast('Ese correo no es válido');return}
+      const x=ac.find(z=>z.email===em);
+      if(x){const pm={...(x.permisos||{}),[k]:'editar'};await YoscaFB.acc.guardar(em,limpio({...x,permisos:pm,fecha:Date.now()}))}
+      else await YoscaFB.acc.guardar(em,limpio({email:em,nombre:'',estado:'activo',duenio:FB_USER.uid,propio:true,permisos:{[k]:'editar'},fecha:Date.now()}));
+      n++;
+    }
+    dlgClose();toast(n?'Acceso actualizado':'Sin cambios');
+  }catch(err){toast('No se pudo guardar el acceso')}
+});
 const EQ_PRESETS={ver:['Solo mirar todo',{dash:'ver',calc:'ver',ped:'ver',wa:'ver',inv:'ver',gas:'ver',proy:'ver'}],vend:['Vendedor',{ped:'editar',wa:'editar',inv:'editar'}],todo:['Todo editar',{dash:'editar',calc:'editar',ped:'editar',wa:'editar',inv:'editar',gas:'editar',proy:'editar'}]};
 function eqDialogo(email,nombre,base,propio=true){
   ui.eqCur={email,nombre};
@@ -1316,7 +1354,7 @@ const nivelSec=t=>{
 const esMiembro=()=>FB_MODE&&ACC.rol==='miembro'&&!ACC.propio;   // con base propia trabaja como dueño de sus datos
 function pestanas(){
   let t=TABS.filter(x=>nivelSec(x[0])!=='no');
-  if(puedeTienda()){const n=(ui.eqSol||[]).length;t=[...t,['tienda','Tienda','store'],['equipo','Equipo'+(n?' ('+n+')':''),'users']]}
+  if(puedeTienda()){const n=(ui.eqSol||[]).length;t=[...t,['tienda','Tienda','store'],['equipo','Equipo'+(n?' ('+n+')':'')+(herrNuevas().length?' 🆕':''),'users']]}
   if(puedeHerr('integ')){t.push(['integ','Integraciones','spark']);const ne=(ui.entrantes||[]).length;if(ne){const i=t.findIndex(x=>x[0]==='ped');if(i>=0)t[i]=[t[i][0],t[i][1]+' ('+ne+')',t[i][2]]}}
   return t;
 }
