@@ -12,8 +12,8 @@ button{width:100%;padding:12px;margin-top:8px;border:0;border-radius:10px;backgr
 button.s{background:transparent;color:var(--tx);border:1px solid var(--bd)}
 .e{color:#c0392b;font-size:.9rem;min-height:1.2em}ul{color:var(--mu);padding-left:20px}
 </style></head><body><div class="c" id="app"><p>Cargando…</p></div>
-<script src="firebase-config.js"></script>
-<script type="module" src="firebase-boot.js"></script>
+<script src="/firebase-config.js"></script>
+<script type="module" src="/firebase-boot.js"></script>
 <script>
 (function(){
   var q=new URLSearchParams(location.search), app=document.getElementById('app');
@@ -21,7 +21,7 @@ button.s{background:transparent;color:var(--tx);border:1px solid var(--bd)}
   var cn='Un asistente de IA';
   try{var pl=JSON.parse(atob(String(q.get('client_id')||'').split('.')[0].replace(/-/g,'+').replace(/_/g,'/')));if(pl&&pl.n)cn=pl.n}catch(e){}
   if(q.get('response_type')!=='code'||!q.get('client_id')||!q.get('redirect_uri')||!q.get('code_challenge')){app.innerHTML='<h1>Solicitud inválida</h1><p>Vuelve a la IA e inténtalo de nuevo.</p>';return}
-  function esperar(n){ if(window.YoscaFB) return iniciar(); if(n>80){app.innerHTML='<h1>No se pudo cargar el inicio de sesión</h1>';return} setTimeout(function(){esperar(n+1)},100) }
+  function esperar(n){ if(window.YoscaFB) return iniciar(); if(n>300){app.innerHTML='<h1>No se pudo cargar el inicio de sesión</h1>';return} setTimeout(function(){esperar(n+1)},100) }
   function login(msg){
     app.innerHTML='<h1>Conectar '+esc(cn)+'</h1><p>Inicia sesión con la cuenta administradora de Yosca Moda para permitir el acceso.</p>'+
       '<button id="g">Entrar con Google</button><p style="text-align:center;margin:10px 0">o</p>'+
