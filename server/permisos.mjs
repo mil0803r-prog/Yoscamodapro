@@ -2,7 +2,7 @@
 // (Equipo y permisos → «Herramientas nuevas»). Para añadir otra herramienta: sumarla aquí y en HERRAMIENTAS (index.html).
 import { leerDoc } from './fs-admin.mjs';
 
-export const HERRAMIENTAS = ['integ', 'ped_ia'];
+export const HERRAMIENTAS = ['integ', 'ped_ia', 'editor_tienda'];
 const EXIGEN_BASE_PROPIA = ['integ'];   // las que guardan datos propios (claves, pedidos entrantes)
 const admins = () => String(process.env.ADMIN_EMAILS || process.env.LEER_EMAILS || 'mil0803r@gmail.com').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
 const cache = new Map();

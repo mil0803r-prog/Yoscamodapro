@@ -1341,13 +1341,14 @@ const puedeTienda=()=>!!(FB_USER&&String(FB_USER.email||'').toLowerCase()===TIEN
 let ACC={rol:'',permisos:{},duenio:''},accUnsub=[];
 const SEC_NOM={dash:'Dashboard',calc:'Calculadora',ped:'Pedidos',wa:'WhatsApp',inv:'Inventario',gas:'Gastos',proy:'Proyección'};
 /* Herramientas nuevas: cada mejora se activa por correo en «Equipo y permisos». Para añadir una: sumarla aquí y en server/permisos.mjs */
-const HERRAMIENTAS={integ:['Integraciones','Conectar ChatGPT/Claude con tu inicio de sesión, claves, pedidos entrantes y avisos. Exige base propia.',true],ped_ia:['Pedidos con IA','Pegar texto, dictar por voz, leer capturas y comprobantes de pago, clientes recurrentes y «Crear pedido desde este chat».',false]};
+const HERRAMIENTAS={integ:['Integraciones','Conectar ChatGPT/Claude con tu inicio de sesión, claves, pedidos entrantes y avisos. Exige base propia.',true],editor_tienda:['Editor de tienda','Editar la tienda tocando la vista previa: al tocar una parte se abre su sección y se resalta, con guía y diseño renovado para celular y PC. Ven solo el Editor; el dominio y la nube siguen siendo solo tuyos.',false],ped_ia:['Pedidos con IA','Pegar texto, dictar por voz, leer capturas y comprobantes de pago, clientes recurrentes y «Crear pedido desde este chat».',false]};
 const puedeHerr=k=>{if(puedeTienda())return true;const h=HERRAMIENTAS[k];return !!(h&&FB_MODE&&FB_USER&&FB_USER.emailVerified&&ACC.rol==='miembro'&&ACC.permisos&&ACC.permisos[k]==='editar'&&(!h[2]||ACC.propio))};
 const datosUid=()=>ACC.rol==='miembro'?ACC.duenio:FB_USER.uid;
 const nivelSec=t=>{
   if(!FB_MODE||!FB_USER||ACC.rol==='admin'||puedeTienda())return 'editar';
   if(t==='integ')return puedeHerr('integ')?'editar':'no';
   if(t==='set')return ACC.propio?'editar':'ver';
+  if(t==='tienda'&&puedeHerr('editor_tienda'))return 'editar';
   if(t==='tienda'||t==='equipo')return 'no';
   const v=ACC.permisos&&ACC.permisos[t];return v==='ver'||v==='editar'?v:'no';
 };
@@ -1355,6 +1356,7 @@ const esMiembro=()=>FB_MODE&&ACC.rol==='miembro'&&!ACC.propio;   // con base pro
 function pestanas(){
   let t=TABS.filter(x=>nivelSec(x[0])!=='no');
   if(puedeTienda()){const n=(ui.eqSol||[]).length;t=[...t,['tienda','Tienda','store'],['equipo','Equipo'+(n?' ('+n+')':'')+(herrNuevas().length?' 🆕':''),'users']]}
+  else if(puedeHerr('editor_tienda'))t=[...t,['tienda','Tienda','store']];
   if(puedeHerr('integ')){t.push(['integ','Integraciones','spark']);const ne=(ui.entrantes||[]).length;if(ne){const i=t.findIndex(x=>x[0]==='ped');if(i>=0)t[i]=[t[i][0],t[i][1]+' ('+ne+')',t[i][2]]}}
   return t;
 }
@@ -1512,12 +1514,14 @@ function tiAyuda(){
   ${q('¿Cómo cambio algo y se ve en mi dominio?','Con la <b>nube conectada</b>: editas en la pestaña Editor → <b>Guardar cambios</b> y se ve al instante. Sin la nube: <b>Descargar datos.js</b>, reemplázalo en <code>tienda/datos.js</code> del repositorio y Vercel actualiza solo.')}
   ${q('Usé www y sin www, ¿cuál es el principal?','Los dos funcionan. En Vercel (Settings → Domains) puedes elegir que uno redirija al otro.')}
   ${q('¿Puedo usar un subdominio?','Sí, por ejemplo <b>tienda.tudominio.com</b>. Solo necesitas un registro CNAME; la pestaña Dominio te lo muestra.')}
-  ${q('¿Quién puede ver el editor?','El editor solo aparece en este panel con tu cuenta. El dominio de la tienda <b>no</b> sirve el editor.')}
+  ${q('¿Quién puede ver el editor?','El editor solo aparece en este panel con tu cuenta, y con los correos a los que des acceso en <b>Equipo → Herramientas nuevas → Editor de tienda</b> (ven solo el Editor). El dominio de la tienda <b>no</b> sirve el editor.')}
   ${q('Cambié de dominio','Escribe el nuevo en la pestaña Dominio, agrégalo en Vercel y borra el anterior desde Settings → Domains.')}</div>`;
 }
 function renderTienda(){
-  if(!puedeTienda())return;
-  const f=$('#tiendaFrame');if(f&&puedeTienda()&&!f.getAttribute('src'))f.setAttribute('src','tienda/editor.html');
+  const adm=puedeTienda();if(!adm&&!puedeHerr('editor_tienda'))return;
+  const f=$('#tiendaFrame');if(f&&!f.getAttribute('src'))f.setAttribute('src','tienda/editor.html');
+  /* Con el permiso «Editor de tienda» (sin ser administrador) solo se ve el Editor: nada de dominio, nube ni ayuda */
+  if(!adm){ui.tiTab='editor';$('#tiHead').innerHTML='';$('#tiBody').innerHTML='';$('#tiEditor').hidden=false;const v=$('#tiVer');if(v)v.href='tienda/index.html';return}
   if(!ui.tiTab)ui.tiTab='editor';
   const act=document.activeElement;if(act&&act.closest&&act.closest('#v-tienda')&&act.matches('input,textarea')&&$('#tiHead').innerHTML)return;
   tiCabecera();
