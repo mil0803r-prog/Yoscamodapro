@@ -5,7 +5,8 @@ html,body{height:100%}
 body{font-family:"Jost",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--tinta);background:var(--bg);display:flex;flex-direction:column;font-size:14.5px}
 button{font-family:inherit}
 /* ---- barra superior ---- */
-header{background:#fff;border-bottom:1px solid var(--borde);padding:9px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header{background:#fff;border-bottom:1px solid var(--borde);padding:9px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:relative;z-index:5}
+.lbl-cel{display:none}
 .marca{display:flex;align-items:center;gap:8px;flex:1;min-width:190px}
 .marca .lp{font-size:20px}
 .marca b{display:block;font-size:16px;line-height:1.1}.marca small{display:block;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--gris)}
@@ -14,10 +15,11 @@ header{background:#fff;border-bottom:1px solid var(--borde);padding:9px 16px;dis
 body.sucio #estado{color:#B45309;font-weight:600}body.sucio #estado i{background:#D97706}
 .bt{border:1px solid var(--borde);background:#fff;border-radius:8px;padding:8px 12px;font-size:13.5px;font-weight:500;cursor:pointer;color:var(--tinta);display:inline-flex;align-items:center;gap:6px;text-decoration:none}
 .bt:hover{background:#FBF7F2}
+.bt:focus-visible,nav button:focus-visible,.cab:focus-visible{outline:2px solid var(--terra);outline-offset:2px}
 .bt.pri{background:var(--cafe);border-color:var(--cafe);color:#fff;font-weight:600}.bt.pri:hover{background:#5d3323}
 .bt:disabled{opacity:.45;cursor:default}
 /* ---- 3 columnas ---- */
-#app{flex:1;min-height:0;display:grid;grid-template-columns:190px minmax(300px,430px) minmax(0,1fr)}
+#app{flex:1;min-height:0;display:grid;grid-template-columns:190px minmax(320px,460px) minmax(0,1fr)}
 nav{background:#fff;border-right:1px solid var(--borde);overflow-y:auto;padding:12px 8px 8px;display:flex;flex-direction:column;min-width:0}
 nav .gr{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:#A89A91;padding:12px 10px 6px;font-weight:600}
 nav button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:9px 10px;border-radius:8px;font-size:14px;color:var(--tinta);cursor:pointer;text-align:left}
@@ -52,6 +54,7 @@ input.mal{border-color:#C62828;background:#FFF5F5}
 .fila.oculta .cab{opacity:.55}
 .cab{display:flex;align-items:center;gap:11px;padding:9px 12px;cursor:pointer;width:100%;border:0;background:none;text-align:left}
 .th{width:42px;height:50px;border-radius:7px;background-size:cover;background-position:center top;border:1px solid var(--borde);flex:none}
+.cab{touch-action:manipulation}
 .nm{flex:1;min-width:0}.nm b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nm small{color:var(--gris);font-size:12px}
 .pr{text-align:right;flex:none}.pr b{display:block;font-size:14.5px}.pr s{color:var(--gris);font-size:12px;display:block}
 .ins{font-size:11.5px;border-radius:99px;padding:3px 9px;font-weight:600;flex:none}
@@ -106,19 +109,55 @@ body.soloprevia #app{grid-template-columns:0 0 1fr}body.soloprevia nav,body.solo
  body.soloprevia #app{grid-template-columns:1fr}body.soloprevia #lienzo{display:flex}
 }
 @media(max-width:700px){
+ body{font-size:15px}
+ /* cabecera en una sola fila */
+ header{padding:7px 10px;gap:6px;flex-wrap:nowrap}
+ .marca{min-width:0;flex:1;gap:6px}.marca>div{display:none}.marca .lp{font-size:18px;flex:none}.marca b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.marca small{display:none}
+ #estado{gap:0;flex:none}#contador{display:none}#estado i{width:10px;height:10px}
+ .bt{padding:0;width:40px;height:40px;justify-content:center;font-size:17px;border-radius:10px;flex:none}
+ .lbl,.lbl-pc{display:none}
+ .lbl-cel{display:inline}
+ .bt.pri{width:auto;padding:0 14px;font-size:14px}
+ body.soloprevia #btnPrev{width:auto;padding:0 12px;font-size:14px}body.soloprevia #btnPrev .lbl{display:inline}
+ /* menú de secciones */
  #app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr}
- nav{flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:6px;border-right:0;border-bottom:1px solid var(--borde);gap:4px}
- nav .gr,#conexion{display:none}nav button{width:auto;white-space:nowrap;flex:none}
- #editor{padding:16px 14px 80px}
+ nav{flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:6px;border-right:0;border-bottom:1px solid var(--borde);gap:4px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+ nav::-webkit-scrollbar{display:none}
+ nav .gr,#conexion{display:none}nav button{width:auto;white-space:nowrap;flex:none;padding:10px 12px;scroll-snap-align:center}
+ #editor{padding:16px 14px 90px}
+ #editor h2{font-size:22px}
  .g2{grid-template-columns:1fr}
+ /* campos cómodos para el dedo (16px evita el zoom del iPhone) */
+ input[type=text],input[type=number],input[type=email],input[type=password],input[type=search],textarea,select{font-size:16px;padding:11px 12px;min-height:46px}
+ .pre input{min-height:44px}
+ .f label,.etq{font-size:13px}
+ .sw{padding:8px 0;font-size:15px}
+ .sw i{width:46px;height:26px}.sw i::after{width:20px;height:20px}.sw input:checked+i::after{left:23px}
+ .selcolor input[type=color]{width:52px;height:46px}
+ .tallas{grid-template-columns:repeat(3,1fr)}
+ .card{padding:14px 12px}
+ .todos .bt{width:auto;padding:0 14px;height:44px;font-size:14px}
+ .barra input{font-size:16px}
+ /* fila de prenda: nombre completo, precio y estado debajo */
+ .cab{display:grid;grid-template-columns:46px minmax(0,1fr) auto;grid-template-areas:"th nm chev" "th pr ins";column-gap:11px;row-gap:3px;align-items:center;padding:10px 12px}
+ .cab .th{grid-area:th;width:46px;height:56px}
+ .cab .nm{grid-area:nm}.cab .nm b{white-space:normal;overflow:visible;line-height:1.2}
+ .cab .pr{grid-area:pr;text-align:left;display:flex;gap:8px;align-items:baseline}.cab .pr s{display:inline}
+ .cab .ins{grid-area:ins;justify-self:end}
+ .cab .chev{grid-area:chev;font-size:20px;padding:6px}
+ #toast{bottom:76px;max-width:90vw;text-align:center}
+ body.soloprevia #app{grid-template-rows:minmax(0,1fr)}
+ #lienzo[data-disp=cel] #vista iframe{width:100%;border:0;border-radius:0;box-shadow:none}
+ #disp button{padding:8px 11px}
 }
+@media(max-width:360px){.marca b{display:none}}
 </style><script>window.RUTA_FOTOS="./";</script><script src="./config.js"></script><script src="./datos.js"></script></head><body ><header>
 <div class="marca"><span class="lp">✏️</span><div><b>Editor de tu tienda</b><small id="subm">Tu tienda</small></div></div>
 <div id="estado"><i></i><span id="contador">Sin cambios</span></div>
-<button class="bt" id="btnPrev" type="button">👁 Vista previa</button>
-<a class="bt" id="btnAbrir" href="./index.html" target="_blank" rel="noopener">↗ Abrir tienda</a>
-<button class="bt" id="btnDeshacer" type="button" disabled>↶ Deshacer</button>
-<button class="bt pri" id="btnGuardar" type="button" disabled>💾 Guardar cambios</button>
+<button class="bt" id="btnPrev" type="button" aria-label="Vista previa">👁<span class="lbl"> Vista previa</span></button>
+<a class="bt" id="btnAbrir" href="./index.html" target="_blank" rel="noopener" aria-label="Abrir tienda">↗<span class="lbl"> Abrir tienda</span></a>
+<button class="bt" id="btnDeshacer" type="button" disabled aria-label="Deshacer">↶<span class="lbl"> Deshacer</span></button>
+<button class="bt pri" id="btnGuardar" type="button" disabled>💾 <span class="lbl-pc">Guardar cambios</span><span class="lbl-cel">Guardar</span></button>
 </header>
 <div id="app">
 <nav id="menu" aria-label="Secciones"></nav>
@@ -307,10 +346,12 @@ ed.addEventListener('click',e=>{
   if(e.target.id==='btnNube')guardarNube();
 });
 ed.addEventListener('input',e=>{if(e.target.id==='buscar'){const q=e.target.value.trim().toLowerCase();ed.querySelectorAll('.fila').forEach(f=>f.style.display=!q||f.dataset.q.includes(q)?'':'none')}});
-$('#menu').addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(b)irPagina(b.dataset.pg)});
+$('#menu').addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(b){irPagina(b.dataset.pg);const on=$('#menu .on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}});
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='s'){e.preventDefault();irPagina('publicar')}});
+window.addEventListener('beforeunload',e=>{if(JSON.stringify(D)!==BASE){e.preventDefault();e.returnValue=''}});
 $('#btnDeshacer').addEventListener('click',()=>{if(!pila.length)return;D=JSON.parse(pila.pop());dibujar();previa();estado()});
 $('#btnGuardar').addEventListener('click',()=>irPagina('publicar'));
-$('#btnPrev').addEventListener('click',()=>{const on=document.body.classList.toggle('soloprevia');$('#btnPrev').textContent=on?'✏️ Volver a editar':'👁 Vista previa';if(on)setTimeout(previa,50)});
+$('#btnPrev').addEventListener('click',()=>{const on=document.body.classList.toggle('soloprevia');$('#btnPrev').innerHTML=on?'✏️<span class="lbl"> Volver a editar</span>':'👁<span class="lbl"> Vista previa</span>';if(on)setTimeout(previa,50)});
 $('#disp').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#disp button').forEach(x=>x.classList.toggle('on',x===b));$('#lienzo').dataset.disp=b.dataset.d});
 if(window.FOTOS_PREVIA){const a=$('#btnAbrir');a.removeAttribute('href');a.addEventListener('click',()=>toast('En tu tienda real, este botón abre tu página.'))}
 function toast(t){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2400)}
