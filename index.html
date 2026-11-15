@@ -633,7 +633,7 @@ summary{cursor:pointer}
           <a class="btn sm" href="tienda/editor.html" target="_blank" rel="noopener">Editor en pantalla completa</a>
           <span class="hint" style="margin:0">Los cambios se ven al instante a la derecha. Toca <b>Guardar cambios</b> para publicarlos.</span>
         </div>
-        <iframe id="tiendaFrame" title="Editor de la tienda" style="width:100%;height:calc(100vh - 290px);min-height:540px;border:1px solid var(--line);border-radius:14px;background:#fff"></iframe>
+        <iframe id="tiendaFrame" title="Editor de la tienda" style="width:100%;height:calc(100vh - 215px);min-height:540px;border:1px solid var(--line);border-radius:14px;background:#fff"></iframe>
       </div>
     </section>
     <section id="v-set" hidden>
@@ -1415,8 +1415,8 @@ function tiCabecera(){
   const t=tiCfg(),i=tiInfo(t.dominio),n=tiNubeCfg();
   const dom=i?(t.verificado?`<span class="ti-chip ok">Dominio: ${esc(i.dom)} ✓</span>`:`<span class="ti-chip warn">Dominio: ${esc(i.dom)} · sin verificar</span>`):'<span class="ti-chip">Dominio: sin configurar</span>';
   const nube=n.url&&n.clave?'<span class="ti-chip ok">Nube conectada</span>':'<span class="ti-chip">Nube: sin conectar</span>';
-  $('#tiHead').innerHTML=`<div class="card"><div class="ti-top"><span class="ico">${icon('store')}</span><div style="flex:1;min-width:200px"><h2 style="margin:0">Tu tienda online</h2><p class="sub" style="margin:2px 0 0">Edítala, ponle tu propio dominio y conéctala a la nube. Solo lo ves tú.</p></div></div>
-    <div class="ti-chips">${dom}${nube}</div>
+  $('#tiHead').innerHTML=`<div class="card" style="padding:10px 14px 12px">
+    <div class="ti-chips" style="margin:0 0 8px">${dom}${nube}</div>
     <div class="seg" id="tiSeg" style="display:flex;width:100%">${TI_TABS.map(([k,l])=>`<button type="button" data-ti="${k}" class="${ui.tiTab===k?'on':''}" style="flex:1">${l}</button>`).join('')}</div></div>`;
 }
 function tiPaso(n,titulo,cuerpo,id){const t=tiCfg(),h=!!t.pasos[id];return `<div class="ti-step ${h?'hecho':''}"><span class="n">${h?'✓':n}</span><div class="c"><h4>${titulo}</h4>${cuerpo}<label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-weight:600;font-size:13px"><input type="checkbox" data-paso="${id}" ${h?'checked':''} style="width:auto"> Ya lo hice</label></div></div>`}
