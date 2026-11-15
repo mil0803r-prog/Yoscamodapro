@@ -1385,6 +1385,17 @@ function waEtqSet(tel,ids){(ui.waReciente=ui.waReciente||{})[tel]=Date.now();con
 const waEtqAdd=(tel,id)=>{const l=waEtqDe(tel);if(!l.includes(id))waEtqSet(tel,[...l,id])};
 const waEtqDel=(tel,id)=>waEtqSet(tel,waEtqDe(tel).filter(x=>x!==id));
 const waEtqMove=(tel,from,to)=>{let l=waEtqDe(tel);if(from&&from!=='_ninguna')l=l.filter(x=>x!==from);if(to&&to!=='_ninguna'&&!l.includes(to))l.push(to);waEtqSet(tel,l)};
+/* Al desvincular: se borra todo lo que venía de ese WhatsApp para que no se mezcle con otro número */
+function waLimpiarVinculo(){
+  ui.waConn={estado:'desconectado'};ui.waLive=[];ui.waMsgs={};ui.waDb=null;ui.waHook=null;ui.waSel=null;ui.waEtqOk=false;ui.waEtqN=0;ui.waEtqFuente='';
+  try{localStorage.removeItem('yosca_wa_live')}catch(e){}
+  const st=S.settings,conPedido=new Set(S.orders.map(o=>waNumber(o.telefono)).filter(Boolean));
+  st.waContactos=[];st.waDatos={};st.waCorte=Date.now();
+  // se quita lo del chat (notas, contacto, vínculo con etiquetas); solo se conserva el tablero de quien ya tiene pedidos, porque de eso dependen las ventas
+  const a=waAsig();Object.keys(a).forEach(tel=>{const r=a[tel];delete r.n;delete r.at;delete r.sl;if(!conPedido.has(tel)){delete a[tel]}else if(!Object.keys(r).length)delete a[tel]});
+  (st.waTableros||[]).forEach(t=>{delete t.lid});
+  save();
+}
 function waSet(tel,k,v){
   if(k==='e'||k==='t'){if(v===''||v==null||v==='_ninguna')waEtqSet(tel,[]);else waEtqAdd(tel,v);return}
   const a=waAsig();a[tel]=a[tel]||{};if(v===''||v==null)delete a[tel][k];else a[tel][k]=v;if(!Object.keys(a[tel]).length)delete a[tel];save();
@@ -1410,6 +1421,8 @@ async function waSyncEtq(){
     const antes=JSON.stringify(tabs),usados=new Set(),nuevos=[];
     L.forEach(l=>{const t=tabs.find(x=>x.lid===l.id&&!usados.has(x))||tabs.find(x=>!x.lid&&nm(x.nombre)===nm(l.nombre)&&!usados.has(x))||{id:uid()};
       t.lid=l.id;t.nombre=l.nombre;t.color=WA_COL[l.color%WA_COL.length]||'#64748B';usados.add(t);nuevos.push(t)});
+    // el tablero «Ya pagó» no se pierde aunque el WhatsApp nuevo no tenga esa etiqueta: de él dependen las ventas
+    const pag=tabs.find(esTabPagado);if(pag&&!nuevos.some(esTabPagado)){delete pag.lid;nuevos.push(pag)}
     const quedan=new Set(nuevos.map(t=>t.id));
     Object.values(waAsig()).forEach(a=>{if(a.t&&!quedan.has(a.t))delete a.t;if(Array.isArray(a.ts)){a.ts=a.ts.filter(i=>quedan.has(i));if(!a.ts.length)delete a.ts}if(Array.isArray(a.sl))a.sl=a.sl.filter(i=>quedan.has(i))});
     tabs.splice(0,tabs.length,...nuevos);
@@ -1421,7 +1434,8 @@ function waAplicarEtqChats(){
   const tabs=waTabs().filter(t=>t.lid),lid2id=new Map(tabs.map(t=>[t.lid,t.id])),id2lid=new Map(tabs.map(t=>[t.id,t.lid]));
   const cola=[];let ch=false;
   const live=new Map((ui.waLive||[]).map(x=>[x.tel,x])),hook=ui.waHook||new Map(),dbm=ui.waDb||new Map();
-  const tels=new Set([...dbm.keys(),...hook.keys(),...(ui.waLive||[]).filter(x=>x.conEtq).map(x=>x.tel)]);
+  const conPed=new Set(S.orders.map(o=>waNumber(o.telefono)).filter(Boolean)),ok=t=>live.has(t)||conPed.has(t);
+  const tels=new Set([...dbm.keys(),...hook.keys(),...(ui.waLive||[]).filter(x=>x.conEtq).map(x=>x.tel)].filter(ok));
   tels.forEach(tel=>{
     if(Date.now()-((ui.waReciente||{})[tel]||0)<25000)return;   // cambio recién hecho aquí: se espera a que WhatsApp lo refleje
     const x=live.get(tel)||{tel,jid:tel.endsWith('@g.us')?tel:tel+'@s.whatsapp.net'};
@@ -1447,7 +1461,7 @@ function waHookIniciar(){
   if(ui.waHookOn||!(window.YoscaFB&&YoscaFB.etq))return;ui.waHookOn=true;
   accUnsub.push(YoscaFB.etq(l=>{
     const m=new Map();ui.waHookUlt=null;
-    l.forEach(d=>{if(d.id==='_ultimo')ui.waHookUlt=d;else m.set(decodeURIComponent(d.id),d.ids)});
+    l.forEach(d=>{if(d.id==='_ultimo')ui.waHookUlt=d;else if(!(S.settings.waCorte&&d.at&&d.at<S.settings.waCorte))m.set(decodeURIComponent(d.id),d.ids)});
     ui.waHook=m;
     waAplicarEtqChats();
     if(ui.tab==='wa')waRender();else if(ui.tab==='ped')renderPed();
@@ -1503,6 +1517,8 @@ function waContactos(){
     if(!c.ult||String(o.fecha)>=String(c.ult.fecha)){c.ult=o;c.nombre=o.cliente||c.nombre}});
   (S.settings.waContactos||[]).forEach(x=>{const n=waNumber(x.tel);if(n&&!m.has(n))m.set(n,{tel:n,nombre:x.nombre||'Sin nombre',ped:0,total:0,ult:null,manual:true,id:x.id})});
   const lv=waLiveGet(),lm=new Map(lv.map(x=>[x.tel,x]));
+  // con WhatsApp conectado, la lista son SOLO los chats de ese número (así no se mezcla con otro WhatsApp)
+  if(ui.waConn&&ui.waConn.estado==='conectado'&&lv.length)[...m.keys()].forEach(k=>{if(!lm.has(k))m.delete(k)});
   m.forEach(c=>{const x=lm.get(c.tel);if(x){c.live=x;if(c.nombre==='Sin nombre'&&x.nombre)c.nombre=x.nombre}});
   lv.forEach(x=>{if(!x.tel||m.has(x.tel)||x.lid)return;if(!x.grupo&&!waNumber(x.tel))return;m.set(x.tel,{tel:x.tel,nombre:x.nombre||(x.grupo?'Grupo':'+'+x.tel),ped:0,total:0,ult:null,manual:false,live:x,grupo:!!x.grupo})});
   return [...m.values()];
@@ -1818,7 +1834,7 @@ document.addEventListener('click',e=>{
   if(D.wconfig){waDlgConfig();return}
   if(D.wsync){waSincronizar(true);return}
   if(D.wreint){ui.waConnTs=0;ui.waConn=null;waCabecera();waEstadoSrv();return}
-  if(D.wdesv){ask('¿Desvincular tu WhatsApp de esta plataforma? Tendrás que escanear el QR otra vez.',async()=>{try{await waApi('desvincular');ui.waConn={estado:'desconectado'};ui.waLive=[];try{localStorage.removeItem('yosca_wa_live')}catch(e){}waRender();toast('WhatsApp desvinculado')}catch(e){toast('No se pudo desvincular: '+(e.detalle||'error'))}});return}
+  if(D.wdesv){ask('¿Desvincular este WhatsApp? Se borrarán de aquí sus chats, contactos, notas y etiquetas. Tus pedidos NO se borran. Para volver tendrás que escanear el QR.',async()=>{try{await waApi('desvincular');waLimpiarVinculo();waRender();toast('WhatsApp desvinculado y contactos borrados')}catch(e){toast('No se pudo desvincular: '+(e.detalle||'error'))}});return}
   if(D.wapi){waEnviarApi(D.wapi);return}
   if(D.wsel&&!e.target.closest('select')){ui.waSel=D.wsel;ui.waTab='chats';renderWa();setTimeout(()=>waCargarMsgs(D.wsel),30);return}
   if(D.wabrir){waSet(D.wabrir,'at',Date.now());setTimeout(waCabecera,50);return}
