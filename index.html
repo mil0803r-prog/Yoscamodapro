@@ -1520,7 +1520,7 @@ function waContactos(){
   // con WhatsApp conectado, la lista son SOLO los chats de ese número (así no se mezcla con otro WhatsApp)
   if(ui.waConn&&ui.waConn.estado==='conectado'&&lv.length)[...m.keys()].forEach(k=>{if(!lm.has(k))m.delete(k)});
   m.forEach(c=>{const x=lm.get(c.tel);if(x){c.live=x;if(c.nombre==='Sin nombre'&&x.nombre)c.nombre=x.nombre}});
-  lv.forEach(x=>{if(!x.tel||m.has(x.tel)||x.lid)return;if(!x.grupo&&!waNumber(x.tel))return;m.set(x.tel,{tel:x.tel,nombre:x.nombre||(x.grupo?'Grupo':'+'+x.tel),ped:0,total:0,ult:null,manual:false,live:x,grupo:!!x.grupo})});
+  lv.forEach(x=>{if(!x.tel||m.has(x.tel))return;if(!x.grupo&&!x.lid&&!waNumber(x.tel))return;m.set(x.tel,{tel:x.tel,nombre:x.nombre||(x.grupo?'Grupo':'+'+x.tel),ped:0,total:0,ult:null,manual:false,live:x,grupo:!!x.grupo})});
   return [...m.values()];
 }
 function waLiveGet(){if(ui.waConn&&['desconectado','sin_instancia','conectando'].includes(ui.waConn.estado))return [];   // sin conexión no se muestran chats guardados de antes
@@ -1530,6 +1530,7 @@ function waLista(){
   return waContactos().map(c=>{const a=as[c.tel]||{};c.ts=waEtqDe(c.tel);c.t=c.ts[0]||'';c.n=a.n||'';c.at=a.at||0;c.datos=da[c.tel]||null;return c})
    .sort((x,y)=>((y.datos&&!y.ped)?1:0)-((x.datos&&!x.ped)?1:0)||waTs(y)-waTs(x)||x.nombre.localeCompare(y.nombre));
 }
+const waTelTxt=c=>c.grupo?'Grupo':(c.live&&c.live.lid)||/^l\d/.test(c.tel)?'Contacto sin número visible':'+'+c.tel;
 const waTs=c=>(c.live&&c.live.fecha)||(c.ult?Date.parse(c.ult.fecha):0)||0;
 function waHora(t){if(!t)return '';const d=new Date(t),h=new Date();return d.toDateString()===h.toDateString()?d.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):d.getDate()+'/'+(d.getMonth()+1)
 }
@@ -1569,7 +1570,7 @@ function waBanner(){
 function waFilaChat(c,sel,conSelect){
   const prev=c.n?c.n:c.live&&c.live.ultimo?c.live.ultimo:c.ult?waDetalle(c.ult)+' · '+(num(c.ult.cantidad)||1)+' u.':c.datos?'Datos del pedido listos':'Aún sin pedidos';
   return `<div class="wa2-row ${sel?'on':''}" draggable="true" data-tel="${esc(c.tel)}" ${conSelect?'':`data-wsel="${esc(c.tel)}" role="button" tabindex="0"`}>
-   ${c.live&&c.live.foto?`<img class="av av-img" src="${esc(c.live.foto)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-ini="${esc(waIni(c))}">`:`<span class="av">${esc(c.grupo?'👥':waIni(c))}</span>`}<div class="mid" ${conSelect?`data-wsel="${esc(c.tel)}"`:''}><div class="r1"><b>${esc(c.nombre)}</b><small>${c.live&&c.live.fecha?esc(waHora(c.live.fecha)):c.ult?esc(fechaCorta(c.ult.fecha)):''}</small></div><div class="r2">${c.grupo?'Grupo':'+'+esc(c.tel)}${c.live&&c.live.noLeidos?` <span class="badge" style="background:#25D366;color:#fff">${c.live.noLeidos}</span>`:''}</div><div class="r3">${esc(prev)}</div>
+   ${c.live&&c.live.foto?`<img class="av av-img" src="${esc(c.live.foto)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-ini="${esc(waIni(c))}">`:`<span class="av">${esc(c.grupo?'👥':waIni(c))}</span>`}<div class="mid" ${conSelect?`data-wsel="${esc(c.tel)}"`:''}><div class="r1"><b>${esc(c.nombre)}</b><small>${c.live&&c.live.fecha?esc(waHora(c.live.fecha)):c.ult?esc(fechaCorta(c.ult.fecha)):''}</small></div><div class="r2">${esc(waTelTxt(c))}${c.live&&c.live.noLeidos?` <span class="badge" style="background:#25D366;color:#fff">${c.live.noLeidos}</span>`:''}</div><div class="r3">${esc(prev)}</div>
    <div class="chips">${c.ult?`<span class="badge b-${esc(c.ult.estado)}">${esc(c.ult.estado)}</span>`:''}${c.ts.map(id=>`<span class="wa-chip" style="background:${esc(waColorT(id))}22;color:${esc(waColorT(id))}">${esc(waNomT(id))}</span>`).join('')}${c.at?'<span class="wa-chip ok">✓</span>':''}</div>
    ${conSelect?`<select data-wmover="${esc(c.tel)}" aria-label="Agregar etiqueta"><option value="">Agregar etiqueta…</option>${c.ts.length?'<option value="_ninguna">Quitar todas</option>':''}${waTabs().map(t=>`<option value="${esc(t.id)}" ${c.ts.includes(t.id)?'disabled':''}>${esc(t.nombre)}</option>`).join('')}</select>`:''}</div></div>`;
 }
@@ -1591,7 +1592,7 @@ function waFicha(c){
   const o=waOrden(c),pl=c.ult?waPlantDe(c.ult):(waPlant().find(x=>!x.estado)||waPlant()[0]),pls=waPlant(),ped=S.orders.filter(x=>waNumber(x.telefono)===c.tel).sort((x,y)=>String(y.fecha).localeCompare(String(x.fecha)));
   const d=c.datos,dl=d?[['Nombre',d.nombre],['Celular',d.tel],['Ciudad',d.ciudad],['Producto',d.producto],['Talla',d.talla],['Color',d.color],['Cantidad',d.cantidad],['DNI',d.dni],['Dirección',d.direccion],['Agencia / sede',d.agencia]].filter(x=>x[1]):[];
   return `<button class="btn sm wa2-back" type="button" data-wback="1">← Volver a los chats</button>
-  <div class="wa2-h"><span class="av g">${esc(waIni(c))}</span><div style="flex:1;min-width:0"><b style="font-size:17px">${esc(c.nombre)}</b><div class="sub">+${esc(c.tel)}${c.ped?' · '+c.ped+(c.ped===1?' pedido':' pedidos')+' · '+fmt(c.total):''}${c.at?' · ✓ contactado '+waHace(c.at):''}</div></div>${c.grupo?'':`<a class="btn wa" href="${esc(waLink(c.tel,''))}" target="_blank" rel="noopener" data-wabrir="${esc(c.tel)}">💬 Abrir chat</a>`}</div>
+  <div class="wa2-h"><span class="av g">${esc(waIni(c))}</span><div style="flex:1;min-width:0"><b style="font-size:17px">${esc(c.nombre)}</b><div class="sub">${esc(waTelTxt(c))}${c.ped?' · '+c.ped+(c.ped===1?' pedido':' pedidos')+' · '+fmt(c.total):''}${c.at?' · ✓ contactado '+waHace(c.at):''}</div></div>${c.grupo?'':`<a class="btn wa" href="${esc(waLink(c.tel,''))}" target="_blank" rel="noopener" data-wabrir="${esc(c.tel)}">💬 Abrir chat</a>`}</div>
   ${puedeTienda()&&!c.grupo?`<div class="row" style="margin-top:12px"><button class="btn pri" type="button" data-wcrear="${esc(c.tel)}" style="width:100%;min-height:48px">⚡ Crear pedido desde este chat</button></div>`:''}
   <div class="form" style="margin-top:12px"><div class="full" style="grid-column:1/-1"><label>Etiquetas (tableros) · tócalas para poner o quitar, igual que en WhatsApp Business</label><div class="wa-fil" style="flex-wrap:wrap;overflow:visible">${waTabs().map(t=>`<button type="button" class="${c.ts.includes(t.id)?'on':''}" data-wtog="${esc(c.tel)}" data-wid="${esc(t.id)}" style="${c.ts.includes(t.id)?'border-color:'+esc(t.color)+';background:'+esc(t.color)+'22':''}"><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(t.color)};margin:0 5px 0 0"></i>${esc(t.nombre)}</button>`).join('')}</div></div>
    <div class="full"><label>Nota</label><input data-knota="${esc(c.tel)}" maxlength="120" placeholder="Ej. prefiere pagar por Yape" value="${esc(c.n)}"></div></div>
@@ -1669,7 +1670,7 @@ async function waEstadoSrv(){
 }
 async function waSincronizar(manual){
   if(ui.waSync)return;ui.waSync=true;if(ui.tab==='wa')waCabecera();
-  try{await waSyncEtq();const r=await waApi('chats');ui.waLive=(r.chats||[]).filter(x=>!x.lid).slice(0,300);ui.waEtqFuente=r.etqFuente||'';ui.waOcultos=r.ocultos||0;ui.waDbError=r.dbError||'';waAplicarEtqChats();try{localStorage.setItem('yosca_wa_live',JSON.stringify(ui.waLive.slice(0,150)))}catch(e){}if(manual)toast(ui.waLive.length+' chats sincronizados')}
+  try{await waSyncEtq();const r=await waApi('chats');ui.waLive=(r.chats||[]).slice(0,700);ui.waEtqFuente=r.etqFuente||'';ui.waOcultos=r.ocultos||0;ui.waDbError=r.dbError||'';waAplicarEtqChats();try{localStorage.setItem('yosca_wa_live',JSON.stringify(ui.waLive.slice(0,150)))}catch(e){}if(manual)toast(ui.waLive.length+' chats sincronizados')}
   catch(e){if(manual)toast('No pude sincronizar: '+(e.detalle||'revisa el servidor'))}
   finally{ui.waSync=false;if(ui.tab==='wa')waRender()}
 }

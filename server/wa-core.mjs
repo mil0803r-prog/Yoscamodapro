@@ -16,7 +16,8 @@ const cfg = () => ({
   correos: String(process.env.WA_EMAILS || 'mil0803r@gmail.com').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean),
 });
 const digitos = (s) => String(s || '').replace(/\D/g, '');
-const jidValido = (s) => /^[0-9]{8,15}@s\.whatsapp\.net$|^[0-9-]{10,40}@g\.us$/.test(String(s || ''));
+const jidValido = (s) => /^[0-9]{8,15}@s\.whatsapp\.net$|^[0-9-]{10,40}@g\.us$|^[0-9]{8,25}@lid$/.test(String(s || ''));
+const aDestino = (jid) => (jid.endsWith('@g.us') || jid.endsWith('@lid') ? jid : jid.split('@')[0]);
 
 function superaLimite(quien) {
   const ahora = Date.now();
@@ -106,6 +107,8 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
         let est = 'sin_instancia';
         try { est = estadoTexto(await evo(c, '/instance/connectionState/' + I)); } catch (e) { if (e.estado !== 404) throw e; }
         if (est === 'conectado') return { status: 200, body: { estado: 'conectado' } };
+        // si quedó desconectado (por ejemplo se cerró la sesión desde el celular) se empieza de cero: así no se mezclan chats de otro número
+        if (est === 'desconectado') { try { await evo(c, '/instance/delete/' + I, 'DELETE'); } catch (e) { if (e.estado !== 404 && e.estado !== 400) throw e; } est = 'sin_instancia'; }
         if (est === 'sin_instancia') {
           // syncFullHistory: al escanear el QR trae los chats y el historial de ese WhatsApp (si no, solo aparecen chats con mensajes nuevos)
           const base = { instanceName: c.inst, qrcode: true, integration: 'WHATSAPP-BAILEYS' };
@@ -127,12 +130,15 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
         const j = await evo(c, '/chat/findChats/' + I, 'POST', {});
         const arr = Array.isArray(j) ? j : (j && (j.chats || j.records)) || [];
         // Agenda de contactos: nombres y fotos como en el WhatsApp original
-        const ag = new Map();
+        const ag = new Map(), lidMap = new Map();
         try {
           const cj = await evo(c, '/chat/findContacts/' + I, 'POST', {});
           for (const k of (Array.isArray(cj) ? cj : (cj && (cj.contacts || cj.records)) || [])) {
             const id = String(k.remoteJid || k.id || '');
             if (id) ag.set(id, k);
+            const alt = String(k.remoteJidAlt || k.lid || k.lidJid || '');
+            if (id.endsWith('@s.whatsapp.net') && alt.endsWith('@lid')) lidMap.set(alt, id);
+            else if (id.endsWith('@lid') && /^[0-9]{8,15}@s\.whatsapp\.net$/.test(alt)) lidMap.set(id, alt);
           }
         } catch (e) { /* si falla la agenda, se siguen mostrando los chats */ }
         const delApi = arr.some((x) => x && Object.prototype.hasOwnProperty.call(x, 'labels'));
@@ -145,6 +151,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
           if (jid.endsWith('@lid')) {
             const alt = String(x.remoteJidAlt || (x.lastMessage && x.lastMessage.key && x.lastMessage.key.remoteJidAlt) || '');
             if (/^[0-9]{8,15}@s\.whatsapp\.net$/.test(alt)) jid = alt;
+            else if (lidMap.has(jid)) jid = lidMap.get(jid);
           }
           if (jid.endsWith('@lid')) ocultos++;
           if (!jid || jid === 'status@broadcast' || jid.endsWith('@broadcast') || jid.endsWith('@newsletter')) continue;
@@ -152,7 +159,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
           const lm = x.lastMessage || (x.messages && x.messages[0]) || null;
           salida.push({
             jid, grupo,
-            tel: grupo ? jid : digitos(jid.split('@')[0]),
+            tel: grupo ? jid : (jid.endsWith('@lid') ? 'l' : '') + digitos(jid.split('@')[0]),
             lid: jid.endsWith('@lid'),
             nombre: String((ag.get(jid) || {}).pushName || (ag.get(jid) || {}).name || x.name || x.pushName || (x.contact && x.contact.pushName) || '').slice(0, 60),
             foto: (() => { const f = (ag.get(jid) || {}).profilePicUrl || x.profilePicUrl || ''; return /^https:\/\//.test(f) ? f : ''; })(),
@@ -162,8 +169,18 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
             noLeidos: Number(x.unreadMessages || x.unreadCount || 0) || 0,
           });
         }
+        // contactos de la agenda del teléfono que aún no tienen chat
+        const vistos = new Set(salida.map((x) => x.jid)); let agenda = 0;
+        for (const [id, k] of ag) {
+          if (agenda >= 400) break;
+          if (vistos.has(id) || !/^[0-9]{8,15}@s\.whatsapp\.net$/.test(id)) continue;
+          const nombre = String(k.pushName || k.name || '').slice(0, 60);
+          if (!nombre) continue;
+          agenda++;
+          salida.push({ jid: id, grupo: false, tel: digitos(id.split('@')[0]), lid: false, nombre, foto: /^https:\/\//.test(k.profilePicUrl || '') ? k.profilePicUrl : '', ultimo: '', fecha: 0, etiquetas: db.ok ? (db.mapa.get(id) || []) : [], conEtq, noLeidos: 0, sinChat: true });
+        }
         salida.sort((a, z) => z.fecha - a.fecha);
-        return { status: 200, body: { chats: salida.slice(0, 300), ocultos, etqFuente: fuente, dbError: db.ok ? '' : (dbConfigurada() ? db.error : '') } };
+        return { status: 200, body: { chats: salida.slice(0, 700), ocultos, agenda, etqFuente: fuente, dbError: db.ok ? '' : (dbConfigurada() ? db.error : '') } };
       }
       case 'webhook': {
         // Le pide a Evolution que avise a esta app cada vez que se pone o quita una etiqueta en un chat
@@ -207,7 +224,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
       case 'etiquetar': {
         const jid = String(p.jid || ''), lid = String(p.labelId || '');
         if (!jidValido(jid) || !/^[A-Za-z0-9_.-]{1,40}$/.test(lid)) return { status: 400, body: { error: 'datos' } };
-        await evo(c, '/label/handleLabel/' + I, 'POST', { number: jid.endsWith('@g.us') ? jid : jid.split('@')[0], labelId: lid, action: p.quitar ? 'remove' : 'add' });
+        await evo(c, '/label/handleLabel/' + I, 'POST', { number: aDestino(jid), labelId: lid, action: p.quitar ? 'remove' : 'add' });
         return { status: 200, body: { ok: true } };
       }
       case 'mensajes': {
@@ -220,7 +237,7 @@ export async function handle({ method, rawBody, authorization, ip, verificar = u
       }
       case 'enviar': {
         const jid = String(p.jid || ''), texto = String(p.texto || '').trim();
-        const num = jidValido(jid) ? (jid.endsWith('@g.us') ? jid : jid.split('@')[0]) : digitos(p.tel);
+        const num = jidValido(jid) ? aDestino(jid) : digitos(p.tel);
         if (!(jidValido(jid) || (num.length >= 8 && num.length <= 15))) return { status: 400, body: { error: 'numero' } };
         if (!texto || texto.length > 4000) return { status: 400, body: { error: 'texto' } };
         await evo(c, '/message/sendText/' + I, 'POST', { number: num, text: texto });
