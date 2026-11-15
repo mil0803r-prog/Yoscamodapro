@@ -9,3 +9,6 @@ self.addEventListener('notificationclick', (e) => {
   const url = (e.notification.data && e.notification.data.url) || '/';
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((l) => { for (const c of l) if ('focus' in c) { c.navigate && c.navigate(url); return c.focus(); } return self.clients.openWindow(url); }));
 });
+
+// Necesario para que el navegador ofrezca «Instalar app». No guarda nada en caché: siempre trae lo más nuevo.
+self.addEventListener('fetch', () => {});
