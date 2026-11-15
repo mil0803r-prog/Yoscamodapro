@@ -52,7 +52,7 @@ if (cfg && cfg.apiKey) {
     },
     // Los datos de cada persona viven en users/{uid}/...
     store: (uid) => ({
-      colSnap: (name, next, err) => onSnapshot(collection(db, 'users', uid, name), (s) => next(s.docs.map((d) => d.data())), err),
+      colSnap: (name, next, err) => onSnapshot(collection(db, 'users', uid, name), (s) => next(s.docs.map((d) => { const x = d.data(); return x.id === undefined ? { ...x, id: d.id } : x; })), err),
       docSnap: (path, next, err) => onSnapshot(doc(db, 'users', uid, ...path.split('/')), (s) => next(s.exists() ? s.data() : null), err),
       set: (name, id, data) => setDoc(doc(db, 'users', uid, name, id), data),
       del: (name, id) => deleteDoc(doc(db, 'users', uid, name, id)),

@@ -121,7 +121,7 @@ async function crearPedido(k, p, { soloCalcular = false } = {}) {
   const cliente = validarCliente(p.cliente);
   const bucket = Math.floor(Date.now() / 600_000), firma = r.lineas.map((l) => l.variante_id + ':' + l.cantidad).sort().join(',');
   const id = p.id_externo ? 'x_' + sha(k.id + '|' + limpio(p.id_externo, 80)).slice(0, 24) : 'd_' + sha(k.id + '|' + cliente.celular + '|' + firma + '|' + bucket).slice(0, 24);
-  const doc = { estado: 'pendiente', creado: Date.now(), fecha: hoyLima(), origen: k.nombre, clave: k.id, cliente, items: r.lineas, total: r.total, unidades: r.unidades, notas: limpio(p.notas, 300), medio_pago: limpio(p.medio_pago, 30), id_externo: limpio(p.id_externo, 80) };
+  const doc = { id, estado: 'pendiente', creado: Date.now(), fecha: hoyLima(), origen: k.nombre, clave: k.id, cliente, items: r.lineas, total: r.total, unidades: r.unidades, notas: limpio(p.notas, 300), medio_pago: limpio(p.medio_pago, 30), id_externo: limpio(p.id_externo, 80) };
   let duplicado = false;
   try { await crearDoc(`users/${k.adminUid}/entrantes`, id, doc); }
   catch (e) { if (e.estado === 409) duplicado = true; else throw e; }
