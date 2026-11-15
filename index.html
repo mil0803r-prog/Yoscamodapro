@@ -1059,7 +1059,7 @@ async function connectFirebase(){
 }
 
 /* ================= ACCESO PRIVADO: solicitudes, permisos y equipo ================= */
-function accParar(){ui.eqOn=false;ui.integOn=false;ui.entOn=false;ui.entPrimera=false;ui.entrantes=[];ui.waHookOn=false;ui.waHook=null;ui.waHookUlt=null;accUnsub.forEach(f=>{try{f&&f()}catch(e){}});accUnsub=[];ACC={rol:'',permisos:{},duenio:''};ui.eqSol=[];ui.eqAcc=[];$('#lock').hidden=true}
+function accParar(){ui.eqOn=false;ui.integOn=false;ui.entOn=false;ui.entPrimera=false;ui.entInicio=false;ui.entAv=new Set();ui.entrantes=[];ui.waHookOn=false;ui.waHook=null;ui.waHookUlt=null;accUnsub.forEach(f=>{try{f&&f()}catch(e){}});accUnsub=[];ACC={rol:'',permisos:{},duenio:''};ui.eqSol=[];ui.eqAcc=[];$('#lock').hidden=true}
 function lockMostrar(estado){
   const u=FB_USER||{},em=esc(u.email||'');
   const salir='<button class="btn del" type="button" id="lockOut">Cerrar sesión</button>';
@@ -1297,6 +1297,19 @@ document.addEventListener('click',async e=>{
 });
 
 /* ---------- Pedidos entrantes (llegan por la API/MCP) ---------- */
+// Al volver a la plataforma (por ejemplo desde ChatGPT), avisa de los pedidos entrantes que no habías visto y te lleva a aceptarlos
+function entrantesAlVolver(){
+  if(document.visibilityState!=='visible'||!puedeHerr('integ')||!ui.entOn)return;
+  setTimeout(()=>{
+    const av=ui.entAv||new Set(),sin=(ui.entrantes||[]).filter(x=>!av.has(x.id));
+    if(!sin.length)return;
+    ui.entAv=new Set([...av,...sin.map(x=>x.id)]);
+    toast('📥 '+(sin.length===1?'Nuevo pedido entrante de '+((sin[0].cliente||{}).nombre||'un cliente'):sin.length+' pedidos nuevos')+': acéptalo en Pedidos');
+    try{navigator.vibrate&&navigator.vibrate([120,60,120])}catch(e){}
+    showTab('ped');
+  },900);
+}
+document.addEventListener('visibilitychange',entrantesAlVolver);addEventListener('focus',entrantesAlVolver);addEventListener('pageshow',entrantesAlVolver);
 function entrantesIniciar(){
   if(!puedeHerr('integ')||ui.entOn||!(window.YoscaFB&&YoscaFB.store))return;ui.entOn=true;
   const st=YoscaFB.store(datosUid());
@@ -1310,7 +1323,8 @@ function entrantesIniciar(){
     const pend=l.filter(x=>x.estado==='pendiente').sort((a,b)=>(b.creado||0)-(a.creado||0)),antes=new Set((ui.entrantes||[]).map(x=>x.id));
     const nuevos=ui.entPrimera?pend.filter(x=>!antes.has(x.id)):[];ui.entPrimera=true;
     ui.entrantes=pend;pintarNav();renderEntrantes();
-    if(nuevos.length)toast('📥 '+(nuevos.length===1?'Nuevo pedido entrante de '+((nuevos[0].cliente||{}).nombre||'un cliente'):nuevos.length+' pedidos nuevos entrantes'));
+    if(nuevos.length&&document.visibilityState==='visible'){toast('📥 '+(nuevos.length===1?'Nuevo pedido entrante de '+((nuevos[0].cliente||{}).nombre||'un cliente'):nuevos.length+' pedidos nuevos entrantes'));try{navigator.vibrate&&navigator.vibrate([120,60,120])}catch(e){}}
+    if(document.visibilityState==='visible'){ui.entAv=new Set([...(ui.entAv||[]),...(nuevos.length?nuevos:[]).map(x=>x.id)]);if(!ui.entInicio){ui.entInicio=true;ui.entAv=new Set([...(ui.entAv||[]),...pend.map(x=>x.id)]);if(pend.length)toast('📥 Tienes '+pend.length+(pend.length===1?' pedido':' pedidos')+' por aceptar')}}
     // limpieza: lo aceptado o rechazado hace más de una semana se borra
     l.filter(x=>x.estado!=='pendiente'&&(x.creado||0)<Date.now()-7*864e5).forEach(x=>{try{st.del('entrantes',x.id)}catch(e){}});
   },()=>{}));
