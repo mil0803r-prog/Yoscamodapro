@@ -184,6 +184,8 @@ select{appearance:none;-webkit-appearance:none;padding-right:34px;background:#ff
 #disp{background:#fff;border:1px solid var(--linea);border-radius:10px;padding:3px;gap:2px}
 #disp button{border:0;background:transparent;border-radius:8px;padding:6px 12px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
 #disp button.on{background:var(--tinta)}
+@keyframes destello{0%{box-shadow:0 0 0 0 rgba(156,92,64,.6)}35%{box-shadow:0 0 0 7px rgba(156,92,64,.3)}100%{box-shadow:var(--sombra)}}
+.destello{animation:destello 2s ease-out 1;border-color:var(--terra)!important}
 #toast{border-radius:12px;padding:11px 18px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 @media(max-width:1020px){
  #app{grid-template-columns:200px minmax(0,1fr)}
@@ -247,7 +249,7 @@ select{appearance:none;-webkit-appearance:none;padding-right:34px;background:#ff
 <div id="app">
 <nav id="menu" aria-label="Secciones"></nav>
 <section id="editor" aria-live="polite"></section>
-<section id="lienzo" data-disp="pc"><div id="barraV"><span id="txtPrev">Así se ve tu tienda</span><div id="disp"><button class="on" data-d="pc" type="button"><span class="ico" data-ib="pc"></span>Computadora</button><button data-d="cel" type="button"><span class="ico" data-ib="cel"></span>Celular</button></div></div>
+<section id="lienzo" data-disp="pc"><div id="barraV"><span id="txtPrev">Toca una parte para editarla</span><div id="disp"><button class="on" data-d="pc" type="button"><span class="ico" data-ib="pc"></span>Computadora</button><button data-d="cel" type="button"><span class="ico" data-ib="cel"></span>Celular</button></div></div>
 <div id="vista"><iframe id="marco" title="Vista previa de la tienda" src="./index.html?vista=previa"></iframe></div></section>
 </div>
 <div id="toast" hidden></div>
@@ -421,6 +423,21 @@ function paraPrevia(){const c=JSON.parse(JSON.stringify(D));const f=x=>FOTOS[x]|
 function previa(){if(marco.contentWindow&&lista)marco.contentWindow.postMessage({tipo:'yosca-datos',datos:paraPrevia()},'*')}
 function irA(id){if(marco.contentWindow&&lista&&id)marco.contentWindow.postMessage({tipo:'yosca-ir',id},'*')}
 window.addEventListener('message',e=>{if(e.data&&e.data.tipo==='yosca-lista'){lista=true;previa()}});
+/* Tocar la vista previa lleva a la sección y la tarjeta exacta del editor */
+function irDesdePrevia(m){
+  if(document.body.classList.contains('soloprevia')){document.body.classList.remove('soloprevia');$('#btnPrev').innerHTML=IB.ojo+'<span class="lbl"> Vista previa</span>'}
+  const fila=Number.isInteger(m.fila)?m.fila:-1;
+  if(m.pagina==='prendas'&&fila>=0)filasAbiertas.add(fila);
+  pagina=m.pagina;dibujar();
+  const on=$('#menu .on'),mn=$('#menu');if(on&&mn&&mn.scrollWidth>mn.clientWidth)mn.scrollTo({left:on.offsetLeft-(mn.clientWidth-on.offsetWidth)/2,behavior:'smooth'});
+  let el=null;
+  if(m.pagina==='prendas'&&fila>=0)el=document.querySelector('.fila[data-i="'+fila+'"]');
+  else{const cs=$('#editor').querySelectorAll('.card');if(cs.length)el=cs[Math.min(Math.max(parseInt(m.ficha,10)||0,0),cs.length-1)]}
+  if(el){const ed=$('#editor'),a=ed.getBoundingClientRect(),r=el.getBoundingClientRect();ed.scrollTo({top:Math.max(0,ed.scrollTop+(r.top-a.top)-(ed.clientHeight-r.height)/2),behavior:'smooth'});el.classList.remove('destello');void el.offsetWidth;el.classList.add('destello')}
+  else $('#editor').scrollTop=0;
+  toast('Editando: '+String(m.etiqueta||P[m.pagina].t).slice(0,40));
+}
+window.addEventListener('message',e=>{if(e.source!==marco.contentWindow)return;const m=e.data;if(m&&m.tipo==='yosca-editar'&&typeof m.pagina==='string'&&Object.prototype.hasOwnProperty.call(P,m.pagina))irDesdePrevia(m)});
 function estado(){const c=JSON.stringify(D)!==BASE;$('#contador').textContent=c?'Cambios sin guardar':'Sin cambios';$('#btnGuardar').disabled=!c;$('#btnDeshacer').disabled=!pila.length;document.body.classList.toggle('sucio',c);const a=$('#avisoGuardar');if(a)a.textContent=c?'Tienes cambios sin guardar.':'No hay cambios pendientes.'}
 
 /* ---------- cambios ---------- */
