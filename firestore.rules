@@ -37,6 +37,11 @@ service cloud.firestore {
       allow write: if admin();
     }
 
+    // Claves de la API/MCP de pedidos: las crea y administra solo el administrador (el servidor las lee con la cuenta de servicio)
+    match /apiKeys/{id} {
+      allow read, write: if admin();
+    }
+
     // Etiquetas de WhatsApp por chat: las escribe solo el servidor (cuenta de servicio); las leen el administrador y quien tenga WhatsApp
     match /waEtq/{id} {
       allow read: if admin() || (request.auth != null

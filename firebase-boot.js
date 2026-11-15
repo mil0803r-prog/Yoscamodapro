@@ -31,6 +31,12 @@ if (cfg && cfg.apiKey) {
     verify: () => (auth.currentUser ? sendEmailVerification(auth.currentUser) : Promise.resolve()),
     out: () => signOut(auth),
     idToken: () => (auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve('')),
+    // Claves de la API/MCP de pedidos (solo el administrador)
+    keys: {
+      lista: (next, err) => onSnapshot(collection(db, 'apiKeys'), (s) => next(s.docs.map((d) => ({ id: d.id, ...d.data() }))), err),
+      guardar: (id, data) => setDoc(doc(db, 'apiKeys', id), data),
+      quitar: (id) => deleteDoc(doc(db, 'apiKeys', id)),
+    },
     // Avisos de etiquetas de WhatsApp (los escribe el servidor)
     etq: (next, err) => onSnapshot(collection(db, 'waEtq'), (s) => next(s.docs.map((d) => { const x = d.data(); return { id: d.id, ids: Array.isArray(x.ids) ? x.ids : [], n: x.n || 0, at: x.at && x.at.toMillis ? x.at.toMillis() : 0 }; })), err),
     // Control de acceso: el administrador aprueba correos y asigna permisos por sección.

@@ -37,6 +37,21 @@ Con esto la app deja de ser abierta: solo entra quien tú apruebes, y cada perso
 
 Si marcas **«Tiene su propia base de datos»** al darle acceso, esa persona conserva sus datos de siempre (los guardados en su cuenta, separados de los tuyos) y trabaja sobre ellos. Si no, las personas aprobadas trabajan sobre los datos del administrador (los mismos pedidos, inventario, etc.). Las reglas de Firestore hacen cumplir los permisos en el servidor, no solo en la pantalla. Tienda, Equipo y los respaldos son solo del administrador. En WhatsApp, quien tenga permiso lo usa sin estar en `WA_EMAILS` (se lee su permiso de Firestore; requiere `FIREBASE_PROJECT_ID`), pero conectar o desvincular el número es solo del administrador.
 
+### API y servidor MCP de pedidos (para conectar cualquier IA)
+
+Para que un cliente pueda pedir hablando con una IA (Claude, ChatGPT, Gemini, n8n, Make…). La IA ve el catálogo y deja el pedido; **queda pendiente en Pedidos → «Pedidos entrantes»** hasta que lo aceptes (no toca ventas ni inventario).
+
+**Puesta en marcha (cuenta administradora)**
+1. Variable `FIREBASE_SERVICE_ACCOUNT` en Vercel (la misma de las etiquetas) y **republica `firestore.rules`** (incluye `apiKeys`).
+2. Panel → **Integraciones → + Nueva clave**. Se muestra la clave una sola vez, con todo listo para copiar.
+3. Conecta tu IA:
+   - **MCP** (`/api/mcp`, Streamable HTTP, sin sesión): Claude.ai/ChatGPT → conector personalizado con la URL `https://TU-APP/api/mcp?key=yk_…`; Claude Code: `claude mcp add --transport http yosca-pedidos https://TU-APP/api/mcp --header "Authorization: Bearer yk_…"`; Cursor y otros: JSON con `url` y `headers`.
+   - **REST/OpenAPI** (`/api/openapi.json`): ChatGPT Actions, Gemini, Make, n8n. Autenticación `Bearer yk_…`.
+
+**Herramientas MCP / endpoints:** `ver_catalogo` (`GET /api/v1/catalogo`), `calcular_pedido` (`POST /api/v1/pedidos/calcular`), `crear_pedido` (`POST /api/v1/pedidos`), `estado_pedido` (`GET /api/v1/pedidos?celular=`, solo con permiso «consultar»).
+
+**Seguridad:** las claves se guardan solo como huella SHA-256; cada clave tiene permisos y se puede desactivar o eliminar (tarda hasta 30 s en aplicarse); límites por clave (40/min) y por IP; el catálogo nunca expone costos ni materiales; los precios los pone el servidor (la IA no puede cambiarlos); los textos se limpian; `id_externo` y una ventana de 10 min evitan pedidos duplicados. Si pones la clave en la URL, trátala como una contraseña.
+
 ### Clientes que repiten y comprobantes de pago (cuenta administradora)
 
 - **Clientes que repiten:** al escribir o reconocer el celular, o elegir el nombre de la lista, se completan ciudad, DNI/agencia (notas) y nombre del último pedido.

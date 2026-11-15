@@ -403,6 +403,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .ih-var{display:flex;gap:6px;flex-wrap:wrap;margin:3px 0}.ih-row{align-items:flex-start}
 .btn.rec{background:var(--error);color:#fff;animation:recp 1.2s infinite}@keyframes recp{50%{opacity:.7}}
 .pg-lista{display:flex;flex-direction:column;gap:8px}.pg-op{display:flex;gap:10px;align-items:flex-start;background:var(--s-low);border:1px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;margin:0;font-size:14px;color:var(--on)}.pg-op input{margin-top:4px;width:auto;min-height:0}.pg-op span{display:flex;flex-direction:column;gap:2px}.pg-op small{color:var(--on-var);font-size:12.5px}
+.ent-fila{border-top:1px solid var(--line);padding:10px 0}.ent-items{margin:4px 0 4px 18px;padding:0;font-size:14px}
 /* ===== Optimización móvil y PC ===== */
 .kpi small,.scen small,.ord-money small,.vfhead,th,.wa-m small,.chartcard .tbtn{font-size:max(12px,.75rem)}
 @media (max-width:899px),(pointer:coarse){
@@ -480,6 +481,7 @@ summary{cursor:pointer}
     <!-- PEDIDOS -->
     <section id="v-ped" hidden>
       <div class="row" style="justify-content:flex-end;margin-bottom:10px"><button class="btn" id="pedPagoBtn" type="button" hidden>💸 Leer comprobante de pago</button><input type="file" id="pedPagoIn" accept="image/*" hidden><button class="btn pri" id="pedNuevo" type="button">+ Nuevo pedido</button></div>
+      <div class="card" id="pedEntrantes" hidden style="margin-bottom:14px;border:2px solid var(--primary-c)"></div>
       <div class="card">
         <div class="row sb" style="margin-bottom:12px"><h3>Historial de pedidos</h3><span class="badge" id="pedCount"></span></div>
         <div class="seg" id="pedViewSeg" style="display:flex;margin-bottom:12px" aria-label="Vista"><button data-v="board" style="flex:1">Tablero</button><button data-v="cards" style="flex:1">Encuadros</button><button data-v="table" style="flex:1">Tabla</button></div>
@@ -621,6 +623,7 @@ summary{cursor:pointer}
     <!-- AJUSTES -->
     <!-- TIENDA (solo para la cuenta del dueño) -->
     <section id="v-equipo" hidden></section>
+    <section id="v-integ" hidden></section>
     <section id="v-tienda" hidden>
       <div id="tiHead"></div>
       <div id="tiBody"></div>
@@ -1002,14 +1005,14 @@ async function connectFirebase(){
       ACC={rol:'admin',permisos:{},duenio:u.uid};$('#lock').hidden=true;
       hideLogin();renderAccount();pintarNav();
       attachDb(fsAdapter(YoscaFB.store(u.uid)),{migrate:true});
-      connectAi();equipoIniciar();waHookIniciar();
+      connectAi();equipoIniciar();waHookIniciar();integIniciar();entrantesIniciar();
     }else{renderAccount();accEntrar(u)}
   });
   return true;
 }
 
 /* ================= ACCESO PRIVADO: solicitudes, permisos y equipo ================= */
-function accParar(){ui.eqOn=false;ui.waHookOn=false;ui.waHook=null;ui.waHookUlt=null;accUnsub.forEach(f=>{try{f&&f()}catch(e){}});accUnsub=[];ACC={rol:'',permisos:{},duenio:''};ui.eqSol=[];ui.eqAcc=[];$('#lock').hidden=true}
+function accParar(){ui.eqOn=false;ui.integOn=false;ui.entOn=false;ui.entPrimera=false;ui.entrantes=[];ui.waHookOn=false;ui.waHook=null;ui.waHookUlt=null;accUnsub.forEach(f=>{try{f&&f()}catch(e){}});accUnsub=[];ACC={rol:'',permisos:{},duenio:''};ui.eqSol=[];ui.eqAcc=[];$('#lock').hidden=true}
 function lockMostrar(estado){
   const u=FB_USER||{},em=esc(u.email||'');
   const salir='<button class="btn del" type="button" id="lockOut">Cerrar sesión</button>';
@@ -1107,6 +1110,115 @@ document.addEventListener('click',async e=>{
   }
 });
 
+
+/* ================= INTEGRACIONES: API y MCP de pedidos para cualquier IA (solo administrador) ================= */
+const API_SCOPES={catalogo:'Ver catálogo y precios',pedidos:'Crear pedidos',consultar:'Consultar estado de pedidos de un celular'};
+async function sha256Hex(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+function claveNueva(){const a=new Uint8Array(24);crypto.getRandomValues(a);return 'yk_'+btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function integIniciar(){
+  if(!puedeTienda()||ui.integOn||!(window.YoscaFB&&YoscaFB.keys))return;ui.integOn=true;
+  accUnsub.push(YoscaFB.keys.lista(l=>{ui.apiKeys=l.sort((a,b)=>(b.creado||0)-(a.creado||0));if(ui.tab==='integ')renderInteg()},()=>{}));
+}
+async function integEstadoServidor(){
+  try{const r=await fetch('/api/v1/catalogo');ui.integSrv=r.status===401?'ok':r.status===503?'falta':'error'}catch(e){ui.integSrv='error'}
+  if(ui.tab==='integ')renderInteg();
+}
+function renderInteg(){
+  const el=$('#v-integ');if(!puedeTienda()){el.innerHTML='';return}
+  integIniciar();if(!ui.integSrv)integEstadoServidor();
+  const ks=ui.apiKeys||[],o=location.origin;
+  const est={ok:'<span class="badge b-Entregado">✅ Servidor listo</span>',falta:'<span class="badge b-Pendiente">⚠️ Falta FIREBASE_SERVICE_ACCOUNT en Vercel</span>',error:'<span class="badge b-Devuelto">No pude comprobar el servidor</span>'}[ui.integSrv]||'<span class="badge">Revisando…</span>';
+  el.innerHTML=`<div class="card"><div class="row sb"><h2 style="margin:0">Conecta cualquier IA</h2>${est}</div>
+   <p class="sub" style="margin-top:6px">Una IA (Claude, ChatGPT, Gemini, n8n…) atiende al cliente, ve tu catálogo y deja el pedido <b>listo para que tú lo confirmes</b>. Los pedidos llegan a <b>Pedidos → Pedidos entrantes</b> y no tocan tus ventas ni tu inventario hasta que los aceptes.</p>
+   <div class="eq-fila" style="border-top:0"><div class="eq-info"><b>Servidor MCP</b><small style="word-break:break-all">${esc(o)}/api/mcp</small></div><button class="btn sm" type="button" data-cp="${esc(o)}/api/mcp">Copiar</button></div>
+   <div class="eq-fila"><div class="eq-info"><b>API REST (OpenAPI)</b><small style="word-break:break-all">${esc(o)}/api/openapi.json</small></div><button class="btn sm" type="button" data-cp="${esc(o)}/api/openapi.json">Copiar</button></div></div>
+  <div class="card" style="margin-top:10px"><div class="row sb"><h3>Claves de acceso</h3><button class="btn pri sm" type="button" id="integNueva">+ Nueva clave</button></div>
+   <p class="hint">Cada IA o servicio usa su propia clave. Puedes desactivarla cuando quieras. La clave completa se muestra solo al crearla.</p>
+   ${ks.length?ks.map(k=>`<div class="eq-fila"><div class="eq-info"><b>${esc(k.nombre||'Sin nombre')} ${k.activa===false?'<span class="badge b-Pendiente">Desactivada</span>':'<span class="badge b-Entregado">Activa</span>'}</b><small>${esc(k.prefijo||'yk_…')} · ${(k.scopes||[]).map(x=>esc(API_SCOPES[x]||x)).join(' · ')}</small><small>${k.ultimoUso?'Último uso: '+esc(waAgo(k.ultimoUso))+' atrás':'Aún sin usar'}</small></div><div class="row"><button class="btn sm" type="button" data-ik="${k.activa===false?'on':'off'}" data-id="${esc(k.id)}">${k.activa===false?'Activar':'Desactivar'}</button><button class="btn sm del" type="button" data-ik="del" data-id="${esc(k.id)}">Eliminar</button></div></div>`).join(''):'<p class="hint">Aún no tienes claves. Toca <b>+ Nueva clave</b> para empezar.</p>'}
+  </div>
+  <div class="card" style="margin-top:10px"><h3>Qué puede hacer la IA</h3><ul style="margin:6px 0 0 18px;font-size:14px;line-height:1.7"><li><b>ver_catalogo:</b> productos, tallas, colores, precios y si hay stock.</li><li><b>calcular_pedido:</b> valida y da el total antes de registrar.</li><li><b>crear_pedido:</b> deja el pedido pendiente de confirmación (con control de duplicados).</li><li><b>estado_pedido:</b> consulta por celular (solo si la clave tiene ese permiso).</li></ul><p class="hint">Nunca ve tus costos, utilidades ni datos de otros clientes. El stock no se descuenta hasta que el pedido pase a «Ya pagó».</p></div>`;
+}
+function integDlgNueva(){
+  dlgOpen(`<h2 style="margin:0 0 6px">Nueva clave de acceso</h2><div class="f"><label for="ikNom">¿Para qué IA o servicio es?</label><input id="ikNom" placeholder="Ej. Asistente de ventas, ChatGPT…" maxlength="40"></div>
+  <div style="margin:10px 0">${Object.entries(API_SCOPES).map(([k,v])=>`<label style="display:flex;gap:8px;align-items:center;margin:6px 0;font-size:14px;color:var(--on)"><input type="checkbox" data-ikp="${k}" ${k!=='consultar'?'checked':''} ${k==='catalogo'?'disabled':''} style="width:auto;min-height:0">${esc(v)}</label>`).join('')}</div>
+  <p class="hint">«Consultar estado» deja que la IA vea el estado de los pedidos de un celular: actívalo solo si la IA es tuya y de confianza.</p>
+  <div class="row" style="margin-top:10px"><button class="btn pri" type="button" id="ikCrear">Crear clave</button><button class="btn" type="button" data-dlg-x>Cancelar</button></div>`);
+}
+async function integCrear(){
+  const nom=limpioTxt($('#ikNom').value)||'Integración',sc=['catalogo',...[...document.querySelectorAll('#dlgBody [data-ikp]:checked')].map(x=>x.dataset.ikp).filter(x=>x!=='catalogo')];
+  const clave=claveNueva(),huella=await sha256Hex(clave);
+  try{await YoscaFB.keys.guardar(huella,{nombre:nom,activa:true,adminUid:FB_USER.uid,scopes:sc,creado:Date.now(),ultimoUso:0,prefijo:clave.slice(0,7)+'…'+clave.slice(-4)})}
+  catch(e){toast('No se pudo crear la clave. ¿Publicaste las reglas de Firestore nuevas?');return}
+  const o=location.origin,mcpUrl=`${o}/api/mcp?key=${clave}`;
+  const cfg=JSON.stringify({mcpServers:{'yosca-pedidos':{url:`${o}/api/mcp`,headers:{Authorization:'Bearer '+clave}}}},null,2);
+  const prompt=`Eres el asistente de ventas de la tienda. Atiende al cliente en español, con amabilidad. Usa ver_catalogo para mostrar productos, tallas, colores y precios reales (nunca inventes). Para vender necesitas: nombre completo, celular de 9 dígitos, ciudad y los productos con talla, color y cantidad (pide DNI y agencia de envío si los da). Antes de registrar, repite el resumen y el total (calcular_pedido) y pide confirmación. Luego usa crear_pedido y dile al cliente que la tienda lo confirmará.`;
+  const bloque=(t,v,nota)=>`<div style="margin:10px 0"><div class="row sb"><b style="font-size:14px">${t}</b><button class="btn sm" type="button" data-cp="${esc(v)}">Copiar</button></div>${nota?`<div class="sub" style="margin:2px 0">${nota}</div>`:''}<code class="ti-code" style="display:block;word-break:break-all;white-space:pre-wrap;max-height:130px;overflow:auto;font-size:12px">${esc(v)}</code></div>`;
+  dlgOpen(`<h2 style="margin:0 0 4px">✅ Clave creada: ${esc(nom)}</h2><div class="alert err" style="margin:6px 0;display:block"><b>Guárdala ahora.</b> Por seguridad no se vuelve a mostrar completa. Si la pierdes, crea otra.</div>
+  ${bloque('Tu clave',clave)}
+  ${bloque('Claude (claude.ai → Ajustes → Conectores → Añadir conector personalizado) y ChatGPT (Conectores)',mcpUrl,'Pega esta dirección tal cual. Ya trae la clave dentro: trátala como una contraseña.')}
+  ${bloque('Claude Code / Cursor / otros clientes MCP',cfg,'Configuración JSON del servidor MCP.')}
+  ${bloque('ChatGPT Actions, Gemini, Make, n8n (API REST)',`${o}/api/openapi.json`,'Importa este OpenAPI y usa autenticación «Bearer» con tu clave.')}
+  ${bloque('Instrucciones para tu IA (cópialas en su configuración)',prompt)}
+  <div class="row" style="margin-top:10px"><button class="btn pri" type="button" data-dlg-x>Listo, ya la guardé</button></div>`);
+}
+const limpioTxt=v=>String(v||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,40);
+document.addEventListener('click',async e=>{
+  const t=e.target;
+  if(t.id==='integNueva'){integDlgNueva();return}
+  if(t.id==='ikCrear'){t.disabled=true;await integCrear();return}
+  if(t.dataset&&t.dataset.cp){try{await navigator.clipboard.writeText(t.dataset.cp);toast('Copiado')}catch(x){toast('No pude copiar: selecciónalo y copia a mano')}return}
+  if(t.dataset&&t.dataset.ik&&puedeTienda()){
+    const k=(ui.apiKeys||[]).find(x=>x.id===t.dataset.id);if(!k)return;
+    if(t.dataset.ik==='del')ask('¿Eliminar la clave «'+(k.nombre||'')+'»? La IA que la use dejará de funcionar.',async()=>{try{await YoscaFB.keys.quitar(k.id);toast('Clave eliminada')}catch(x){toast('No se pudo eliminar')}});
+    else try{const {id,...d}=k;await YoscaFB.keys.guardar(k.id,{...d,activa:t.dataset.ik==='on'});toast(t.dataset.ik==='on'?'Clave activada':'Clave desactivada')}catch(x){toast('No se pudo cambiar')}
+  }
+});
+
+/* ---------- Pedidos entrantes (llegan por la API/MCP) ---------- */
+function entrantesIniciar(){
+  if(!puedeTienda()||ui.entOn||!(window.YoscaFB&&YoscaFB.store))return;ui.entOn=true;
+  const st=YoscaFB.store(FB_USER.uid);
+  accUnsub.push(st.colSnap('entrantes',l=>{
+    const pend=l.filter(x=>x.estado==='pendiente').sort((a,b)=>(b.creado||0)-(a.creado||0)),antes=new Set((ui.entrantes||[]).map(x=>x.id));
+    const nuevos=ui.entPrimera?pend.filter(x=>!antes.has(x.id)):[];ui.entPrimera=true;
+    ui.entrantes=pend;pintarNav();renderEntrantes();
+    if(nuevos.length)toast('📥 '+(nuevos.length===1?'Nuevo pedido entrante de '+((nuevos[0].cliente||{}).nombre||'un cliente'):nuevos.length+' pedidos nuevos entrantes'));
+    // limpieza: lo aceptado o rechazado hace más de una semana se borra
+    l.filter(x=>x.estado!=='pendiente'&&(x.creado||0)<Date.now()-7*864e5).forEach(x=>{try{st.del('entrantes',x.id)}catch(e){}});
+  },()=>{}));
+}
+function renderEntrantes(){
+  const box=$('#pedEntrantes');if(!box)return;
+  const l=puedeTienda()?(ui.entrantes||[]):[];box.hidden=!l.length;if(!l.length){box.innerHTML='';return}
+  box.innerHTML=`<div class="row sb"><h3 style="margin:0">📥 Pedidos entrantes</h3><span class="badge">${l.length}</span></div><p class="sub" style="margin:4px 0 8px">Los dejó una IA o un servicio conectado. Revísalos y acéptalos para pasarlos a tus pedidos.</p>`+
+  l.map(e=>{const c=e.cliente||{};return `<div class="ent-fila"><div class="row sb"><b>${esc(c.nombre||'Sin nombre')}</b><b>${fmt(num(e.total))}</b></div>
+   <div class="sub">${esc([c.celular,c.ciudad,c.agencia&&'Agencia: '+c.agencia,c.dni&&'DNI '+c.dni].filter(Boolean).join(' · '))}</div>
+   <ul class="ent-items">${(e.items||[]).map(i=>`<li>${esc(i.cantidad)} × ${esc([i.producto,i.modelo,i.talla,i.color].filter(Boolean).join(' · '))}</li>`).join('')}</ul>
+   ${e.notas?`<div class="sub">📝 ${esc(e.notas)}</div>`:''}<div class="sub">Vía ${esc(e.origen||'API')} · hace ${esc(waAgo(e.creado||Date.now()))}${e.medio_pago?' · pago: '+esc(e.medio_pago):''}</div>
+   <div class="row" style="margin-top:8px"><button class="btn pri sm" type="button" data-ent="ok" data-id="${esc(e.id)}">Aceptar pedido</button><button class="btn sm del" type="button" data-ent="no" data-id="${esc(e.id)}">Rechazar</button></div></div>`}).join('');
+}
+function entranteAOrden(e){
+  const its=e.items||[],c=e.cliente||{},u=its.reduce((a,i)=>a+num(i.cantidad),0)||1,inv=i=>invFind(i.variante_id)||{};
+  const costo=its.reduce((a,i)=>a+num(inv(i).costo)*num(i.cantidad),0)/u;
+  const uni=a=>[...new Set(a.filter(Boolean))].join(', ');
+  const m=String(e.medio_pago||'').toLowerCase(),pago=/yape|plin/.test(m)?'Yape / Plin':/transf/.test(m)?'Transferencia':/efectivo/.test(m)?'Efectivo':/tarjeta/.test(m)?'Tarjeta':'Contra entrega';
+  const o={id:uid(),fecha:today(),cliente:c.nombre||'',telefono:c.celular||'',ciudad:c.ciudad||'',producto:uni(its.map(i=>[i.producto,i.modelo].filter(Boolean).join(' '))).replace(/, /g,' + '),talla:uni(its.map(i=>i.talla)),color:uni(its.map(i=>i.color)),cantidad:u,pack:1,packs:0,precio:r2(num(e.total)/u),costo:r2(costo),flete:0,estado:'Pendiente',pago,
+    notas:[c.dni&&'DNI '+c.dni,c.direccion&&'Dirección: '+c.direccion,c.agencia&&'Agencia: '+c.agencia,c.referencia&&'Ref.: '+c.referencia,e.notas,'Vía '+(e.origen||'API')].filter(Boolean).join(' · ')};
+  if(its.length===1&&invFind(its[0].variante_id))o.invId=its[0].variante_id;
+  else if(its.length>1&&its.every(i=>invFind(i.variante_id)))o.multi=its.map(i=>({id:i.variante_id,q:num(i.cantidad)}));
+  return o;
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest&&e.target.closest('[data-ent]');if(!b||!puedeTienda())return;
+  const x=(ui.entrantes||[]).find(z=>z.id===b.dataset.id);if(!x)return;
+  const st=YoscaFB.store(FB_USER.uid);
+  if(b.dataset.ent==='ok'){
+    const o=entranteAOrden(x);S.orders.unshift(o);orderStockSync(o);save();
+    try{await st.set('entrantes',x.id,limpio({...x,estado:'aceptado',ordenId:o.id}))}catch(err){toast('El pedido se creó, pero no pude marcarlo como aceptado.')}
+    renderPed();toast('✅ Pedido de '+(o.cliente||'cliente')+' aceptado. Muévelo a «Ya pagó» cuando pague.');
+  }else ask('¿Rechazar el pedido de '+((x.cliente||{}).nombre||'este cliente')+'?',async()=>{try{await st.set('entrantes',x.id,limpio({...x,estado:'rechazado'}));toast('Pedido rechazado')}catch(err){toast('No se pudo rechazar')}});
+});
+
 // Adaptador: hace que Firestore se use igual que la base de datos de Claude.
 const limpio=d=>JSON.parse(JSON.stringify(d));   // quita undefined y valores no válidos antes de escribir en Firestore
 function fsAdapter(st){
@@ -1147,13 +1259,13 @@ const SEC_NOM={dash:'Dashboard',calc:'Calculadora',ped:'Pedidos',wa:'WhatsApp',i
 const nivelSec=t=>{
   if(!FB_MODE||!FB_USER||ACC.rol==='admin'||puedeTienda())return 'editar';
   if(t==='set')return ACC.propio?'editar':'ver';
-  if(t==='tienda'||t==='equipo')return 'no';
+  if(t==='tienda'||t==='equipo'||t==='integ')return 'no';
   const v=ACC.permisos&&ACC.permisos[t];return v==='ver'||v==='editar'?v:'no';
 };
 const esMiembro=()=>FB_MODE&&ACC.rol==='miembro'&&!ACC.propio;   // con base propia trabaja como dueño de sus datos
 function pestanas(){
   let t=TABS.filter(x=>nivelSec(x[0])!=='no');
-  if(puedeTienda()){const n=(ui.eqSol||[]).length;t=[...t,['tienda','Tienda','store'],['equipo','Equipo'+(n?' ('+n+')':''),'users']]}
+  if(puedeTienda()){const n=(ui.eqSol||[]).length;t=[...t,['tienda','Tienda','store'],['equipo','Equipo'+(n?' ('+n+')':''),'users'],['integ','Integraciones','spark']];const ne=(ui.entrantes||[]).length;if(ne){const i=t.findIndex(x=>x[0]==='ped');if(i>=0)t[i]=[t[i][0],t[i][1]+' ('+ne+')',t[i][2]]}}
   return t;
 }
 function pintarNav(){
@@ -1170,17 +1282,17 @@ $('#menuBtn').addEventListener('click',()=>navOpen(!$('#mainNav').classList.cont
 $('#navBack').addEventListener('click',()=>navOpen(false));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')navOpen(false)});
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b){showTab(b.dataset.tab);navOpen(false)}});
-const HEADS={equipo:['users','Equipo y permisos','Quién puede entrar y qué puede hacer'],dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],wa:['chat','WhatsApp','Escribe a tus clientes con mensajes listos'],inv:['box','Inventario','Prendas y materiales: cuánto tienes y qué se acaba'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],tienda:['store','Tienda','Edita los colores, precios y textos de tu tienda'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
+const HEADS={integ:['spark','Integraciones','Conecta cualquier IA para recibir pedidos'],equipo:['users','Equipo y permisos','Quién puede entrar y qué puede hacer'],dash:['dash','Resumen del taller','Cómo va tu negocio'],calc:['calc','Calculadora de costos','Cuánto cuesta cada prenda y a cuánto venderla'],ped:['bag','Pedidos','Registra, sigue y cobra tus ventas'],wa:['chat','WhatsApp','Escribe a tus clientes con mensajes listos'],inv:['box','Inventario','Prendas y materiales: cuánto tienes y qué se acaba'],gas:['money','Gastos','Fijos del taller y gastos del mes'],proy:['trend','Proyección','Qué pasa si produces y vendes más'],tienda:['store','Tienda','Edita los colores, precios y textos de tu tienda'],set:['gear','Ajustes y respaldo','Marca, moneda y tus datos']};
 function showTab(t){
   if(nivelSec(t)==='no'&&t!=='set'){const f=pestanas();t=f.length?f[0][0]:'set'}
   ui.tab=t;
   const hd=HEADS[t];$('#pageHead').innerHTML=`<div class="pico">${icon(hd[0])}</div><div><h1>${hd[1]}</h1><p>${hd[2]}</p></div>`;
-  ['dash','calc','ped','wa','inv','gas','proy','tienda','equipo','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
+  ['dash','calc','ped','wa','inv','gas','proy','tienda','equipo','integ','set'].forEach(x=>{$('#v-'+x).hidden=x!==t});
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   scrollTo(0,0);renderTab();
 }
 function renderTab(){
-  ({dash:renderDash,calc:renderCalc,ped:renderPed,wa:renderWa,inv:renderInv,gas:renderGas,proy:renderProy,tienda:renderTienda,equipo:renderEquipo,set:renderSet})[ui.tab]();
+  ({dash:renderDash,calc:renderCalc,ped:renderPed,wa:renderWa,inv:renderInv,gas:renderGas,proy:renderProy,tienda:renderTienda,equipo:renderEquipo,integ:renderInteg,set:renderSet})[ui.tab]();
   const sec=$('#v-'+ui.tab);if(sec){const sv=nivelSec(ui.tab)==='ver'&&ui.tab!=='set';sec.classList.toggle('sv',sv);let b=sec.querySelector(':scope>.svban');if(sv&&!b){b=document.createElement('div');b.className='svban';b.textContent='👁 Solo lectura: tienes permiso para ver esta sección, no para cambiarla.';sec.prepend(b)}else if(!sv&&b)b.remove();$('#v-set').classList.toggle('miembro',esMiembro())}
 }
 /* ================= TIENDA (solo cuenta del dueño): editor, dominio y nube ================= */
@@ -2529,6 +2641,7 @@ pf.addEventListener('submit',e=>{
 $('#pedCancel').addEventListener('click',resetPed);
 const fechaCorta=f=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(f||''));return m?`${+m[3]} ${MESES[+m[2]-1]} ${m[1]}`:esc(f||'')};
 function renderPed(){
+  renderEntrantes();
   {const b=$('#pedPagoBtn');if(b)b.hidden=!puedeTienda()}
   if(!ui.editOrder)fillGarmentSelect();
   const q=$('#pedBuscar').value.toLowerCase(),f=$('#pedFiltro').value;
