@@ -1006,6 +1006,7 @@ async function connectFirebase(){
       hideLogin();renderAccount();pintarNav();
       attachDb(fsAdapter(YoscaFB.store(u.uid)),{migrate:true});
       connectAi();equipoIniciar();waHookIniciar();integIniciar();entrantesIniciar();
+      if(/[?&]ir=pedidos/.test(location.search))setTimeout(()=>showTab('ped'),700);
     }else{renderAccount();accEntrar(u)}
   });
   return true;
@@ -1120,6 +1121,20 @@ async function claveApi(cuerpo){
   if(!r.ok)throw Object.assign(new Error(j.error||'error'),{codigo:j.error,estado:r.status});
   return j;
 }
+const b64uBytes=v=>{const p='='.repeat((4-v.length%4)%4),b=atob((v+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(b,c=>c.charCodeAt(0))};
+async function pushActivar(){
+  const est=$('#integPushEst');
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){toast('Este navegador no permite avisos. En iPhone: Compartir → Agregar a pantalla de inicio, y abre la app desde ahí.');return}
+  try{
+    if(await Notification.requestPermission()!=='granted'){toast('Permiso de notificaciones rechazado');return}
+    const reg=await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready;
+    const {publica}=await claveApi({accion:'push_clave'});
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64uBytes(publica)});
+    await claveApi({accion:'push_suscribir',sub:sub.toJSON()});
+    if(est)est.textContent='✅ Avisos activados en este dispositivo.';toast('Avisos activados');
+  }catch(e){toast(e.codigo==='no_configurado'?'Falta FIREBASE_SERVICE_ACCOUNT en Vercel.':'No se pudieron activar los avisos')}
+}
 async function integCargar(){
   try{const j=await claveApi({accion:'listar'});ui.apiKeys=j.claves||[];ui.integErr=''}
   catch(e){ui.integErr=e.codigo==='no_configurado'?'falta':'error'}
@@ -1139,7 +1154,15 @@ function renderInteg(){
    <p class="sub" style="margin-top:6px">Una IA (Claude, ChatGPT, Gemini, n8n…) atiende al cliente, ve tu catálogo y deja el pedido <b>listo para que tú lo confirmes</b>. Los pedidos llegan a <b>Pedidos → Pedidos entrantes</b> y no tocan tus ventas ni tu inventario hasta que los aceptes.</p>
    <div class="eq-fila" style="border-top:0"><div class="eq-info"><b>Servidor MCP</b><small style="word-break:break-all">${esc(o)}/api/mcp</small></div><button class="btn sm" type="button" data-cp="${esc(o)}/api/mcp">Copiar</button></div>
    <div class="eq-fila"><div class="eq-info"><b>API REST (OpenAPI)</b><small style="word-break:break-all">${esc(o)}/api/openapi.json</small></div><button class="btn sm" type="button" data-cp="${esc(o)}/api/openapi.json">Copiar</button></div></div>
-  <div class="card" style="margin-top:10px"><div class="row sb"><h3>Claves de acceso</h3><button class="btn pri sm" type="button" id="integNueva">+ Nueva clave</button></div>
+  <div class="card" style="margin-top:10px"><h3>Avisos de pedidos nuevos</h3>
+   <p class="hint">Recibe una notificación en este teléfono o computadora cada vez que una IA deje un pedido. Actívalo en cada dispositivo donde quieras el aviso.</p>
+   <div class="row" style="margin-top:6px"><button class="btn pri sm" type="button" id="integPush">🔔 Activar avisos en este dispositivo</button><button class="btn sm" type="button" id="integPushProbar">Enviar prueba</button></div>
+   <p class="hint" id="integPushEst"></p></div>
+  <div class="card" style="margin-top:10px"><h3>Conectar con inicio de sesión (recomendado)</h3>
+   <p class="hint">En ChatGPT o Claude: pega la dirección del servidor MCP, deja la autenticación en <b>OAuth</b> y toca <b>Conectar</b>. Se abrirá esta plataforma, inicias sesión con tu cuenta administradora, tocas <b>Permitir</b> y listo. No necesitas copiar ninguna clave.</p>
+   <div class="row" style="margin-top:6px"><button class="btn sm del" type="button" id="integRevoca">Cerrar todas las conexiones de IA</button></div>
+   <p class="hint">Esto desconecta a todas las IA conectadas con inicio de sesión; tendrán que volver a pedir permiso.</p></div>
+  <div class="card" style="margin-top:10px"><div class="row sb"><h3>Claves de acceso (alternativa)</h3><button class="btn pri sm" type="button" id="integNueva">+ Nueva clave</button></div>
    <p class="hint">Cada IA o servicio usa su propia clave. Puedes desactivarla cuando quieras. La clave completa se muestra solo al crearla.</p>
    ${ks.length?ks.map(k=>`<div class="eq-fila"><div class="eq-info"><b>${esc(k.nombre||'Sin nombre')} ${k.activa===false?'<span class="badge b-Pendiente">Desactivada</span>':'<span class="badge b-Entregado">Activa</span>'}</b><small>${esc(k.prefijo||'yk_…')} · ${(k.scopes||[]).map(x=>esc(API_SCOPES[x]||x)).join(' · ')}</small><small>${k.ultimoUso?'Último uso: '+esc(waAgo(k.ultimoUso))+' atrás':'Aún sin usar'}</small></div><div class="row"><button class="btn sm" type="button" data-ik="${k.activa===false?'on':'off'}" data-id="${esc(k.id)}">${k.activa===false?'Activar':'Desactivar'}</button><button class="btn sm del" type="button" data-ik="del" data-id="${esc(k.id)}">Eliminar</button></div></div>`).join(''):'<p class="hint">Aún no tienes claves. Toca <b>+ Nueva clave</b> para empezar.</p>'}
   </div>
@@ -1174,6 +1197,9 @@ document.addEventListener('click',async e=>{
   const t=e.target;
   if(t.id==='integNueva'){integDlgNueva();return}
   if(t.id==='ikCrear'){t.disabled=true;await integCrear();return}
+  if(t.id==='integPush'&&puedeTienda()){pushActivar();return}
+  if(t.id==='integPushProbar'&&puedeTienda()){claveApi({accion:'push_probar'}).then(()=>toast('Prueba enviada')).catch(()=>toast('No se pudo enviar'));return}
+  if(t.id==='integRevoca'&&puedeTienda()){ask('¿Cerrar todas las conexiones de IA hechas con inicio de sesión?',async()=>{try{await claveApi({accion:'revocar_oauth'});toast('Conexiones cerradas')}catch(x){toast('No se pudo cerrar')}});return}
   if(t.dataset&&t.dataset.cp){try{await navigator.clipboard.writeText(t.dataset.cp);toast('Copiado')}catch(x){toast('No pude copiar: selecciónalo y copia a mano')}return}
   if(t.dataset&&t.dataset.ik&&puedeTienda()){
     const k=(ui.apiKeys||[]).find(x=>x.id===t.dataset.id);if(!k)return;

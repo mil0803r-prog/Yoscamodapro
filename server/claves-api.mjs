@@ -1,5 +1,6 @@
 // Gestión de las claves de la API/MCP desde el panel. Solo el administrador (con sesión verificada).
 // El servidor las guarda con la cuenta de servicio, así que NO hace falta tocar las reglas de Firestore.
+import { vapid, suscribir, quitar, notificar } from './push.mjs';
 import { createHash, randomBytes } from 'node:crypto';
 import { usuarioFirebase } from './asistente-core.mjs';
 import { cuentaServicio, listarDocs, crearDoc, actualizarDoc, borrarDoc, leerDoc } from './fs-admin.mjs';
@@ -32,6 +33,11 @@ export async function handle({ method, rawBody, authorization }) {
       await crearDoc('apiKeys', id, { nombre, activa: true, adminUid: u.uid, scopes: [...new Set(scopes)], creado: Date.now(), ultimoUso: 0, prefijo: clave.slice(0, 7) + '…' + clave.slice(-4) });
       return { status: 200, body: { clave, id, nombre, scopes: [...new Set(scopes)] } };
     }
+    if (p.accion === 'revocar_oauth') { await actualizarDoc('apiConfig/oauth', { desde: Date.now() }); return { status: 200, body: { ok: true } }; }
+    if (p.accion === 'push_clave') { const v = await vapid(); return { status: 200, body: { publica: v.publica } }; }
+    if (p.accion === 'push_suscribir') { const ok = await suscribir(u.uid, p.sub); return ok ? { status: 200, body: { ok: true } } : { status: 400, body: { error: 'suscripcion' } }; }
+    if (p.accion === 'push_quitar') { await quitar(String((p.sub && p.sub.endpoint) || '')); return { status: 200, body: { ok: true } }; }
+    if (p.accion === 'push_probar') { await notificar(u.uid, { titulo: 'Yosca Moda', cuerpo: 'Los avisos funcionan en este dispositivo.' }); return { status: 200, body: { ok: true } }; }
     const id = String(p.id || '');
     if (!/^[0-9a-f]{64}$/.test(id)) return { status: 400, body: { error: 'id' } };
     const k = await leerDoc('apiKeys/' + id);

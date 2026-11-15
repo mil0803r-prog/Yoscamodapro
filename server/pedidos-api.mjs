@@ -1,6 +1,8 @@
 // API y servidor MCP de pedidos: cualquier IA (Claude, ChatGPT, Gemini, n8n…) puede consultar el catálogo y dejar un pedido.
 // Los pedidos NO entran directo a tus ventas: quedan en «Pedidos entrantes» hasta que la tienda los acepte.
 // Requiere FIREBASE_SERVICE_ACCOUNT. Las claves se crean en el panel (Integraciones) y solo se guarda su huella (SHA-256).
+import { notificar } from './push.mjs';
+import * as oauth from './oauth.mjs';
 import { createHash, randomBytes } from 'node:crypto';
 import { cuentaServicio, leerDoc, listarDocs, crearDoc, actualizarDoc } from './fs-admin.mjs';
 
@@ -34,6 +36,11 @@ export function claveDe(headers, query) {
   return (b && b[1].trim()) || String(h('x-api-key') || '').trim() || String((query && (query.key || query.k)) || '').trim();
 }
 async function autenticar(clave) {
+  if (/^ya_/.test(clave || '')) {
+    const a = await oauth.verificarAcceso(clave);
+    if (!a) throw new ErrorApi(401, 'token_invalido', 'El acceso venció o fue revocado. Vuelve a conectar.');
+    return { id: 'oa:' + a.uid.slice(0, 8), huella: null, nombre: 'IA: ' + (a.cliente || 'OAuth'), adminUid: a.uid, scopes: a.scopes, ultimo: Date.now() };
+  }
   if (!/^yk_[A-Za-z0-9_-]{24,80}$/.test(clave || '')) throw new ErrorApi(401, 'clave_invalida', 'Falta la clave de API o no es válida.');
   const huella = sha(clave), c = cacheClaves.get(huella);
   if (c && Date.now() < c.vence) return c.val;
@@ -118,6 +125,7 @@ async function crearPedido(k, p, { soloCalcular = false } = {}) {
   let duplicado = false;
   try { await crearDoc(`users/${k.adminUid}/entrantes`, id, doc); }
   catch (e) { if (e.estado === 409) duplicado = true; else throw e; }
+  if (!duplicado) await notificar(k.adminUid, { titulo: 'Nuevo pedido de IA', cuerpo: `${cliente.nombre} · S/ ${r.total.toFixed(2)} · ${r.unidades} und. (${k.nombre})`, url: '/?ir=pedidos' });
   return {
     ok: true, pedido_id: id, estado: 'pendiente_de_confirmacion', duplicado, total: r.total, moneda: 'PEN', unidades: r.unidades, items: r.lineas.map((l) => ({ producto: `${l.producto} ${l.modelo}`.trim(), talla: l.talla, color: l.color, cantidad: l.cantidad, subtotal: l.subtotal })),
     mensaje_para_cliente: `¡Listo, ${cliente.nombre.split(' ')[0]}! Recibimos tu pedido por S/ ${r.total.toFixed(2)}. La tienda lo confirmará contigo en breve (te escribirán al ${cliente.celular}).`,
@@ -214,11 +222,27 @@ export async function handle({ method, ruta, query = {}, headers = {}, rawBody =
     if (ruta === 'openapi' || ruta === 'openapi.json') return res(200, openapi(origen));
     if (!cuentaServicio()) return res(503, { ok: false, error: { codigo: 'no_configurado', mensaje: 'El servidor no tiene FIREBASE_SERVICE_ACCOUNT.' } });
     if (limite(golpes, 'ip:' + ip, 90)) throw new ErrorApi(429, 'limite', 'Demasiadas solicitudes. Espera un minuto.');
+    if (ruta === 'wk-recurso') return res(200, oauth.metadatosRecurso(origen));
+    if (ruta === 'wk-servidor') return res(200, oauth.metadatosServidor(origen));
+    if (ruta.startsWith('oauth/')) {
+      if (method !== 'POST') return res(405, { error: 'metodo' }, { allow: 'POST, OPTIONS' });
+      if (limite(golpes, 'oa:' + ip, 40)) return res(429, { error: 'slow_down', error_description: 'Demasiadas solicitudes.' });
+      if (rawBody.length > MAX_BYTES) return res(413, { error: 'invalid_request' });
+      let p = {};
+      const ct = String((headers['content-type'] || '')).toLowerCase();
+      try { p = ct.includes('json') ? JSON.parse(rawBody || '{}') : Object.fromEntries(new URLSearchParams(rawBody)); } catch { return res(400, { error: 'invalid_request' }); }
+      let r;
+      if (ruta === 'oauth/register') r = oauth.registrar(p);
+      else if (ruta === 'oauth/token') r = await oauth.token(p);
+      else if (ruta === 'oauth/aprobar') r = await oauth.aprobar({ authorization: headers.authorization || '', p });
+      else return res(404, { error: 'no_existe' });
+      return res(r.estado, r.body);
+    }
     let k;
     try { k = await autenticar(claveDe(headers, query)); }
     catch (e) { if (e instanceof ErrorApi && limite(fallos, 'ip:' + ip, 15)) throw new ErrorApi(429, 'limite', 'Demasiados intentos con clave inválida.'); throw e; }
     if (limite(golpes, 'k:' + k.id, 40)) throw new ErrorApi(429, 'limite', 'Esta clave superó su límite por minuto.');
-    if (Date.now() - k.ultimo > 120_000) { k.ultimo = Date.now(); actualizarDoc('apiKeys/' + k.huella, { ultimoUso: Date.now() }).catch(() => {}); }
+    if (k.huella && Date.now() - k.ultimo > 120_000) { k.ultimo = Date.now(); actualizarDoc('apiKeys/' + k.huella, { ultimoUso: Date.now() }).catch(() => {}); }
 
     const bodyJson = () => { if (!rawBody) return {}; if (rawBody.length > MAX_BYTES) throw new ErrorApi(413, 'grande', 'Solicitud demasiado grande.'); try { return JSON.parse(rawBody); } catch { throw new ErrorApi(400, 'json', 'El cuerpo no es JSON válido.'); } };
     if (ruta === 'mcp') {
@@ -234,7 +258,7 @@ export async function handle({ method, ruta, query = {}, headers = {}, rawBody =
     if (ruta === 'v1/pedidos' && method === 'GET') return res(200, await estadoPedidos(k, query.celular));
     return res(404, { ok: false, error: { codigo: 'no_existe', mensaje: 'Ruta no encontrada. Rutas: /api/mcp, /api/v1/catalogo, /api/v1/pedidos, /api/openapi.json' } });
   } catch (e) {
-    if (e instanceof ErrorApi) return res(e.estado, { ok: false, error: { codigo: e.codigo, mensaje: e.message, ...e.extra } });
+    if (e instanceof ErrorApi) return res(e.estado, { ok: false, error: { codigo: e.codigo, mensaje: e.message, ...e.extra } }, e.estado === 401 ? { 'www-authenticate': `Bearer resource_metadata="${origen}/.well-known/oauth-protected-resource"` } : {});
     return res(502, { ok: false, error: { codigo: 'servidor', mensaje: 'No pude completar la solicitud. Inténtalo de nuevo.' } });
   }
 }

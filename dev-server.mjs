@@ -22,10 +22,10 @@ createServer(async (req, res) => {
     res.writeHead(r.status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
     return res.end(JSON.stringify(r.body));
   }
-  if (url.pathname === '/api/mcp' || url.pathname === '/api/openapi.json' || url.pathname.startsWith('/api/v1/')) {
+  if (url.pathname === '/api/mcp' || url.pathname === '/api/openapi.json' || url.pathname.startsWith('/api/v1/') || url.pathname.startsWith('/.well-known/oauth-') || url.pathname === '/oauth/register' || url.pathname === '/oauth/token' || url.pathname === '/api/oauth/aprobar') {
     const chunks = [];
     for await (const c of req) chunks.push(c);
-    const r = await handlePed({ method: req.method, ruta: url.pathname.replace(/^\/api\//, ''), query: Object.fromEntries(url.searchParams), headers: req.headers, rawBody: Buffer.concat(chunks).toString('utf8'), ip: req.socket.remoteAddress, origen: 'http://' + req.headers.host });
+    const r = await handlePed({ method: req.method, ruta: url.pathname.startsWith('/.well-known/oauth-protected') ? 'wk-recurso' : url.pathname.startsWith('/.well-known/oauth-auth') ? 'wk-servidor' : url.pathname.replace(/^\/(api\/)?/, ''), query: Object.fromEntries(url.searchParams), headers: req.headers, rawBody: Buffer.concat(chunks).toString('utf8'), ip: req.socket.remoteAddress, origen: 'http://' + req.headers.host });
     res.writeHead(r.status, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store', ...(r.headers || {}) });
     return res.end(r.body === null || r.body === undefined ? undefined : JSON.stringify(r.body));
   }
@@ -57,7 +57,7 @@ createServer(async (req, res) => {
     res.writeHead(r.status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
     return res.end(JSON.stringify(r.body));
   }
-  let ruta = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, '');
+  let ruta = normalize(decodeURIComponent(url.pathname === '/oauth/authorize' ? '/autorizar.html' : url.pathname)).replace(/^(\.\.[/\\])+/, '');
   if (ruta.endsWith('/') || ruta === '') ruta = join(ruta, 'index.html');
   try {
     const datos = await readFile(join(raiz, ruta));

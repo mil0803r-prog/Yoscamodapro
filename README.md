@@ -89,6 +89,15 @@ Respaldos: la app guarda sola una copia al día (últimas 14) en tu cuenta, en `
 
 Cada persona ve únicamente sus datos. La primera vez que alguien entra, lo que ya tenía guardado en ese navegador se sube a su cuenta. Al cerrar sesión se borran los datos locales del dispositivo.
 
+### Conectar con inicio de sesión (OAuth) y avisos
+
+- **ChatGPT / Claude**: en «Servidor MCP» pega `https://TU-DOMINIO/api/mcp`, deja la autenticación en **OAuth** y toca *Conectar*. Se abre `/oauth/authorize`: inicias sesión con la cuenta administradora y tocas *Permitir*. No hay que copiar claves.
+- Es OAuth 2.1 con PKCE y registro dinámico de clientes. No usa base de datos propia: los códigos y tokens van firmados con un secreto derivado de `FIREBASE_SERVICE_ACCOUNT` (el acceso dura 1 h y se renueva solo; el refresh dura 60 días).
+- **Cerrar conexiones**: Integraciones → *Cerrar todas las conexiones de IA* (guarda una fecha en `apiConfig/oauth`; los tokens anteriores dejan de valer).
+- Solo la cuenta de `ADMIN_EMAILS` (por defecto `mil0803r@gmail.com`) puede aprobar una conexión.
+- **Avisos push**: Integraciones → *Activar avisos en este dispositivo*. Cada pedido nuevo de una IA envía una notificación (claves VAPID generadas solas y guardadas en `apiConfig/vapid`; suscripciones en `pushSubs`). En iPhone hay que agregar la app a la pantalla de inicio.
+- Las claves `yk_…` siguen funcionando como alternativa.
+
 ## Asistente de IA con Gemini (fuera de Claude)
 
 El asistente usa un pequeño servicio propio (`/api/asistente`) que guarda tu clave de Gemini en el servidor. La clave **nunca** va dentro de la página ni del repositorio.

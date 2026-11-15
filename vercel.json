@@ -42,6 +42,38 @@
     {
       "source": "/api/openapi.json",
       "destination": "/api/pedidos?ruta=openapi"
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource",
+      "destination": "/api/pedidos?ruta=wk-recurso"
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource/:path*",
+      "destination": "/api/pedidos?ruta=wk-recurso"
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server",
+      "destination": "/api/pedidos?ruta=wk-servidor"
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server/:path*",
+      "destination": "/api/pedidos?ruta=wk-servidor"
+    },
+    {
+      "source": "/oauth/register",
+      "destination": "/api/pedidos?ruta=oauth/register"
+    },
+    {
+      "source": "/oauth/token",
+      "destination": "/api/pedidos?ruta=oauth/token"
+    },
+    {
+      "source": "/api/oauth/aprobar",
+      "destination": "/api/pedidos?ruta=oauth/aprobar"
+    },
+    {
+      "source": "/oauth/authorize",
+      "destination": "/autorizar.html"
     }
   ]
 }

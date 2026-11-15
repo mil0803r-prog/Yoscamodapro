@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>Conectar asistente de IA</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--tx:#1d1b19;--mu:#6b655d;--ac:#7a3b2e;--bd:#e4ded3}
+@media(prefers-color-scheme:dark){:root{--bg:#161412;--card:#201d1a;--tx:#f1ece4;--mu:#a59d92;--ac:#d98b78;--bd:#3a342e}}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,sans-serif;padding:16px}
+.c{width:100%;max-width:420px;background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:24px}
+h1{font-size:1.25rem;margin:0 0 6px}p{color:var(--mu);margin:6px 0 14px}
+input{width:100%;padding:11px;margin:5px 0;border:1px solid var(--bd);border-radius:10px;background:transparent;color:var(--tx);font:inherit}
+button{width:100%;padding:12px;margin-top:8px;border:0;border-radius:10px;background:var(--ac);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button.s{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+.e{color:#c0392b;font-size:.9rem;min-height:1.2em}ul{color:var(--mu);padding-left:20px}
+</style></head><body><div class="c" id="app"><p>Cargando…</p></div>
+<script src="firebase-config.js"></script>
+<script type="module" src="firebase-boot.js"></script>
+<script>
+(function(){
+  var q=new URLSearchParams(location.search), app=document.getElementById('app');
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  var cn='Un asistente de IA';
+  try{var pl=JSON.parse(atob(String(q.get('client_id')||'').split('.')[0].replace(/-/g,'+').replace(/_/g,'/')));if(pl&&pl.n)cn=pl.n}catch(e){}
+  if(q.get('response_type')!=='code'||!q.get('client_id')||!q.get('redirect_uri')||!q.get('code_challenge')){app.innerHTML='<h1>Solicitud inválida</h1><p>Vuelve a la IA e inténtalo de nuevo.</p>';return}
+  function esperar(n){ if(window.YoscaFB) return iniciar(); if(n>80){app.innerHTML='<h1>No se pudo cargar el inicio de sesión</h1>';return} setTimeout(function(){esperar(n+1)},100) }
+  function login(msg){
+    app.innerHTML='<h1>Conectar '+esc(cn)+'</h1><p>Inicia sesión con la cuenta administradora de Yosca Moda para permitir el acceso.</p>'+
+      '<button id="g">Entrar con Google</button><p style="text-align:center;margin:10px 0">o</p>'+
+      '<input id="em" type="email" placeholder="Correo" autocomplete="username"><input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password">'+
+      '<button class="s" id="ep">Entrar con correo</button><div class="e" id="er">'+esc(msg||'')+'</div>';
+    document.getElementById('g').onclick=function(){YoscaFB.google().catch(function(e){document.getElementById('er').textContent='No se pudo entrar: '+(e.code||e.message)})};
+    document.getElementById('ep').onclick=function(){YoscaFB.signIn(document.getElementById('em').value.trim(),document.getElementById('pw').value).catch(function(){document.getElementById('er').textContent='Correo o contraseña incorrectos.'})};
+  }
+  function permiso(u){
+    app.innerHTML='<h1>¿Permitir el acceso?</h1><p><b>'+esc(cn)+'</b> podrá, con tu cuenta <b>'+esc(u.email)+'</b>:</p><ul><li>Ver el catálogo y los precios</li><li>Enviar pedidos a «Pedidos entrantes» (tú los revisas antes de aprobarlos)</li></ul>'+
+      '<button id="ok">Permitir</button><button class="s" id="no">Cancelar</button><button class="s" id="out">Usar otra cuenta</button><div class="e" id="er"></div>';
+    document.getElementById('no').onclick=function(){var u2=new URL(q.get('redirect_uri'));u2.searchParams.set('error','access_denied');if(q.get('state'))u2.searchParams.set('state',q.get('state'));location.href=u2.toString()};
+    document.getElementById('out').onclick=function(){YoscaFB.out()};
+    document.getElementById('ok').onclick=function(){
+      var b=this;b.disabled=true;
+      YoscaFB.idToken().then(function(t){return fetch('/api/oauth/aprobar',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+t},body:JSON.stringify({client_id:q.get('client_id'),redirect_uri:q.get('redirect_uri'),code_challenge:q.get('code_challenge'),code_challenge_method:q.get('code_challenge_method'),state:q.get('state')||'',scope:q.get('scope')||''})})})
+      .then(function(r){return r.json()}).then(function(j){ if(j.redirect){location.href=j.redirect}else{b.disabled=false;document.getElementById('er').textContent=j.error_description||'No se pudo autorizar.'}})
+      .catch(function(){b.disabled=false;document.getElementById('er').textContent='Error de conexión.'});
+    };
+  }
+  function iniciar(){ YoscaFB.onUser(function(u){ if(u) permiso(u); else login(); }); }
+  esperar(0);
+})();
+</script></body></html>
