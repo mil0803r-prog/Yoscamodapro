@@ -37,6 +37,10 @@ Con esto la app deja de ser abierta: solo entra quien tú apruebes, y cada perso
 
 Si marcas **«Tiene su propia base de datos»** al darle acceso, esa persona conserva sus datos de siempre (los guardados en su cuenta, separados de los tuyos) y trabaja sobre ellos. Si no, las personas aprobadas trabajan sobre los datos del administrador (los mismos pedidos, inventario, etc.). Las reglas de Firestore hacen cumplir los permisos en el servidor, no solo en la pantalla. Tienda, Equipo y los respaldos son solo del administrador. En WhatsApp, quien tenga permiso lo usa sin estar en `WA_EMAILS` (se lee su permiso de Firestore; requiere `FIREBASE_PROJECT_ID`), pero conectar o desvincular el número es solo del administrador.
 
+### Pedido rápido: dictar con voz
+
+En Pedidos → + Nuevo pedido (cuenta administradora): **🎤 Dictar con voz** usa el reconocimiento de voz del navegador (Chrome/Android; requiere internet y permiso de micrófono). Se dicta algo como «nombre Ana Pérez, celular 999 111 222, ciudad Arequipa, talla M, color negro y rosa, cantidad 2» o una frase libre, y el formulario se llena solo.
+
 ### Leer capturas y fotos de clientes (Pedidos → 📷 Subir captura)
 
 Solo para la cuenta administradora (`LEER_EMAILS`, por defecto `mil0803r@gmail.com`). Usa la misma clave del asistente: `GEMINI_API_KEY` y `FIREBASE_PROJECT_ID` en Vercel. La imagen se reduce en el navegador, viaja a `/api/leer-imagen`, se lee con Gemini y no se guarda. Los datos reconocidos llenan el formulario y siempre se revisan antes de guardar.

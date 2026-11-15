@@ -401,6 +401,7 @@ html.fb:not(.fb-in) .app,html.fb:not(.fb-in) nav.bottom,html.fb:not(.fb-in) .aif
 .iq-tot{font-size:15px;margin-top:2px}.iq-nota{font-size:13px;opacity:.85;margin-top:4px}.iq-ojo{margin-top:6px;font-weight:800;color:var(--error)}
 .inv2{border-top:2px dashed var(--line);padding-top:12px}
 .ih-var{display:flex;gap:6px;flex-wrap:wrap;margin:3px 0}.ih-row{align-items:flex-start}
+.btn.rec{background:var(--error);color:#fff;animation:recp 1.2s infinite}@keyframes recp{50%{opacity:.7}}
 /* ===== Optimización móvil y PC ===== */
 .kpi small,.scen small,.ord-money small,.vfhead,th,.wa-m small,.chartcard .tbtn{font-size:max(12px,.75rem)}
 @media (max-width:899px),(pointer:coarse){
@@ -491,7 +492,7 @@ summary{cursor:pointer}
         <h2 id="pedTitle">Registrar pedido</h2>
         <form id="pedForm" class="form" autocomplete="off" style="margin-top:10px">
           <div class="full" id="pedPegar"><label for="p-pegar">📋 Pega aquí los datos del cliente (se reconocen y se llenan solos)</label><textarea id="p-pegar" rows="4" placeholder="Nombre: Ana Pérez&#10;Celular: 999 111 222&#10;Ciudad: Arequipa&#10;Talla: M&#10;Color: Negro&#10;Cantidad: 2" style="min-height:96px"></textarea><div id="pegarRes" class="hint" hidden></div>
-            <div class="row" id="pedImgRow" style="margin-top:8px" hidden><button class="btn" type="button" id="pedImgBtn">📷 Subir captura o foto</button><input type="file" id="pedImgIn" accept="image/*" hidden><span class="sub">o pega la imagen aquí con Ctrl + V</span></div></div>
+            <div class="row" id="pedImgRow" style="margin-top:8px" hidden><button class="btn pri" type="button" id="pedVozBtn">🎤 Dictar con voz</button><button class="btn" type="button" id="pedImgBtn">📷 Subir captura o foto</button><input type="file" id="pedImgIn" accept="image/*" hidden><span class="sub">También puedes pegar la imagen con Ctrl + V.</span></div></div>
           <div><label for="p-fecha">Fecha</label><input id="p-fecha" type="date" name="fecha" required></div>
           <div><label for="p-gar">Prenda del catálogo</label><select id="p-gar" name="garmentId"></select></div>
           <div class="full" id="invProdBox" hidden><label>Producto del inventario (toca uno o dos)</label><div class="tchips ichips" id="invProd"></div></div>
@@ -1765,23 +1766,45 @@ function waGrupoPorTexto(low){
   if(sc[0]&&sc[0][1]>0&&(!sc[1]||sc[1][1]<sc[0][1]))key=sc[0][0];
   return key;
 }
-function waExtraerChat(msgs,c){
-  const cli=msgs.filter(m=>!m.mio&&m.texto).slice(-40).map(m=>m.texto),txt=cli.join('\n'),d=waParsear(txt),low=waNrm(txt);
-  d.tel=c.tel;
-  if(!d.nombre&&c.nombre&&!/^\+?\d/.test(c.nombre)&&c.nombre!=='Sin nombre'&&c.nombre!=='Grupo')d.nombre=c.nombre;
-  if(!d.cantidad){const m=low.match(/\b(\d{1,3})\s*(polos?|poleras?|prendas?|unidades?|und|pzs?|piezas?)\b/);if(m)d.cantidad=m[1]}
+const WA_NUM={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12};
+/* Reconoce datos de un texto libre (mensajes, dictado o texto pegado) */
+function waExtraerTexto(txt){
+  const d=waParsear(txt),low=waNrm(txt);
+  if(!d.cantidad){const m=low.match(/\b(\d{1,3}|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\s*(polos?|poleras?|prendas?|unidades?|und|pzs?|piezas?)\b/);if(m)d.cantidad=String(WA_NUM[m[1]]||m[1])}
   if(!d.dni){const m=txt.match(/(?<![\d])\d{8}(?![\d])/);if(m)d.dni=m[0]}
   if(!d.ciudad){const ci=WA_CIUDADES.find(x=>new RegExp('\\b'+waNrm(x)+'\\b').test(low));if(ci)d.ciudad=ci;else{const m=txt.match(/\b(?:soy de|vivo en|estoy en|envio a|enviar a|envíen a|desde)\s+([A-ZÁÉÍÓÚÑ][\p{L}]+(?:\s+[A-ZÁÉÍÓÚÑ][\p{L}]+)?)/u);if(m)d.ciudad=m[1]}}
   if(!d.agencia){const ag=WA_AGENCIAS.find(x=>new RegExp('\\b'+x+'\\b').test(low));if(ag)d.agencia=ag.charAt(0).toUpperCase()+ag.slice(1)}
   if(!d.talla){const m=low.match(/\btalla\s*:?\s*(xxxl|xxl|xl|xs|s|m|l|\d{2})\b/)||txt.match(/(?:^|[\s,(])(XXXL|XXL|XL|XS)(?=$|[\s,.)])/);if(m)d.talla=m[1].toUpperCase()}
-  // colores: se buscan los que existen en tu inventario
-  if(!d.color){const h=waColoresPorTexto(low);if(h)d.color=h}
-  // producto del inventario: por cuello (V o redondo) o el único que exista
-  const key=waGrupoPorTexto(low);
+  if(d.color){const h=waColoresPorTexto(waNrm(d.color));if(h)d.color=h}   // lo dicho se cruza con los colores de tu inventario
+  else{const h=waColoresPorTexto(low);if(h)d.color=h}
+  if(d.cantidad&&!/^\d+$/.test(String(d.cantidad))){const w=waNrm(String(d.cantidad)).trim().split(/\s+/)[0];d.cantidad=WA_NUM[w]?String(WA_NUM[w]):''}   // «tres» -> 3
+  if(d.nombre&&d.ciudad){const n=waNrm(d.nombre),c=waNrm(d.ciudad);if(n.endsWith(' de '+c))d.nombre=d.nombre.slice(0,d.nombre.length-d.ciudad.length-4).trim()}   // «Ana Pérez de Cusco» -> nombre y ciudad
+  return {d,key:waGrupoPorTexto(low),low};
+}
+/* Dictado: ordena lo que se habla («nombre Ana celular 999…») en líneas «Nombre: Ana» */
+function dictadoNormalizar(t){
+  let x=' '+String(t||'').replace(/\s+/g,' ').trim()+' ';
+  // números hablados seguidos («nueve nueve nueve uno…») -> dígitos
+  x=x.replace(/((?:\b(?:cero|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve)\b\s*){5,})/gi,m=>' '+m.trim().split(/\s+/).map(w=>({cero:0,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9})[w.toLowerCase()]).join('')+' ');
+  const KW=[['Nombre',/\b(?:a nombre de|se llama|nombre completo|nombre|cliente|soy)\b/gi],['Celular',/\b(?:celular|tel[eé]fono|n[uú]mero de celular|n[uú]mero|whatsapp|cel)\b/gi],['Ciudad',/\b(?:ciudad|provincia|departamento|distrito|vive en|env[ií]o a|enviar a)\b/gi],['DNI',/\b(?:dni|documento)\b/gi],['Direccion',/\b(?:direcci[oó]n|domicilio)\b/gi],['Agencia',/\b(?:agencia|sede)\b/gi],['Talla',/\b(?:tallas?)\b/gi],['Color',/\b(?:colou?r(?:es)?|en color)\b/gi],['Cantidad',/\b(?:cantidad|unidades)\b/gi],['Producto',/\b(?:producto|modelo)\b/gi],['Referencia',/\b(?:referencia|referencias)\b/gi]];
+  const marcas=[];
+  KW.forEach(([et,re])=>{let m;while((m=re.exec(x)))marcas.push({i:m.index,f:m.index+m[0].length,et})});
+  marcas.sort((a,b)=>a.i-b.i);
+  // se descartan marcas solapadas
+  const lim=[];marcas.forEach(m=>{if(!lim.length||m.i>=lim[lim.length-1].f)lim.push(m)});
+  if(!lim.length)return t;
+  const lineas=lim.map((m,k)=>{let v=x.slice(m.f,k+1<lim.length?lim[k+1].i:x.length).trim().replace(/^(?:es|son|sería|seria|de|del|la|el|:|,|=)\s+/i,'').replace(/[,.;]+$/,'').replace(/\s+(?:y|e)$/i,'').trim();return v?m.et+': '+v:''});
+  const antes=x.slice(0,lim[0].i).trim();
+  return (antes?antes+'\n':'')+lineas.filter(Boolean).join('\n');
+}
+function waExtraerChat(msgs,c){
+  const cli=msgs.filter(m=>!m.mio&&m.texto).slice(-40).map(m=>m.texto),txt=cli.join('\n'),R=waExtraerTexto(txt),d=R.d;
+  d.tel=c.tel;
+  if(!d.nombre&&c.nombre&&!/^\+?\d/.test(c.nombre)&&c.nombre!=='Sin nombre'&&c.nombre!=='Grupo')d.nombre=c.nombre;
   // cliente que repite: ciudad y notas del último pedido
   const ult=S.orders.filter(o=>waNumber(o.telefono)===c.tel).sort((x,y)=>String(y.fecha).localeCompare(String(x.fecha)))[0];
   if(ult){if(!d.ciudad&&ult.ciudad)d.ciudad=ult.ciudad;if(ult.notas)d.notasPrev=ult.notas}
-  return {d,key,leidos:cli.length,txt};
+  return {d,key:R.key,leidos:cli.length,txt};
 }
 async function waCrearPedido(tel){
   const c=waLista().find(x=>x.tel===tel);if(!c)return;
@@ -2335,17 +2358,19 @@ pf.telefono.addEventListener('input',syncWaForm);pf.cliente.addEventListener('in
 /* Reconocer datos pegados: llena el formulario solo */
 function pedReconocer(){
   const t=$('#p-pegar').value,res=$('#pegarRes');if(!t.trim()){res.hidden=true;return}
-  pedAplicarDatos(waParsear(t));
+  const R=waExtraerTexto(/:/.test(t)?t:dictadoNormalizar(t));
+  pedAplicarDatos(R.d,{producto:R.key});
 }
 function pedAplicarDatos(d,op){
   op=op||{};const res=$('#pegarRes'),ok=[];
   const set=(n,v,et)=>{if(v!=null&&v!==''&&pf[n]){pf[n].value=v;['input','change'].forEach(ev=>pf[n].dispatchEvent(new Event(ev,{bubbles:true})));ok.push(et)}};
   if(op.producto&&invGroups().has(op.producto)&&pig.value!==op.producto){ui.pedProds=[op.producto];pig.value=op.producto;ui.pedQty={};ui.pedSelX={};invFromGroup();ok.push('Producto')}
-  set('cliente',d.nombre,'Cliente');set('telefono',d.tel,'Celular');set('ciudad',d.ciudad,'Ciudad');
+  const tit=v=>v&&v===v.toLowerCase()?v.replace(/(^|\s)(\p{L})/gu,(m,a,b)=>a+b.toUpperCase()):v;
+  set('cliente',tit(d.nombre),'Cliente');set('telefono',d.tel,'Celular');set('ciudad',tit(d.ciudad),'Ciudad');
   if(!pig.value)set('producto',d.producto,'Producto');
   set('talla',d.talla,'Talla');set('color',d.color,'Color');
   if(d.cantidad&&!pf.cantidad.readOnly){const q=Math.max(1,parseInt(d.cantidad)||1);set('cantidad',q,'Cantidad')}
-  let nota=[d.dni&&'DNI '+d.dni,d.direccion&&'Dirección: '+d.direccion,d.agencia&&'Agencia: '+d.agencia,d.referencia&&'Ref.: '+d.referencia].filter(Boolean).join(' · ');
+  let nota=[d.dni&&'DNI '+d.dni,d.direccion&&'Dirección: '+d.direccion,d.agencia&&'Agencia: '+tit(d.agencia),d.referencia&&'Ref.: '+d.referencia].filter(Boolean).join(' · ');
   if(!nota&&d.notasPrev)nota=d.notasPrev;
   if(nota){pf.notas.value=nota;ok.push('Notas')}
   // varios colores: reparte la cantidad pedida entre ellos
@@ -2374,6 +2399,20 @@ async function pedLeerImagen(file){
     pedAplicarDatos(d,{producto:waGrupoPorTexto(low),origen:'Leí la imagen y llené'});
   }catch(e){res.innerHTML='⚠️ No pude abrir esa imagen. Prueba con otra captura.'}
 }
+/* Dictado por voz (Chrome/Android): se escucha, se escribe en el cuadro y se reconocen los datos */
+let pedRec=null,pedDictando=false;
+function pedDictar(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition,btn=$('#pedVozBtn'),res=$('#pegarRes'),ta=$('#p-pegar');
+  if(!SR){res.hidden=false;res.innerHTML='Tu navegador no permite dictar desde aquí. Usa el <b>micrófono del teclado</b> del celular dentro del cuadro de arriba.';return}
+  if(pedDictando&&pedRec){pedRec.stop();return}
+  pedRec=new SR();pedRec.lang='es-PE';pedRec.interimResults=true;pedRec.continuous=true;
+  const base=ta.value.trim()?ta.value.trim()+' ':'';
+  pedRec.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript+' ';ta.value=(base+t).trim()};
+  pedRec.onerror=e=>{pedDictando=false;btn.textContent='🎤 Dictar con voz';btn.classList.remove('rec');res.hidden=false;res.innerHTML=e.error==='not-allowed'||e.error==='service-not-allowed'?'⚠️ No me diste permiso para usar el micrófono. Actívalo en el candado de la barra de direcciones.':e.error==='no-speech'?'No te escuché. Toca de nuevo y habla cerca del micrófono.':'⚠️ No pude escucharte ('+esc(e.error)+').'};
+  pedRec.onend=()=>{pedDictando=false;btn.textContent='🎤 Dictar con voz';btn.classList.remove('rec');if(ta.value.trim()&&ta.value.trim()!==base.trim())pedReconocer()};
+  try{pedRec.start();pedDictando=true;btn.textContent='⏹ Escuchando… toca para terminar';btn.classList.add('rec');res.hidden=false;res.innerHTML='🎤 Habla así: <b>«Nombre Ana Pérez, celular 999 111 222, ciudad Arequipa, talla M, color negro, cantidad 2»</b>.'}catch(e){}
+}
+$('#pedVozBtn').addEventListener('click',pedDictar);
 $('#pedImgBtn').addEventListener('click',()=>$('#pedImgIn').click());
 $('#pedImgIn').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';pedLeerImagen(f)});
 document.addEventListener('paste',e=>{if($('#pedCard').hidden||!puedeTienda())return;const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(i=>i.kind==='file'&&/^image\//.test(i.type));if(it){e.preventDefault();pedLeerImagen(it.getAsFile())}});
